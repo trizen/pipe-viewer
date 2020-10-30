@@ -190,6 +190,7 @@ sub _extract_search_results {
 
                     #use Data::Dump qw(pp);
                     #pp $search_entry;
+
                     push @results, $search_entry;
                 }
 
@@ -208,7 +209,11 @@ sub _extract_search_results {
 sub _youtube_search {
     my ($self, %args) = @_;
 
-    my $content = $self->lwp_get($self->get_m_youtube_url . "/results?search_query=$args{q}");
+    my $url = $self->get_m_youtube_url . "/results?search_query=$args{q}";
+
+    # TODO: add support for various search parameters
+
+    my $content = $self->lwp_get($url);
 
     if ($content =~ m{<div id="initial-data"><!--(.*?)--></div>}is) {
         my $json = $1;
@@ -296,11 +301,13 @@ sub search_for {
                                       %$args,
                                      );
 
-    return
-      scalar {
-              url     => $url,
-              results => [$self->_youtube_search(q => $keywords, type => $type, %$args)],
-             };
+    if ($type eq 'video' and $url =~ /\?q=[^&]+&type=video\z/) {
+        return
+          scalar {
+                  url     => $url,
+                  results => [$self->_youtube_search(q => $keywords, type => $type, %$args)],
+                 };
+    }
 
     return $self->_get_results($url);
 }

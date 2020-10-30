@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.38.1
+<!-- Generated with glade 3.38.1 
 
 Copyright (C) Copyright © 2010-2020 Trizen
 
@@ -906,6 +906,7 @@ Author: Trizen https://github.com/trizen
                                                           <object class="GtkComboBoxText" id="comboboxtext10">
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">False</property>
+                                                            <property name="tooltip-text" translatable="yes">Type of search results.</property>
                                                             <property name="active">0</property>
                                                             <items>
                                                             <item translatable="yes">video</item>
@@ -959,6 +960,7 @@ Author: Trizen https://github.com/trizen
                                                           <object class="GtkComboBoxText" id="comboboxtext2">
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">False</property>
+                                                            <property name="tooltip-text" translatable="yes">Search order for videos.</property>
                                                             <property name="active">0</property>
                                                             <items>
                                                             <item translatable="yes">relevance</item>
@@ -1009,7 +1011,6 @@ Author: Trizen https://github.com/trizen
                                                         <property name="visible">True</property>
                                                         <property name="can-focus">False</property>
                                                         <property name="tooltip-text" translatable="yes">short – less than 4 minutes long
-medium – 4 to 20 minutes (inclusive)
 long – longer than 20 minutes</property>
                                                         <property name="active">0</property>
                                                         <items>
@@ -1052,6 +1053,7 @@ long – longer than 20 minutes</property>
                                                       <object class="GtkComboBoxText" id="comboboxtext3">
                                                         <property name="visible">True</property>
                                                         <property name="can-focus">False</property>
+                                                        <property name="tooltip-text" translatable="yes">Retrieve only videos that have closed-captions</property>
                                                         <property name="active">0</property>
                                                         <items>
                                                           <item translatable="yes">any</item>
@@ -1092,6 +1094,7 @@ long – longer than 20 minutes</property>
                                                       <object class="GtkComboBoxText" id="comboboxtext4">
                                                         <property name="visible">True</property>
                                                         <property name="can-focus">False</property>
+                                                        <property name="tooltip-text" translatable="yes">Retrieve only videos with resolution 720p+</property>
                                                         <property name="active">0</property>
                                                         <items>
                                                           <item translatable="yes">any</item>
@@ -1115,6 +1118,47 @@ long – longer than 20 minutes</property>
                                                 <property name="expand">False</property>
                                                 <property name="fill">False</property>
                                                 <property name="position">4</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkFrame" id="frame15">
+                                                <property name="visible">True</property>
+                                                <property name="can-focus">False</property>
+                                                <property name="label-xalign">0</property>
+                                                <property name="shadow-type">none</property>
+                                                <child>
+                                                  <object class="GtkAlignment" id="alignment14">
+                                                    <property name="visible">True</property>
+                                                    <property name="can-focus">False</property>
+                                                    <property name="left-padding">12</property>
+                                                    <child>
+                                                      <object class="GtkComboBoxText" id="comboboxtext5">
+                                                        <property name="visible">True</property>
+                                                        <property name="can-focus">False</property>
+                                                        <property name="tooltip-text" translatable="yes">Retrieve only videos with Creative-Commons license.</property>
+                                                        <property name="active">0</property>
+                                                        <items>
+                                                          <item translatable="yes">any</item>
+                                                          <item translatable="yes">creative_commons</item>
+                                                        </items>
+                                                        <signal name="changed" handler="combobox_license_changed" swapped="no"/>
+                                                      </object>
+                                                    </child>
+                                                  </object>
+                                                </child>
+                                                <child type="label">
+                                                  <object class="GtkLabel" id="label23">
+                                                    <property name="visible">True</property>
+                                                    <property name="can-focus">False</property>
+                                                    <property name="label" translatable="yes">&lt;b&gt;Video License:&lt;/b&gt;</property>
+                                                    <property name="use-markup">True</property>
+                                                  </object>
+                                                </child>
+                                              </object>
+                                              <packing>
+                                                <property name="expand">False</property>
+                                                <property name="fill">False</property>
+                                                <property name="position">5</property>
                                               </packing>
                                             </child>
                                             <child>
@@ -1441,7 +1485,7 @@ Unless the author name is valid, this field is ignored.</property>
                                               <packing>
                                                 <property name="expand">False</property>
                                                 <property name="fill">False</property>
-                                                <property name="position">6</property>
+                                                <property name="position">7</property>
                                               </packing>
                                             </child>
                                             <child>
@@ -1470,7 +1514,7 @@ Unless the author name is valid, this field is ignored.</property>
                                                 <property name="expand">False</property>
                                                 <property name="fill">False</property>
                                                 <property name="padding">14</property>
-                                                <property name="position">7</property>
+                                                <property name="position">8</property>
                                               </packing>
                                             </child>
                                             <child>
@@ -1519,7 +1563,7 @@ When the specified resolution is not found, the best available resolution is use
                                                 <property name="expand">False</property>
                                                 <property name="fill">False</property>
                                                 <property name="pack-type">end</property>
-                                                <property name="position">8</property>
+                                                <property name="position">9</property>
                                               </packing>
                                             </child>
                                           </object>

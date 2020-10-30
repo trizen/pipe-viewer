@@ -14,7 +14,7 @@ The goal of this fork is to parse the YouTube website directly, removing the dep
 
 * GTK+ interface to YouTube.
 
-![gtk-pipe-viewer](https://user-images.githubusercontent.com/614513/84770876-11d69780-afe1-11ea-96f7-5d426dc865e5.png)
+![gtk-pipe-viewer](https://user-images.githubusercontent.com/614513/97737137-89125100-1ad4-11eb-8ff3-b19cd0041528.png)
 
 
 ### STATUS
