@@ -1,0 +1,4532 @@
+#!/usr/bin/perl
+
+# Copyright (C) 2010-2020 Trizen <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d>.
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of either: the GNU General Public License as published
+# by the Free Software Foundation; or the Artistic License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# See https://dev.perl.org/licenses/ for more information.
+#
+#-------------------------------------------------------
+#  pipe-viewer
+#  Fork: 14 February 2020
+#  Edit: 06 October 2020
+#  https://github.com/trizen/pipe-viewer
+#-------------------------------------------------------
+
+# pipe-viewer is a command line utility for streaming YouTube videos in mpv/vlc.
+
+# This is a fork of youtube-viewer:
+#   https://github.com/trizen/youtube-viewer
+
+=encoding utf8
+
+=head1 NAME
+
+pipe-viewer - YouTube from command line.
+
+     pipe-viewer --help
+     pipe-viewer --tricks
+     pipe-viewer --examples
+     pipe-viewer --stdin-help
+
+=cut
+
+use utf8;
+use 5.016;
+
+use warnings;
+no warnings 'once';
+
+my $DEVEL;                                 # true in devel mode
+use if ($DEVEL = 1), lib => qw(../lib);    # devel mode
+
+use WWW::PipeViewer v0.0.1;
+use WWW::PipeViewer::RegularExpressions;
+
+use File::Spec::Functions qw(
+  catdir
+  catfile
+  curdir
+  path
+  rel2abs
+  tmpdir
+  file_name_is_absolute
+  );
+
+binmode(STDOUT, ':utf8');
+
+my $appname  = 'CLI Pipe Viewer';
+my $version  = $WWW::PipeViewer::VERSION;
+my $execname = 'pipe-viewer';
+
+# A better <STDIN> support:
+require Term::ReadLine;
+my $term = Term::ReadLine->new("$appname $version");
+
+# Options (key=>value) goes here
+my %opt;
+my $term_width = 80;
+
+# Keep track of watched videos by their ID
+my %watched_videos;
+
+# Unchangeable data goes here
+my %constant = (win32 => ($^O eq 'MSWin32' ? 1 : 0));    # doh
+
+my $home_dir;
+my $xdg_config_home = $ENV{XDG_CONFIG_HOME};
+
+if ($xdg_config_home and -d -w $xdg_config_home) {
+    require File::Basename;
+    $home_dir = File::Basename::dirname($xdg_config_home);
+
+    if (not -d -w $home_dir) {
+        $home_dir = $ENV{HOME} || curdir();
+    }
+}
+else {
+    $home_dir =
+         $ENV{HOME}
+      || $ENV{LOGDIR}
+      || ($constant{win32} ? '\Local Settings\Application Data' : ((getpwuid($<))[7] || `echo -n ~`));
+
+    if (not -d -w $home_dir) {
+        $home_dir = curdir();
+    }
+
+    $xdg_config_home = catdir($home_dir, '.config');
+}
+
+# Configuration dir/file
+my $config_dir          = catdir($xdg_config_home, $execname);
+my $config_file         = catfile($config_dir, "$execname.conf");
+my $authentication_file = catfile($config_dir, 'reg.dat');
+my $history_file        = catfile($config_dir, 'cli-history.txt');
+my $watched_file        = catfile($config_dir, 'watched.txt');
+my $api_file            = catfile($config_dir, 'api.json');
+
+if (not -d $config_dir) {
+    require File::Path;
+    File::Path::make_path($config_dir)
+      or warn "[!] Can't create dir '$config_dir': $!";
+}
+
+sub which_command {
+    my ($cmd) = @_;
+
+    if (file_name_is_absolute($cmd)) {
+        return $cmd;
+    }
+
+    state $paths = [path()];
+    foreach my $path (@{$paths}) {
+        my $cmd_path = catfile($path, $cmd);
+        if (-f -x $cmd_path) {
+            return $cmd_path;
+        }
+    }
+
+    return;
+}
+
+# Main configuration
+my %CONFIG = (
+
+    video_players => {
+                      vlc => {
+                              cmd     => q{vlc},
+                              srt     => q{--sub-file=*SUB*},
+                              audio   => q{--input-slave=*AUDIO*},
+                              fs      => q{--fullscreen},
+                              arg     => q{--quiet --play-and-exit --no-video-title-show --input-title-format=*TITLE*},
+                              novideo => q{--intf=dummy --novideo},
+                             },
+                      mpv => {
+                              cmd     => q{mpv},
+                              srt     => q{--sub-file=*SUB*},
+                              audio   => q{--audio-file=*AUDIO*},
+                              fs      => q{--fullscreen},
+                              arg     => q{--really-quiet --force-media-title=*TITLE* --no-ytdl},
+                              novideo => q{--no-video},
+                             },
+                     },
+
+    video_player_selected => (
+        $constant{win32}
+        ? 'vlc'
+        : undef    # auto-defined
+    ),
+
+    # YouTube options
+    dash_support    => 1,
+    dash_mp4_audio  => 1,
+    dash_segmented  => 1,        # may load slow
+    maxResults      => 20,
+    hfr             => 1,        # true to prefer high frame rate (HFR) videos
+    resolution      => 'best',
+    videoDefinition => undef,
+    videoDimension  => undef,
+    videoLicense    => undef,
+    videoCaption    => undef,
+    videoDuration   => undef,
+
+    order => undef,
+    date  => undef,
+
+    comments_order      => 'top',          # valid values: top, new
+    subscriptions_order => 'relevance',    # valid values: alphabetical, relevance, unread
+
+    region => undef,
+
+    # URI options
+    youtube_video_url => 'https://www.youtube.com/watch?v=%s',
+
+    # Subtitle options
+    srt_languages => ['en', 'es'],
+    get_captions  => 1,
+    auto_captions => 0,
+    copy_caption  => 0,
+    cache_dir     => undef,
+
+    # API
+    api_host => "auto",
+
+    # Others
+    autoplay_mode        => 0,
+    http_proxy           => undef,
+    cookie_file          => undef,
+    user_agent           => undef,
+    timeout              => undef,
+    env_proxy            => 1,
+    confirm              => 0,
+    debug                => 0,
+    page                 => 1,
+    colors               => $constant{win32} ^ 1,
+    skip_if_exists       => 1,
+    prefer_mp4           => 0,
+    prefer_av1           => 0,
+    ignore_av1           => 0,
+    fat32safe            => $constant{win32},
+    fullscreen           => 0,
+    results_with_details => 0,
+    results_with_colors  => 0,
+    results_fixed_width  => undef,                    # auto-defined
+    show_video_info      => 1,
+    interactive          => 1,
+    get_term_width       => $constant{win32} ^ 1,
+    download_with_wget   => undef,                    # auto-defined
+    thousand_separator   => q{,},
+    downloads_dir        => curdir(),
+    keep_original_video  => 0,
+    download_and_play    => 0,
+    skip_watched         => 0,
+    remember_watched     => 0,
+    watched_file         => $watched_file,
+    highlight_watched    => 1,
+    highlight_color      => 'bold',
+    remove_played_file   => 0,
+    history              => undef,                    # auto-defined
+    history_limit        => 100_000,
+    history_file         => $history_file,
+    convert_cmd          => 'ffmpeg -i *IN* *OUT*',
+    convert_to           => undef,
+
+    # youtube-dl support
+    ytdl     => 1,
+    ytdl_cmd => undef,                                # auto-defined
+
+    custom_layout => undef,                           # auto-defined
+    custom_layout_format => [{width => 3,     align => "right", color => "bold",      text => "*NO*.",},
+                             {width => "55%", align => "left",  color => "bold blue", text => "*TITLE*",},
+                             {width => "15%", align => "left",  color => "yellow",    text => "*AUTHOR*",},
+                             {width => 3,     align => "right", color => "green",     text => "*AGE_SHORT*",},
+                             {width => 5,     align => "right", color => "green",     text => "*VIEWS_SHORT*",},
+                             {width => 8,     align => "right", color => "blue",      text => "*TIME*",},
+                            ],
+
+    ffmpeg_cmd => 'ffmpeg',
+    wget_cmd   => 'wget',
+
+    merge_into_mkv      => undef,                                                                    # auto-defined later
+    merge_into_mkv_args => '-loglevel warning -c:s srt -c:v copy -c:a copy -disposition:s forced',
+    merge_with_captions => 1,
+
+    video_filename_format => '*FTITLE* - *ID*.*FORMAT*',
+);
+
+local $SIG{__WARN__} = sub { warn @_; ++$opt{_error} };
+
+my %MPLAYER;    # will store video player arguments
+
+my $base_options = <<'BASE';
+# Base
+[keywords]        : search for YouTube videos
+[youtube-url]     : play a video by YouTube URL
+:v(ideoid)=ID     : play videos by YouTube video IDs
+[playlist-url]    : display videos from a playlistURL
+:playlist=ID      : display videos from a playlistID
+BASE
+
+my $action_options = <<'ACTIONS';
+# Actions
+:login            : will prompt you for login
+:logout           : will delete the authentication key
+ACTIONS
+
+my $control_options = <<'CONTROL';
+# Control
+:n(ext)           : get the next page of results
+:b(ack)           : get the previous page of results
+CONTROL
+
+my $other_options = <<'OTHER';
+# Others
+:r(eturn)         : return to previous page of results
+:refresh          : refresh the current list of results
+:dv=i             : display the data structure of result i
+-argv -argv2=v    : apply some arguments (e.g.: -u=google)
+:reset, :reload   : restart the application
+:q, :quit, :exit  : close the application
+OTHER
+
+my $notes_options = <<'NOTES';
+NOTES:
+ 1. You can specify more options in a row, separated by spaces.
+ 2. A stdin option is valid only if it begins with '=', ';' or ':'.
+ 3. Quoting a group of space separated keywords or option-values,
+    the group will be considered a single keyword or a single value.
+NOTES
+
+my $general_help = <<"HELP";
+
+$action_options
+$control_options
+$other_options
+$notes_options
+Examples:
+     3                  : select the 3rd result
+    -sv funny cats      : search for videos
+    -sc mathematics     : search for channels
+    -sp classical music : search for playlists
+HELP
+
+my $playlists_help = <<"PL_HELP" . $general_help;
+
+# Playlists
+:pp=i,i           : play videos from the selected playlists
+PL_HELP
+
+my $comments_help = <<"COM_HELP" . $general_help;
+
+# Comments
+:c(omment)        : send a comment to this video
+COM_HELP
+
+my $complete_help = <<"STDIN_HELP";
+
+$base_options
+$control_options
+$action_options
+# YouTube
+:i(nfo)=i,i       : display more information
+:d(ownload)=i,i   : download the selected videos
+:c(omments)=i     : display video comments
+:r(elated)=i      : display related videos
+:u(ploads)=i      : display author's latest uploads
+:pv=i :popular=i  : display author's popular uploads
+:A(ctivity)=i     : display author's recent activity
+:p(laylists)=i    : display author's playlists
+:ps=i :s2p=i,i    : save videos to a post-selected playlist
+:subscribe=i      : subscribe to author's channel
+:(dis)like=i      : like or dislike a video
+:fav(orite)=i     : favorite a video
+:autoplay=i       : autoplay mode, starting from video i
+
+# Playing
+<number>          : play the corresponding video
+3-8, 3..8         : same as 3 4 5 6 7 8
+8-3, 8..3         : same as 8 7 6 5 4 3
+8 2 12 4 6 5 1    : play the videos in a specific order
+10..              : play all the videos onwards from 10
+:q(ueue)=i,i,...  : enqueue videos for playing them later
+:pq, :play-queue  : play the enqueued videos (if any)
+:anp, :nnp        : auto-next-page, no-next-page
+:play=i,i,...     : play a group of selected videos
+:regex=my?[regex] : play videos matched by a regex (/i)
+:kregex=KEY,RE    : play videos if the value of KEY matches the RE
+
+$other_options
+$notes_options
+** Examples:
+:regex="\\w \\d" -> play videos matched by a regular expression.
+:info=1        -> show extra information for the first video.
+:d18-20,1,2    -> download the selected videos: 18, 19, 20, 1 and 2.
+3 4 :next 9    -> play the 3rd and 4th videos from the current
+                  page, go to the next page and play the 9th video.
+STDIN_HELP
+
+{
+    my $config_documentation = <<"EOD";
+#!/usr/bin/perl
+
+# $appname $version - configuration file
+
+EOD
+
+    sub dump_configuration {
+        my ($config_file) = @_;
+
+        require Data::Dump;
+        open my $config_fh, '>', $config_file
+          or do { warn "[!] Can't open '${config_file}' for write: $!"; return };
+
+        my $dumped_config = q{our $CONFIG = } . Data::Dump::pp(\%CONFIG) . "\n";
+
+        if (defined($ENV{HOME}) and $home_dir eq $ENV{HOME}) {
+            $dumped_config =~ s/\Q$home_dir\E/\$ENV{HOME}/g;
+        }
+
+        print $config_fh $config_documentation, $dumped_config;
+        close $config_fh;
+    }
+}
+
+our $CONFIG;
+
+sub load_config {
+    my ($config_file) = @_;
+
+    if (not -e $config_file or -z _ or $opt{reconfigure}) {
+        dump_configuration($config_file);
+    }
+
+    require $config_file;    # Load the configuration file
+
+    if (ref $CONFIG ne 'HASH') {
+        die "[ERROR] Invalid configuration file!\n\t\$CONFIG is not an HASH ref!";
+    }
+
+    # Get valid config keys
+    my @valid_keys = grep { exists $CONFIG{$_} } keys %{$CONFIG};
+    @CONFIG{@valid_keys} = @{$CONFIG}{@valid_keys};
+
+    my $update_config = 0;
+
+    # Define the cache directory
+    if (not defined $CONFIG{cache_dir}) {
+
+        my $cache_dir =
+          ($ENV{XDG_CACHE_HOME} and -d -w $ENV{XDG_CACHE_HOME})
+          ? $ENV{XDG_CACHE_HOME}
+          : catdir($home_dir, '.cache');
+
+        if (not -d -w $cache_dir) {
+            $cache_dir = catdir(curdir(), '.cache');
+        }
+
+        $CONFIG{cache_dir} = catdir($cache_dir, 'pipe-viewer');
+        $update_config = 1;
+    }
+
+    # Locating a video player
+    if (not $CONFIG{video_player_selected}) {
+
+        foreach my $key (sort keys %{$CONFIG{video_players}}) {
+            if (defined(my $abs_player_path = which_command($CONFIG{video_players}{$key}{cmd}))) {
+                $CONFIG{video_players}{$key}{cmd} = $abs_player_path;
+                $CONFIG{video_player_selected}    = $key;
+                $update_config                    = 1;
+                last;
+            }
+        }
+
+        if (not $CONFIG{video_player_selected}) {
+            warn "\n[!] Please install a supported video player! (e.g.: mpv)\n\n";
+            $CONFIG{video_player_selected} = 'mpv';
+        }
+    }
+
+    # Locate youtube-dl
+    if (not defined($CONFIG{ytdl_cmd})) {
+
+        my $ytdl_path = which_command('youtube-dl');
+
+        if (defined($ytdl_path)) {
+            $CONFIG{ytdl_cmd} = $ytdl_path;
+        }
+        else {
+            $CONFIG{ytdl_cmd} = 'youtube-dl';
+        }
+
+        $update_config = 1;
+    }
+
+    # Download with wget if it is installed
+    if (not defined $CONFIG{download_with_wget}) {
+
+        my $wget_path = which_command('wget');
+
+        if (defined($wget_path)) {
+            $CONFIG{wget_cmd}           = $wget_path;
+            $CONFIG{download_with_wget} = 1;
+        }
+        else {
+            $CONFIG{download_with_wget} = 0;
+        }
+
+        $update_config = 1;
+    }
+
+    # Merge into MKV if ffmpeg is installed
+    if (not defined $CONFIG{merge_into_mkv}) {
+
+        my $ffmpeg_path = which_command('ffmpeg');
+
+        if (defined($ffmpeg_path)) {
+            $CONFIG{ffmpeg_cmd}     = $ffmpeg_path;
+            $CONFIG{merge_into_mkv} = 1;
+        }
+        else {
+            $CONFIG{merge_into_mkv} = 0;
+        }
+
+        $update_config = 1;
+    }
+
+    # Fixed-width format and custom layout
+    if (   not defined($CONFIG{results_fixed_width})
+        or not defined($CONFIG{custom_layout})) {
+
+        if (   eval { require Unicode::GCString; 1 }
+            or eval { require Text::CharWidth; 1 }) {
+            $CONFIG{custom_layout}       //= 1;
+            $CONFIG{results_fixed_width} //= 1;
+        }
+        else {
+            $CONFIG{custom_layout}       = 0;
+            $CONFIG{results_fixed_width} = 0;
+        }
+
+        $update_config = 1;
+    }
+
+    # Enable history if Term::ReadLine::Gnu::XS is installed
+    if (not defined $CONFIG{history}) {
+
+        if (eval { $term->can('ReadHistory') }) {
+            $CONFIG{history} = 1;
+        }
+        else {
+            $CONFIG{history} = 0;
+        }
+
+        $update_config = 1;
+    }
+
+    foreach my $key (keys %CONFIG) {
+        if (not exists $CONFIG->{$key}) {
+            $update_config = 1;
+            last;
+        }
+    }
+
+    dump_configuration($config_file) if $update_config;
+
+    foreach my $path ($CONFIG{cache_dir}) {
+        next if -d $path;
+        require File::Path;
+        File::Path::make_path($path)
+          or warn "[!] Can't create path <<$path>>: $!";
+    }
+
+    @opt{keys %CONFIG} = values(%CONFIG);
+}
+
+load_config($config_file);
+
+if ($opt{remember_watched}) {
+    if (-f $opt{watched_file}) {
+        if (open my $fh, '<', $opt{watched_file}) {
+            chomp(my @ids = <$fh>);
+            @watched_videos{@ids} = ();
+            close $fh;
+        }
+        else {
+            warn "[!] Can't open the watched file `$opt{watched_file}' for reading: $!";
+        }
+    }
+}
+
+if ($opt{history}) {
+
+    # Create the history file.
+    if (not -e $opt{history_file}) {
+
+        require File::Basename;
+        my $dir = File::Basename::dirname($opt{history_file});
+
+        if (not -d $dir) {
+            require File::Path;
+            File::Path::make_path($dir)
+              or warn "[!] Can't create path <<$dir>>: $!";
+        }
+
+        open my $fh, '>', $opt{history_file}
+          or warn "[!] Can't create the history file `$opt{history_file}': $!";
+    }
+
+    # Add history to Term::ReadLine
+    eval { $term->ReadHistory($opt{history_file}) };
+
+    # All history entries
+    my @history = $term->history_list;
+
+    # Rewrite the history file, when the history_limit has been reached.
+    if ($opt{history_limit} > 0 and @history > $opt{history_limit}) {
+
+        # Try to create a backup, first
+        require File::Copy;
+        File::Copy::cp($opt{history_file}, "$opt{history_file}.bak");
+
+        if (open my $fh, '>', $opt{history_file}) {
+
+            # Keep only the most recent half part of the history file
+            say {$fh} join("\n", @history[($opt{history_limit} >> 1) .. $#history]);
+            close $fh;
+        }
+    }
+}
+
+my $yv_obj = WWW::PipeViewer->new(
+                                   escape_utf8 => 1,
+                                   config_dir  => $config_dir,
+                                   ytdl        => $opt{ytdl},
+                                   ytdl_cmd    => $opt{ytdl_cmd},
+                                   cache_dir   => $opt{cache_dir},
+                                   env_proxy   => $opt{env_proxy},
+                                   cookie_file => $opt{cookie_file},
+                                   http_proxy  => $opt{http_proxy},
+                                   user_agent  => $opt{user_agent},
+                                   timeout     => $opt{timeout},
+                                  );
+
+require WWW::PipeViewer::Utils;
+my $yv_utils = WWW::PipeViewer::Utils->new(youtube_url_format => $opt{youtube_video_url},
+                                            thousand_separator => $opt{thousand_separator},);
+
+{    # Apply the configuration file
+    my %temp = %CONFIG;
+    apply_configuration(\%temp);
+}
+
+#---------------------- PIPE-VIEWER USAGE ----------------------#
+sub help {
+    my $eqs = q{=} x 30;
+
+    local $" = ', ';
+    print <<"HELP";
+\n  $eqs \U$appname\E $eqs
+
+usage: $execname [options] ([url] | [keywords])
+
+== Base ==
+   [URL]             : play an YouTube video by URL
+   [keywords]        : search for YouTube videos
+   [playlist URL]    : display a playlist of YouTube videos
+
+
+== YouTube Options ==
+
+ * Categories
+   -c  --categories     : display the available YouTube categories
+
+ * Region
+   --region=s           : set the region code (default: US)
+
+ * Videos
+   -uv --uploads=s      : list videos uploaded by a specific channel or user
+   -pv --popular=s      : list the most popular videos from a specific channel
+   -uf --favorites=s    : list the favorite videos of a specific user
+   -id --videoids=s,s   : play YouTube videos by their IDs
+   -rv --related=s      : show related videos for a video ID or URL
+   -sv --search-videos  : search for YouTube videos (default mode)
+
+ * Playlists
+   -up --playlists=s  : list playlists created by a specific channel or user
+   -sp --search-pl    : search for playlists of videos
+       --pid=s        : list a playlist of videos by playlist ID
+       --pp=s,s       : play the videos from the given playlist IDs
+       --ps=s         : add video by ID or URL to a post-selected playlist
+                        or in a given playlist ID specified with `--pid`
+       --position=i   : position in the playlist where to add the video
+
+* Activities
+   -ua --activities:s : show activity events for a given channel
+
+* Trending
+   --trending:s       : show trending videos in a given category
+                        valid categories: music gaming news movies popular
+
+ * Channels
+   -sc --channels     : search for YouTube channels
+
+* Comments
+   --comments=s         : display comments for a video by ID or URL
+   --comments-order=s   : change the order of YouTube comments
+                          valid values: relevance, time
+
+ * Filtering
+   --author=s           : search in videos uploaded by a specific user
+   --duration=s         : filter search results based on video length
+                          valid values: short long
+   --captions!          : only videos with or without closed captions
+   --order=s            : order the results using a specific sorting method
+                          valid values: relevance rating upload_date view_count
+   --date=s             : short videos published in a time period
+                          valid values: hour today week month year
+   --hd!                : search only for videos available in at least 720p
+   --vd=s               : set the video definition (any or high)
+   --dimension=s        : set video dimension (any or 3d)
+   --license=s          : set video license (any or creative_commons)
+   --page=i             : get results starting with a specific page number
+   --results=i          : how many results to display per page (max: 50)
+   --hfr!               : prefer high frame rate (HFR) videos
+   -2  -3  -4  -7  -1   : resolutions: 240p, 360p, 480p, 720p and 1080p
+   --resolution=s       : supported resolutions: best, 2160p, 1440p,
+                          1080p, 720p, 480p, 360p, 240p, 144p, audio.
+
+ * Account
+   --login              : will prompt for authentication (OAuth 2.0)
+   --logout             : will delete the authentication key
+
+ * [GET] Personal
+   -U  --uploads:s       : show the uploads from your channel *
+   -P  --playlists:s     : show the playlists from your channel *
+   -F  --favorites:s     : show the latest favorited videos *
+   -S  --subscriptions:s : show the subscribed channels *
+   -SV --subs-videos:s   : show the subscription videos (slow) *
+       --subs-order=s    : change the subscription order
+                           valid values: alphabetical, relevance, unread
+   -L  --likes           : show the videos that you liked on YouTube *
+       --dislikes        : show the videos that you disliked on YouTube *
+
+* [POST] Personal
+   --subscribe=s        : subscribe to a given channel ID or username *
+   --favorite=s         : favorite a video by URL or ID *
+   --like=s             : send a 'like' rating to a video URL or ID *
+   --dislike=s          : send a 'dislike' rating to a video URL or ID *
+
+
+== Player Options ==
+
+ * Arguments
+   -f  --fullscreen!  : play videos in fullscreen mode
+   -n  --audio!       : play audio only, without displaying video
+   --append-arg=s     : append some command-line parameters to the media player
+   --player=s         : select a player to stream videos
+                        available players: @{[keys %{$CONFIG->{video_players}}]}
+
+
+== Download Options ==
+
+ * Download
+   -d  --download!       : activate the download mode
+   -dp --dl-play!        : play the video after download (with -d)
+   -rp --rem-played!     : delete a local video after played (with -dp)
+       --wget-dl!        : download videos with wget (recommended)
+       --skip-if-exists! : don't download videos which already exist (with -d)
+       --copy-caption!   : copy and rename the caption for downloaded videos
+       --downloads-dir=s : downloads directory (set: '$opt{downloads_dir}')
+       --filename=s      : set a custom format for the video filename (see: -T)
+       --fat32safe!      : makes filenames FAT32 safe (includes Unicode)
+       --mkv-merge!      : merge audio and video into an MKV container
+       --merge-captions! : include closed-captions in the MKV container
+
+ * Convert
+   --convert-cmd=s      : command for converting videos after download
+                          which include the *IN* and *OUT* tokens
+   --convert-to=s       : convert video to a specific format (with -d)
+   --keep-original!     : keep the original video after converting
+
+
+== Other Options ==
+
+ * Behavior
+   -A  --all!            : play the video results in order
+   -B  --backwards!      : play the video results in reverse order
+   -s  --shuffle!        : shuffle the results of videos
+   -I  --interactive!    : interactive mode, prompting for user input
+       --autoplay!       : autoplay mode, automatically playing related videos
+       --std-input=s     : use this value as the first standard input
+       --max-seconds=i   : ignore videos longer than i seconds
+       --min-seconds=i   : ignore videos shorter than i seconds
+       --get-term-width! : allow $execname to read your terminal width
+       --skip-watched!   : don't play already watched videos
+       --highlight!      : remember and highlight selected videos
+       --confirm!        : show a confirmation message after each play
+       --prefer-mp4!     : prefer videos in MP4 format, instead of WEBM
+       --prefer-av1!     : prefer videos in AV1 format, instead of WEBM
+       --ignore-av1!     : ignore videos in AV1 format
+
+ * Closed-captions
+   --get-captions!      : download closed-captions for videos
+   --auto-captions!     : include or exclude auto-generated captions
+
+ * Config
+   --config=s           : configuration file
+   --update-config!     : update the configuration file
+
+ * Output
+   -C  --colorful!      : use colors to delimit the video results
+   -D  --details!       : display the results with extra details
+   -W  --fixed-width!   : adjust the results to fit inside the term width
+       --custom-layout! : display the results using a custom layout (see conf)
+   -i  --info=s         : show information for a video ID or URL
+   -e  --extract=s      : extract information from videos (see: -T)
+       --extract-file=s : extract information from videos in this file
+       --dump=format    : dump metadata information in `videoID.format` files
+                          valid formats: json, perl
+   -q  --quiet          : do not display any warning
+       --really-quiet   : do not display any warning or output
+       --video-info!    : show video information before playing
+       --escape-info!   : quotemeta() the fields of the `--extract`
+       --use-colors!    : enable or disable the ANSI colors for text
+
+ * Other
+   --api=s              : set an API host from https://instances.invidio.us/
+   --api=auto           : use a random instance of invidious
+   --cookies=s          : file to read cookies from and dump cookie
+   --user-agent=s       : specify a custom user agent
+   --proxy=s            : set HTTP(S)/SOCKS proxy: 'proto://domain.tld:port/'
+                          If authentication is required,
+                          use 'proto://user:pass\@domain.tld:port/'
+   --dash!              : include or exclude the DASH itags
+   --dash-mp4a!         : include or exclude the itags for MP4 audio streams
+   --dash-segmented!    : include or exclude segmented DASH streams
+   --ytdl!              : use youtube-dl for videos with encrypted signatures
+                          `--no-ytdl` will use invidious instances
+   --ytdl-cmd=s         : youtube-dl command (default: youtube-dl)
+
+Help options:
+   -T  --tricks         : show more 'hidden' features of $execname
+   -E  --examples       : show several usage examples of $execname
+   -H  --stdin-help     : show the valid stdin options for $execname
+   -v  --version        : print version and exit
+   -h  --help           : print help and exit
+       --debug:1..3     : see behind the scenes
+
+NOTES:
+    *    -> requires authentication
+    !    -> the argument can be negated with '--no-'
+    =i   -> requires an integer argument
+    =s   -> requires an argument
+    :s   -> can take an optional argument
+    =s,s -> can take more arguments separated by commas
+
+HELP
+    main_quit(0);
+}
+
+sub wrap_text {
+    my (%args) = @_;
+
+    require Text::Wrap;
+    local $Text::Wrap::columns = ($args{columns} || $term_width) - 8;
+
+    my $text = "@{$args{text}}";
+    $text =~ tr{\r}{}d;
+
+    return eval { Text::Wrap::wrap($args{i_tab}, $args{s_tab}, $text) } // $text;
+}
+
+sub tricks {
+    print <<"TRICKS";
+
+                == pipe-viewer -- tips and tricks ==
+
+-> Playing videos
+ > To stream the videos in other players, you need to change the
+   configuration file. Where it says "video_player_selected", change it
+   to any player which is defined inside the "video_players" hash.
+
+-> Arguments
+ > Almost all boolean arguments can be negated with a "--no-" prefix.
+ > Arguments that require an ID/URL, you can specify more than one,
+   separated by whitespace (quoted), or separated by commas.
+
+-> My channel
+ > By using the string "mine" where a channel ID is required, "mine" will be
+   automatically replaced with your channel ID. (requires authentication)
+
+   Examples:
+        $execname --uploads=mine
+        $execname --likes=mine
+        $execname --favorites=mine
+        $execname --playlists=mine
+
+-> More STDIN help:
+ > ":r", ":return" will return to the previous page of results.
+   For example, if you search for playlists, then select a playlist
+   of videos, inserting ":r" will return back to the playlist results.
+   Also, for the previous page, you can insert ':b', but ':r' is faster!
+
+ > "6" (quoted) will search for videos with the keyword '6'.
+
+ > If a stdin option is followed by one or more digits, the equal sign,
+   which separates the option from value, can be omitted.
+
+   Example:
+        :i2,4  is equivalent with :i=2,4
+        :d1-5  is equivalent with :d=1,2,3,4,5
+        :c10   is equivalent with :c=10
+
+ > When more videos are selected to play, you can stop them by
+   pressing CTRL+C. $execname will return to the previous section.
+
+ > Space inside the values of STDIN options, can be either quoted
+   or backslashed.
+
+   Example:
+        :re=video\\ title     ==     :re="video title"
+
+ > ":anp" stands for "Auto Next Page". How do we use it?
+   Well, let's search for some videos. Now, if we want to play
+   only the videos matched by a regex, we'd say :re="REGEX".
+   But, what if we want to play the videos from the next pages too?
+   In this case, ":anp" is your friend. Use it wisely!
+
+-> Special tokens:
+
+  *ID*          : the YouTube video ID
+  *AUTHOR*      : the author name of the video
+  *CHANNELID*   : the channel ID of the video
+  *RESOLUTION*  : the resolution of the video
+  *VIEWS*       : the number of views
+  *VIEWS_SHORT* : the number of views in abbreviated notation
+  *LIKES*       : the number of likes
+  *DISLIKES*    : the number of dislikes
+  *RATING*      : the rating of the video from 0 to 5
+  *COMMENTS*    : the number of comments
+  *DURATION*    : the duration of the video in seconds
+  *PUBLISHED*   : the publication date as "DD MMM YYYY"
+  *AGE*         : the age of a video (N days, N months, N years)
+  *AGE_SHORT*   : the abbreviated age of a video (Nd, Nm, Ny)
+  *DIMENSION*   : the dimension of the video (2D or 3D)
+  *DEFINITION*  : the definition of the video (HD or SD)
+  *TIME*        : the duration of the video as "HH::MM::SS"
+  *TITLE*       : the title of the video
+  *FTITLE*      : the title of the video (filename safe)
+  *DESCRIPTION* : the description of the video
+
+  *URL*      : the YouTube URL of the video
+  *ITAG*     : the itag value of the video
+  *FORMAT*   : the extension of the video (without the dot)
+
+  *CAPTION*  : true if the video has captions
+  *SUB*      : the local subtitle file (if any)
+  *AUDIO*    : the audio URL of the video (only in DASH mode)
+  *VIDEO*    : the video URL of the video (it might not contain audio)
+  *AOV*      : audio URL (if any) or video URL (in this order)
+
+-> Special escapes:
+    \\t                  tab
+    \\n                  newline
+    \\r                  return
+    \\f                  form feed
+    \\b                  backspace
+    \\a                  alarm (bell)
+    \\e                  escape
+
+-> Extracting information from videos:
+ > Extracting information can be achieved by using the "--extract" command-line
+   option which takes a given format as its argument, which is defined by using
+   special tokens, special escapes or literals.
+
+   Example:
+     $execname --no-interactive --extract '*TITLE* (*ID*)' [URL]
+
+-> Configuration file: $config_file
+
+-> Donations gladly accepted:
+    https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=75FUVBE6Q73T8
+
+TRICKS
+    main_quit(0);
+}
+
+sub examples {
+    print <<"EXAMPLES";
+==== COMMAND LINE EXAMPLES ====
+
+Command: $execname -A -n russian music -category=10
+Results: play all the video results (-A)
+         only audio, no video (-n)
+         search for "russian music"
+         in category "10", which is the Music category.
+         -A will include the videos from the next pages as well.
+
+Command: $execname --comments 'https://www.youtube.com/watch?v=U6_8oIPFREY'
+Results: show video comments for a specific video URL or videoID.
+
+Command: $execname --results=5 -up=khanacademy -D
+Results: the most recent 5 videos by a specific author (-up), printed with extra details (-D).
+
+Command: $execname -S=vsauce
+Results: get the subscriptions for a username.
+
+Command: $execname --page=2 -u=Google
+Results: show latest videos uploaded by Google, starting with the page number 2.
+
+Command: $execname cats --order=view_count --duration=short
+Results: search for 'cats' videos, ordered by ViewCount and short duration.
+
+Command: $execname --channels math lessons
+Results: search for YouTube channels.
+
+Command: $execname -uf=Google
+Results: show latest videos favorited by a user.
+
+
+==== USER INPUT EXAMPLES ====
+
+A STDIN option can begin with ':', ';' or '='.
+
+Command: <ENTER>, :n, :next
+Results: get the next page of results.
+
+Command: :b, :back (:r, :return)
+Results: get the previous page of results.
+
+Command: :i4..6, :i7-9, :i20-4, :i2, :i=4, :info=4
+Results: show extra information for the selected videos.
+
+Command: :d5,2, :d=3, :download=8
+Results: download the selected videos.
+
+Command: :c2, :comments=4
+Results: show comments for a selected video.
+
+Command: :r4, :related=6
+Results: show related videos for a selected video.
+
+Command: :a14, :author=12
+Results: show videos uploaded by the author who uploaded the selected video.
+
+Command: :p9, :playlists=14
+Results: show playlists created by the author who uploaded the selected video.
+
+Command: :subscribe=7
+Results: subscribe to the author's channel who uploaded the selected video.
+
+Command: :like=2, :dislike=4,5
+Results: like or dislike the selected videos.
+
+Command: :fav=4, :favorite=3..5
+Results: favorite the selected videos.
+
+Command: 3, 5..7, 12-1, 9..4, 2 3 9
+Results: play the selected videos.
+
+Command: :q3,5, :q=4, :queue=3-9
+Results: enqueue the selected videos to play them later.
+
+Command: :pq, :play-queue
+Results: play the videos enqueued by the :queue option.
+
+Command: :re="^Linux"
+Results: play videos matched by a regex.
+Example: matches title: "Linux video"
+
+Command: :regex="linux.*part \\d+/\\d+"
+Example: matches title: "Introduction to Linux (part 1/4)"
+
+Command: :anp 1 2 3
+Results: play the first three videos from every page.
+
+Command: :r, :return
+Results: return to the previous section.
+EXAMPLES
+    main_quit(0);
+}
+
+sub stdin_help {
+    print $complete_help;
+    main_quit(0);
+}
+
+# Print version
+sub version {
+    print "$appname $version\n";
+    main_quit(0);
+}
+
+sub apply_configuration {
+    my ($opt, $keywords) = @_;
+
+    if ($yv_obj->get_debug >= 2 or (defined($opt->{debug}) && $opt->{debug} >= 2)) {
+        require Data::Dump;
+        say "=>> Options with keywords: <@{$keywords}>";
+        Data::Dump::pp($opt);
+    }
+
+    # ... BASIC OPTIONS ... #
+    if (delete $opt->{quiet}) {
+        close STDERR;
+    }
+
+    if (delete $opt->{really_quiet}) {
+        close STDERR;
+        close STDOUT;
+    }
+
+    # ... YOUTUBE OPTIONS ... #
+    foreach my $option_name (
+                             qw(
+                             videoCaption videoDefinition
+                             videoDimension videoDuration
+                             videoLicense
+                             api_host date order
+                             channelId region debug
+                             http_proxy page comments_order
+                             subscriptions_order user_agent
+                             cookie_file timeout ytdl ytdl_cmd
+                             prefer_mp4 prefer_av1
+                             )
+      ) {
+
+        if (defined $opt->{$option_name}) {
+            my $code      = \&{"WWW::PipeViewer::set_$option_name"};
+            my $value     = delete $opt->{$option_name};
+            my $set_value = $yv_obj->$code($value);
+
+            if (not defined($set_value) or $set_value ne $value) {
+                warn "\n[!] Invalid value <$value> for option <$option_name>\n";
+            }
+        }
+    }
+
+    if (defined $opt->{hd}) {
+        $yv_obj->set_videoDefinition(delete($opt->{hd}) ? 'high' : 'any');
+    }
+
+    if (defined $opt->{author}) {
+        my $name = delete $opt->{author};
+        if (my $id = extract_channel_id($name)) {
+
+            if (not $yv_utils->is_channelID($id)) {
+                $id = $yv_obj->channel_id_from_username($id) // do {
+                    warn_invalid("username or channel ID", $id);
+                    undef;
+                };
+            }
+
+            if ($id eq 'mine') {
+                $id = $yv_obj->my_channel_id() // do {
+                    warn_invalid("username or channel ID", $id);
+                    undef;
+                };
+            }
+
+            $yv_obj->set_channelId($id);
+        }
+        else {
+            warn_invalid("username or channel ID", $name);
+        }
+    }
+
+    if (defined $opt->{more_results}) {
+        $yv_obj->set_maxResults(delete($opt->{more_results}) ? 50 : $CONFIG{maxResults});
+    }
+
+    if (delete $opt->{authenticate}) {
+        authenticate();
+    }
+
+    if (delete $opt->{logout}) {
+        logout();
+    }
+
+    # ... OTHER OPTIONS ... #
+    if (defined $opt->{extract_info_file}) {
+        open my $fh, '>:utf8', delete($opt->{extract_info_file});
+        $opt{extract_info_fh} = $fh;
+    }
+
+    if (defined $opt->{colors}) {
+        $opt{_colors} = $opt->{colors};
+        if (delete $opt->{colors}) {
+            require Term::ANSIColor;
+            no warnings 'redefine';
+            *colored    = \&Term::ANSIColor::colored;
+            *colorstrip = \&Term::ANSIColor::colorstrip;
+        }
+        else {
+            no warnings 'redefine';
+            *colored    = sub { $_[0] };
+            *colorstrip = sub { $_[0] };
+        }
+    }
+
+    # ... SUBROUTINE CALLS ... #
+    if (defined $opt->{subscribe}) {
+        subscribe(split(/[,\s]+/, delete $opt->{subscribe}));
+    }
+
+    if (defined $opt->{favorite_video}) {
+        favorite_videos(split(/[,\s]+/, delete $opt->{favorite_video}));
+    }
+
+    if (defined $opt->{playlist_save}) {
+        my @ids = split(/[,\s]+/, delete $opt->{playlist_save});
+        if (defined $opt->{playlist_id}) {
+            save_to_playlist(get_valid_playlist_id(delete $opt->{playlist_id}) // (return), @ids);
+        }
+        else {
+            select_and_save_to_playlist(@ids);
+        }
+    }
+
+    if (defined $opt->{like_video}) {
+        rate_videos('like', split(/[,\s]+/, delete $opt->{like_video}));
+    }
+
+    if (defined $opt->{dislike_video}) {
+        rate_videos('dislike', split(/[,\s]+/, delete $opt->{dislike_video}));
+    }
+
+    if (defined $opt->{play_video_ids}) {
+        get_and_play_video_ids(split(/[,\s]+/, delete $opt->{play_video_ids}));
+    }
+
+    if (defined $opt->{play_playlists}) {
+        get_and_play_playlists(split(/[,\s]+/, delete $opt->{play_playlists}));
+    }
+
+    if (defined $opt->{playlist_id}) {
+        my $playlistID = get_valid_playlist_id(delete($opt->{playlist_id})) // return;
+        get_and_print_videos_from_playlist($playlistID);
+    }
+
+    if (delete $opt->{search_videos}) {
+        print_videos($yv_obj->search_videos([@{$keywords}]));
+    }
+
+    if (delete $opt->{search_channels}) {
+        print_channels($yv_obj->search_channels([@{$keywords}]));
+    }
+
+    if (delete $opt->{search_playlists}) {
+        print_playlists($yv_obj->search_playlists([@{$keywords}]));
+    }
+
+    if (delete $opt->{categories}) {
+        print_categories($yv_obj->video_categories);
+    }
+
+    if (defined $opt->{uploads}) {
+        my $str = delete $opt->{uploads};
+
+        if ($str) {
+            if (my $id = extract_channel_id($str)) {
+                $yv_utils->is_channelID($id)
+                  ? print_videos($yv_obj->uploads($id))
+                  : print_videos($yv_obj->uploads_from_username($id));
+            }
+            else {
+                warn_invalid("username or channel ID", $str);
+            }
+        }
+        else {
+            print_videos($yv_obj->uploads);
+        }
+    }
+
+    if (defined $opt->{popular_videos}) {
+        my $str = delete $opt->{popular_videos};
+
+        if (my $id = extract_channel_id($str)) {
+
+            if (not $yv_utils->is_channelID($id)) {
+                $id = $yv_obj->channel_id_from_username($id) // do {
+                    warn_invalid("username or channel ID", $id);
+                    undef;
+                };
+            }
+
+            if ($id eq 'mine') {
+                $id = $yv_obj->my_channel_id() // do {
+                    warn_invalid("username or channel ID", $id);
+                    undef;
+                };
+            }
+
+            print_videos($yv_obj->popular_videos($id));
+        }
+        else {
+            warn_invalid("username or channel ID", $str);
+        }
+    }
+
+    if (defined $opt->{trending}) {
+        my $cat_id = delete $opt->{trending};
+        print_videos($yv_obj->trending_videos_from_category($cat_id));
+    }
+
+    if (defined $opt->{subscriptions}) {
+        my $str = delete $opt->{subscriptions};
+
+        if ($str) {
+            if (my $id = extract_channel_id($str)) {
+                $yv_utils->is_channelID($id)
+                  ? print_channels($yv_obj->subscriptions($id))
+                  : print_channels($yv_obj->subscriptions_from_username($id));
+            }
+            else {
+                warn_invalid("username or channel ID", $str);
+            }
+        }
+        else {
+            print_channels($yv_obj->subscriptions);
+        }
+    }
+
+    if (defined $opt->{subscription_videos}) {
+        my $str = delete $opt->{subscription_videos};
+
+        if ($str) {
+            if (my $id = extract_channel_id($str)) {
+                $yv_utils->is_channelID($id)
+                  ? print_videos($yv_obj->subscription_videos($id))
+                  : print_videos($yv_obj->subscription_videos_from_username($id));
+            }
+            else {
+                warn_invalid("username or channel ID", $str);
+            }
+        }
+        else {
+            print_videos($yv_obj->subscription_videos);
+        }
+    }
+
+    if (defined $opt->{related_videos}) {
+        get_and_print_related_videos(split(/[,\s]+/, delete($opt->{related_videos})));
+    }
+
+    if (defined $opt->{playlists}) {
+        my $str = delete($opt->{playlists});
+
+        if ($str) {
+            if (my $id = extract_channel_id($str)) {
+                $yv_utils->is_channelID($id)
+                  ? print_playlists($yv_obj->playlists($id))
+                  : print_playlists($yv_obj->playlists_from_username($id));
+            }
+            else {
+                warn_invalid("username or channel ID", $str);
+                warn colored("[+] To search for playlists, try: $0 -sp $str", 'bold yellow') . "\n";
+            }
+        }
+        else {
+            print_playlists($yv_obj->my_playlists);
+        }
+    }
+
+    if (defined $opt->{favorites}) {
+        my $str = delete($opt->{favorites});
+
+        if ($str) {
+            if (my $id = extract_channel_id($str)) {
+                $yv_utils->is_channelID($id)
+                  ? print_videos($yv_obj->favorites($id))
+                  : print_videos($yv_obj->favorites_from_username($id));
+            }
+            else {
+                warn_invalid("username or channel ID", $str);
+            }
+        }
+        else {
+            print_videos($yv_obj->favorites);
+        }
+    }
+
+    if (defined $opt->{likes}) {
+        my $str = delete($opt->{likes});
+
+        if ($str) {
+            if (my $id = extract_channel_id($str)) {
+                $yv_utils->is_channelID($id)
+                  ? print_videos($yv_obj->likes($id))
+                  : print_videos($yv_obj->likes_from_username($id));
+            }
+            else {
+                warn_invalid("username or channel ID", $str);
+            }
+        }
+        else {
+            print_videos($yv_obj->my_likes);
+        }
+    }
+
+    if (defined $opt->{dislikes}) {
+        delete $opt->{dislikes};
+        print_videos($yv_obj->my_dislikes);
+    }
+
+    if (defined $opt->{activities}) {
+        my $str = delete $opt->{activities};
+
+        if ($str) {
+            if (my $id = extract_channel_id($str)) {
+                $yv_utils->is_channelID($id)
+                  ? print_videos($yv_obj->activities($id))
+                  : print_videos($yv_obj->activities_from_username($id));
+            }
+            else {
+                warn_invalid("username or channel ID", $str);
+            }
+        }
+        else {
+            print_videos($yv_obj->my_activities);
+        }
+    }
+
+    if (defined $opt->{get_comments}) {
+        get_and_print_comments(split(/[,\s]+/, delete($opt->{get_comments})));
+    }
+
+    if (defined $opt->{print_video_info}) {
+        get_and_print_video_info(split(/[,\s]+/, delete $opt->{print_video_info}));
+    }
+}
+
+sub parse_arguments {
+    my ($keywords) = @_;
+
+    state $x = do {
+        require Getopt::Long;
+        Getopt::Long::Configure('no_ignore_case');
+    };
+
+    my %orig_opt         = %opt;
+    my $orig_config_file = "$config_file";
+
+    Getopt::Long::GetOptions(
+
+        # Main options
+        'help|usage|h|?'        => \&help,
+        'examples|E'            => \&examples,
+        'stdin-help|shelp|sh|H' => \&stdin_help,
+        'tricks|tips|T'         => \&tricks,
+        'version|v'             => \&version,
+
+        'config=s'       => \$config_file,
+        'update-config!' => sub { dump_configuration($config_file) },
+
+        # Resolutions
+        '240p|2'  => sub { $opt{resolution} = 240 },
+        '360p|3'  => sub { $opt{resolution} = 360 },
+        '480p|4'  => sub { $opt{resolution} = 480 },
+        '720p|7'  => sub { $opt{resolution} = 720 },
+        '1080p|1' => sub { $opt{resolution} = 1080 },
+
+        'hfr!'             => \$opt{hfr},
+        'res|resolution=s' => \$opt{resolution},
+
+        'comments=s'       => \$opt{get_comments},
+        'comments-order=s' => \$opt{comments_order},
+
+        'c|categories'                => \$opt{categories},
+        'video-ids|videoids|id|ids=s' => \$opt{play_video_ids},
+
+        'search-videos|search|sv!'     => \$opt{search_videos},
+        'search-channels|channels|sc!' => \$opt{search_channels},
+        'search-playlists|sp|p!'       => \$opt{search_playlists},
+
+        'subscriptions|S:s'                 => \$opt{subscriptions},
+        'subs-videos|SV:s'                  => \$opt{subscription_videos},
+        'subs-order=s'                      => \$opt{subscriptions_order},
+        'uploads|U|user|user-videos|uv|u:s' => \$opt{uploads},
+        'favorites|F|user-favorites|uf:s'   => \$opt{favorites},
+        'playlists|P|user-playlists|up:s'   => \$opt{playlists},
+        'activities|activity|ua:s'          => \$opt{activities},
+        'likes|L|user-likes|ul:s'           => \$opt{likes},
+        'dislikes'                          => \$opt{dislikes},
+        'subscribe=s'                       => \$opt{subscribe},
+
+        'trending|trends:s' => \$opt{trending},
+        'playlist-id|pid=s' => \$opt{playlist_id},
+
+        # English-UK friendly
+        'favorite|favourite|favorite-video|favourite-video|fav=s' => \$opt{favorite_video},
+
+        'login|authenticate' => \$opt{authenticate},
+        'logout'             => \$opt{logout},
+
+        'related-videos|rv=s'         => \$opt{related_videos},
+        'popular-videos|popular|pv=s' => \$opt{popular_videos},
+
+        'cookie-file|cookies=s'          => \$opt{cookie_file},
+        'user-agent|agent=s'             => \$opt{user_agent},
+        'http-proxy|https-proxy|proxy=s' => \$opt{http_proxy},
+
+        'r|region|region-code=s' => \$opt{region},
+
+        'order|order-by|sort|sort-by=s' => \$opt{order},
+        'date=s'                        => \$opt{date},
+
+        'duration=s' => \$opt{videoDuration},
+
+        'max-seconds|max_seconds=i' => \$opt{max_seconds},
+        'min-seconds|min_seconds=i' => \$opt{min_seconds},
+
+        'like=s'                     => \$opt{like_video},
+        'dislike=s'                  => \$opt{dislike_video},
+        'author=s'                   => \$opt{author},
+        'all|A|play-all!'            => \$opt{play_all},
+        'backwards|B!'               => \$opt{play_backwards},
+        'input|std-input=s'          => \$opt{std_input},
+        'use-colors|colors|colored!' => \$opt{colors},
+
+        'autoplay!' => \$opt{autoplay_mode},
+
+        'play-playlists|pp=s'      => \$opt{play_playlists},
+        'debug:1'                  => \$opt{debug},
+        'download|dl|d!'           => \$opt{download_video},
+        'dimension=s'              => \$opt{videoDimension},
+        'license=s'                => \$opt{videoLicense},
+        'vd|video-definition=s'    => \$opt{videoDefinition},
+        'hd|high-definition!'      => \$opt{hd},
+        'I|interactive!'           => \$opt{interactive},
+        'convert-to|convert_to=s'  => \$opt{convert_to},
+        'keep-original-video!'     => \$opt{keep_original_video},
+        'e|extract|extract-info=s' => \$opt{extract_info},
+        'extract-file=s'           => \$opt{extract_info_file},
+        'escape-info!'             => \$opt{escape_info},
+
+        'dump=s' => sub {
+            my (undef, $format) = @_;
+            $opt{dump} = (
+                ($format =~ /json/i) ? 'json' : ($format =~ /perl/i) ? 'perl' : do {
+                    warn "[!] Invalid format <<$format>> for option --dump\n";
+                    undef;
+                }
+            );
+        },
+
+        # Set a video player
+        'player|vplayer|video-player|video_player=s' => sub {
+
+            if (not exists $opt{video_players}{$_[1]}) {
+                die "[!] Unknown video player selected: <<$_[1]>>\n";
+            }
+
+            $opt{video_player_selected} = $_[1];
+        },
+
+        'append-arg|append-args=s' => \$MPLAYER{user_defined_arguments},
+
+        # Others
+        'colorful|colourful|C!' => \$opt{results_with_colors},
+        'details|D!'            => \$opt{results_with_details},
+        'fixed-width|W|fw!'     => \$opt{results_fixed_width},
+        'captions!'             => \$opt{videoCaption},
+        'fullscreen|fs|f!'      => \$opt{fullscreen},
+        'dash!'                 => \$opt{dash_support},
+        'confirm!'              => \$opt{confirm},
+
+        'prefer-mp4!' => \$opt{prefer_mp4},
+        'prefer-av1!' => \$opt{prefer_av1},
+        'ignore-av1!' => \$opt{ignore_av1},
+
+        'custom-layout!'         => \$opt{custom_layout},
+        'custom-layout-format=s' => \$opt{custom_layout_format},
+
+        'merge-into-mkv|mkv-merge!'           => \$opt{merge_into_mkv},
+        'merge-with-captions|merge-captions!' => \$opt{merge_with_captions},
+
+        'api-host|instance=s' => \$opt{api_host},
+
+        'convert-command|convert-cmd=s'      => \$opt{convert_cmd},
+        'dash-m4a|dash-mp4-audio|dash-mp4a!' => \$opt{dash_mp4_audio},
+        'dash-segmented!'                    => \$opt{dash_segmented},
+        'wget-dl|wget-download!'             => \$opt{download_with_wget},
+        'filename|filename-format=s'         => \$opt{video_filename_format},
+        'rp|rem-played|remove-played-file!'  => \$opt{remove_played_file},
+        'info|i|video-info=s'                => \$opt{print_video_info},
+        'get-term-width!'                    => \$opt{get_term_width},
+        'page=i'                             => \$opt{page},
+        'novideo|no-video|n|audio!'          => \$opt{novideo},
+        'highlight!'                         => \$opt{highlight_watched},
+        'skip-watched!'                      => \$opt{skip_watched},
+        'results=i'                          => \$opt{maxResults},
+        'shuffle|s!'                         => \$opt{shuffle},
+        'more|m!'                            => \$opt{more_results},
+        'pos|position=i'                     => \$opt{position},
+        'ps|playlist-save=s'                 => \$opt{playlist_save},
+
+        'ytdl!'      => \$opt{ytdl},
+        'ytdl-cmd=s' => \$opt{ytdl_cmd},
+
+        'quiet|q!'      => \$opt{quiet},
+        'really-quiet!' => \$opt{really_quiet},
+        'video-info!'   => \$opt{show_video_info},
+
+        'dp|downl-play|download-and-play|dl-play!' => \$opt{download_and_play},
+
+        'thousand-separator=s'           => \$opt{thousand_separator},
+        'get-captions|get_captions!'     => \$opt{get_captions},
+        'auto-captions|auto_captions!'   => \$opt{auto_captions},
+        'copy-caption|copy_caption!'     => \$opt{copy_caption},
+        'skip-if-exists|skip_if_exists!' => \$opt{skip_if_exists},
+        'downloads-dir|download-dir=s'   => \$opt{downloads_dir},
+        'fat32safe!'                     => \$opt{fat32safe},
+      )
+      or warn "[!] Error in command-line arguments!\n";
+
+    if ($config_file ne $orig_config_file) {    # load the config file specified with `--config=s`
+        ##say ":: Loading config: $config_file";
+        $config_file = rel2abs($config_file);
+
+        my %new_opt = %opt;
+        load_config($config_file);
+
+        foreach my $key (keys %new_opt) {
+            if (    defined($new_opt{$key})
+                and defined($orig_opt{$key})
+                and $new_opt{$key} ne $orig_opt{$key}) {
+                $opt{$key} = $new_opt{$key};
+            }
+        }
+    }
+
+    apply_configuration(\%opt, $keywords);
+}
+
+# Parse the arguments
+if (@ARGV) {
+    require Encode;
+    @ARGV = map { Encode::decode_utf8($_) } @ARGV;
+    parse_arguments(\@ARGV);
+}
+
+for (my $i = 0 ; $i <= $#ARGV ; $i++) {
+    my $arg = $ARGV[$i];
+
+    next if chr ord $arg eq q{-};
+
+    if (youtube_urls($arg)) {
+        splice(@ARGV, $i--, 1);
+    }
+}
+
+if (my @keywords = grep chr ord ne q{-}, @ARGV) {
+    print_videos($yv_obj->search_videos(\@keywords));
+}
+elsif ($opt{interactive} and -t) {
+    first_user_input();
+}
+elsif ($opt{interactive} and -t STDOUT and not -t) {
+    print_videos($yv_obj->search_videos(scalar <STDIN>));
+}
+else {
+    main_quit($opt{_error} || 0);
+}
+
+sub get_valid_video_id {
+    my ($value) = @_;
+
+    my $id =
+        $value =~ /$get_video_id_re/   ? $+{video_id}
+      : $value =~ /$valid_video_id_re/ ? $value
+      :                                  undef;
+
+    if (not defined $id) {
+        warn_invalid('videoID', $value);
+        return;
+    }
+
+    return $id;
+}
+
+sub get_valid_playlist_id {
+    my ($value) = @_;
+
+    my $id =
+        $value =~ /$get_playlist_id_re/   ? $+{playlist_id}
+      : $value =~ /$valid_playlist_id_re/ ? $value
+      :                                     undef;
+
+    if (not defined $id) {
+        warn_invalid('playlistID', $value);
+        return;
+    }
+
+    return $id;
+}
+
+sub extract_channel_id {
+    my ($str) = @_;
+
+    if ($str =~ /$get_channel_videos_id_re/) {
+        return $+{channel_id};
+    }
+
+    if ($str =~ /$get_username_videos_re/) {
+        return $+{username};
+    }
+
+    if ($str =~ /$valid_channel_id_re/) {
+        return $+{channel_id};
+    }
+
+    if ($str =~ /^[-a-zA-Z0-9_]+\z/) {
+        return $str;
+    }
+
+    return undef;
+}
+
+sub apply_input_arguments {
+    my ($args, $keywords) = @_;
+
+    if (@{$args}) {
+        local @ARGV = @{$args};
+        parse_arguments($keywords);
+    }
+
+    return 1;
+}
+
+# Get term width
+sub get_term_width {
+    return $term_width if $constant{win32};
+    $term_width = (-t STDOUT) ? ((split(q{ }, `stty size`))[1] || $term_width) : $term_width;
+}
+
+sub first_user_input {
+    my @keys = get_input_for_first_time();
+
+    state $first_input_help = <<"HELP";
+
+$base_options
+$action_options
+$other_options
+$notes_options
+** Example:
+    To search for playlists, insert: -p keywords
+HELP
+
+    if (scalar(@keys)) {
+        my @for_search;
+        foreach my $key (@keys) {
+            if ($key =~ /$valid_opt_re/) {
+
+                my $opt = $1;
+
+                if (general_options(opt => $opt)) {
+                    ## ok
+                }
+                elsif ($opt =~ /^(?:h|help)\z/) {
+                    print $first_input_help;
+                    press_enter_to_continue();
+                }
+                elsif ($opt =~ /^(?:r|return)\z/) {
+                    return;
+                }
+                else {
+                    warn_invalid('option', $opt);
+                    print "\n";
+                    exit 1;
+                }
+            }
+            elsif (youtube_urls($key)) {
+                ## ok
+            }
+            else {
+                push @for_search, $key;
+            }
+        }
+
+        if (scalar(@for_search) > 0) {
+            print_videos($yv_obj->search_videos(\@for_search));
+        }
+        else {
+            __SUB__->();
+        }
+    }
+    else {
+        __SUB__->();
+    }
+}
+
+sub get_quotewords {
+    require Text::ParseWords;
+    Text::ParseWords::quotewords(@_);
+}
+
+sub clear_title {
+    my ($title) = @_;
+
+    $title =~ s/[^\w\s[:punct:]]//g;
+    $title = join(' ', split(' ', $title));
+
+    return $title;
+}
+
+# Straight copy of parse_options() from Term::UI
+sub _parse_options {
+    my ($input) = @_;
+
+    my $return = {};
+    while (   $input =~ s/(?:^|\s+)--?([-\w]+=(["']).+?\2)(?=\Z|\s+)//
+           or $input =~ s/(?:^|\s+)--?([-\w]+=\S+)(?=\Z|\s+)//
+           or $input =~ s/(?:^|\s+)--?([-\w]+)(?=\Z|\s+)//) {
+        my $match = $1;
+
+        if ($match =~ /^([-\w]+)=(["'])(.+?)\2$/) {
+            $return->{$1} = $3;
+
+        }
+        elsif ($match =~ /^([-\w]+)=(\S+)$/) {
+            $return->{$1} = $2;
+
+        }
+        elsif ($match =~ /^no-?([-\w]+)$/i) {
+            $return->{$1} = 0;
+
+        }
+        elsif ($match =~ /^([-\w]+)$/) {
+            $return->{$1} = 1;
+        }
+    }
+
+    return wantarray ? ($return, $input) : $return;
+}
+
+sub parse_options2 {
+    my ($input) = @_;
+
+    warn(colored("\n[!] Input with an odd number of quotes: <$input>", 'bold red') . "\n\n")
+      if $yv_obj->get_debug;
+
+    my ($args, $keywords) = _parse_options($input);
+
+    my @args =
+        map $args->{$_} eq '0' ? "--no-$_"
+      : $args->{$_} eq '1'     ? "--$_"
+      :                          "--$_=$args->{$_}" => keys %{$args};
+
+    return wantarray ? (\@args, [split q{ }, $keywords]) : \@args;
+}
+
+sub parse_options {
+    my ($input) = @_;
+    my (@args, @keywords);
+
+    if (not defined($input) or $input eq q{}) {
+        return \@args, \@keywords;
+    }
+
+    foreach my $word (get_quotewords(qr/\s+/, 1, $input)) {
+        if (chr ord $word eq q{-}) {
+            push @args, $word;
+        }
+        else {
+            push @keywords, $word;
+        }
+    }
+
+    if (not @args and not @keywords) {
+        return parse_options2($input);
+    }
+
+    return wantarray ? (\@args, \@keywords) : \@args;
+}
+
+sub get_user_input {
+    my ($text) = @_;
+
+    if (not $opt{interactive}) {
+        if (not defined $opt{std_input}) {
+            return ':return';
+        }
+    }
+
+    my $input = unpack(
+        'A*',
+        defined($opt{std_input})
+        ? delete($opt{std_input})
+        : (
+           do {
+               my @lines = split(/\R/, $text);
+               say for @lines[0 .. $#lines - 1];
+               $term->readline($lines[-1]);
+             }
+             // return ':return'
+          )
+    ) =~ s/^\s+//r;
+
+    return q{:next} if $input eq q{};    # <ENTER> for the next page
+
+    require Encode;
+    $input = Encode::decode_utf8($input);
+
+    my ($args, $keywords) = parse_options($input);
+
+    if ($opt{history}) {
+        my $str = join(' ', grep { /\w/ } @{$args}, @{$keywords});
+        if ($str ne '' and $str !~ /^[0-9]{1,3}\z/) {
+            $term->append_history(1, $opt{history_file});
+        }
+    }
+
+    apply_input_arguments($args, $keywords);
+    return @{$keywords};
+}
+
+sub logout {
+
+    unlink $authentication_file
+      or warn "Can't unlink: `$authentication_file' -> $!";
+
+    $yv_obj->set_access_token();
+    $yv_obj->set_refresh_token();
+
+    return 1;
+}
+
+sub authenticate {
+    my $get_code_url = $yv_obj->get_accounts_oauth_url() // return;
+
+    print <<"INFO";
+
+:: Get the authentication code: $get_code_url
+
+                            |
+... and paste it below.    \\|/
+                            `
+INFO
+
+    my $code = $term->readline(colored(q{Code: }, 'bold')) || return;
+
+    my $info = $yv_obj->oauth_login($code) // do {
+        warn "[WARNING] Can't log in... That's all I know...\n";
+        return;
+    };
+
+    if (defined $info->{access_token}) {
+
+        $yv_obj->set_access_token($info->{access_token})   // return;
+        $yv_obj->set_refresh_token($info->{refresh_token}) // return;
+
+        my $remember_me = ask_yn(prompt  => colored("\nRemember me", 'bold'),
+                                 default => 'y');
+
+        if ($remember_me) {
+            $yv_obj->set_authentication_file($authentication_file);
+            $yv_obj->save_authentication_tokens()
+              or warn "Can't store the authentication tokens: $!";
+        }
+        else {
+            $yv_obj->set_authentication_file();
+        }
+
+        return 1;
+    }
+
+    warn "[WARNING] There was a problem with the authentication...\n";
+    return;
+}
+
+sub authenticated {
+    if (not defined $yv_obj->get_access_token) {
+        warn_needs_auth();
+        return;
+    }
+    return 1;
+}
+
+sub favorite_videos {
+    my (@videoIDs) = @_;
+    return if not authenticated();
+
+    foreach my $id (@videoIDs) {
+        my $videoID = get_valid_video_id($id) // next;
+
+        if ($yv_obj->favorite_video($videoID)) {
+            printf("\n:: Video %s has been successfully favorited.\n", sprintf($CONFIG{youtube_video_url}, $videoID));
+        }
+        else {
+            warn_cant_do('favorite', $videoID);
+        }
+    }
+    return 1;
+}
+
+sub select_and_save_to_playlist {
+    return if not authenticated();
+
+    my $request    = $yv_obj->my_playlists() // return;
+    my $playlistID = print_playlists($request, return_playlist_id => 1);
+
+    if (defined($playlistID)) {
+        return save_to_playlist($playlistID, @_);
+    }
+
+    warn_no_thing_selected('playlist');
+    return;
+
+}
+
+sub save_to_playlist {
+    my ($playlistID, @videoIDs) = @_;
+
+    return if not authenticated();
+
+    foreach my $id (@videoIDs) {
+        my $videoID = get_valid_video_id($id) // next;
+        my $pos     = $opt{position};                    # position in the playlist
+
+        if (!defined($pos) or $pos < 0) {
+            local $yv_obj->{maxResults} = 1;
+
+            my $info          = $yv_obj->videos_from_playlist_id($playlistID);
+            my $total_results = $info->{results}{pageInfo}{totalResults};
+
+            say "\n:: Total number of videos in the playlist: $total_results";
+            $pos //= 0;
+            $pos += $total_results || 0;
+            say ":: Saving video at position: $pos";
+        }
+
+        if ($yv_obj->add_video_to_playlist($playlistID, $videoID, $pos)) {
+            printf(":: Video %s has been successfully added to playlistID: %s\n",
+                   sprintf($CONFIG{youtube_video_url}, $videoID), $playlistID);
+        }
+        else {
+            warn_cant_do("add to playlist", $videoID);
+        }
+    }
+    return 1;
+}
+
+sub rate_videos {
+    my $rating = shift;
+    return if not authenticated();
+
+    foreach my $id (@_) {
+        my $videoID = get_valid_video_id($id) // next;
+        if ($yv_obj->send_rating_to_video($videoID, $rating)) {
+            printf("\n:: Video %s has been successfully %sd.\n", sprintf($CONFIG{youtube_video_url}, $videoID), $rating);
+        }
+        else {
+            warn_cant_do($rating, $videoID);
+        }
+    }
+
+    return 1;
+}
+
+sub get_and_play_video_ids {
+    (my @ids = grep { defined($_) } map { get_valid_video_id($_) } @_) || return;
+
+    foreach my $id (@ids) {
+        my $info = $yv_obj->video_details($id);
+
+        if (ref($info) eq 'HASH' and keys %$info) {
+            ## OK
+        }
+        else {
+            $info->{title}         = "unknown";
+            $info->{lengthSeconds} = 0;
+            $info->{videoId}       = $id;
+            warn_cant_do('get info for', $id);
+        }
+
+        play_videos([$info]) || return;
+    }
+
+    return 1;
+}
+
+sub get_and_play_playlists {
+    foreach my $id (@_) {
+        my $videos = $yv_obj->videos_from_playlist_id(get_valid_playlist_id($id) // next);
+        local $opt{play_all} = length($opt{std_input}) ? 0 : 1;
+        print_videos($videos, auto => $opt{play_all});
+    }
+    return 1;
+}
+
+sub get_and_print_video_info {
+    foreach my $id (@_) {
+
+        my $videoID = get_valid_video_id($id) // next;
+        my $info    = $yv_obj->video_details($videoID);
+
+        if (ref($info) eq 'HASH' and keys %$info) {
+            local $opt{show_video_info} = 1;
+            print_video_info($info);
+        }
+        else {
+            warn_cant_do('get info for', $videoID);
+        }
+    }
+    return 1;
+}
+
+sub get_and_print_related_videos {
+    foreach my $id (@_) {
+        my $videoID = get_valid_video_id($id) // next;
+        my $results = $yv_obj->related_to_videoID($videoID);
+        print_videos($results);
+    }
+    return 1;
+}
+
+sub get_and_print_comments {
+    foreach my $id (@_) {
+        my $videoID  = get_valid_video_id($id) // next;
+        my $comments = $yv_obj->comments_from_video_id($videoID);
+        print_comments($comments, $videoID);
+    }
+    return 1;
+}
+
+sub get_and_print_videos_from_playlist {
+    my ($playlistID) = @_;
+
+    if ($playlistID =~ /$valid_playlist_id_re/) {
+        my $info = $yv_obj->videos_from_playlist_id($playlistID);
+        if ($yv_utils->has_entries($info)) {
+            print_videos($info);
+        }
+        else {
+            warn colored("\n[!] Inexistent playlist...", 'bold red') . "\n";
+            return;
+        }
+    }
+    else {
+        warn_invalid('playlistID', $playlistID);
+        return;
+    }
+    return 1;
+}
+
+sub subscribe {
+    my (@ids) = @_;
+
+    return if not authenticated();
+
+    foreach my $channel (@ids) {
+
+        my $id = extract_channel_id($channel) // do {
+            warn_invalid("channel ID or username", $channel);
+            next;
+        };
+
+        my $ok =
+            $yv_utils->is_channelID($id)
+          ? $yv_obj->subscribe_channel($id)
+          : $yv_obj->subscribe_channel_from_username($id);
+
+        if ($ok) {
+            print ":: Successfully subscribed to channel: $id\n";
+        }
+        else {
+            warn colored("\n[!] Unable to subscribe to channel: $id", 'bold red') . "\n";
+        }
+    }
+
+    return 1;
+}
+
+sub _bold_color {
+    my ($text) = @_;
+    return colored($text, 'bold');
+}
+
+sub youtube_urls {
+    my ($arg) = @_;
+
+    if ($arg =~ /$get_video_id_re/) {
+        get_and_play_video_ids($+{video_id});
+    }
+    elsif ($arg =~ /$get_playlist_id_re/) {
+        get_and_print_videos_from_playlist($+{playlist_id});
+    }
+    elsif ($arg =~ /$get_channel_playlists_id_re/) {
+        print_playlists($yv_obj->playlists($+{channel_id}));
+    }
+    elsif ($arg =~ /$get_channel_videos_id_re/) {
+        print_videos($yv_obj->uploads($+{channel_id}));
+    }
+    elsif ($arg =~ /$get_username_playlists_re/) {
+        print_playlists($yv_obj->playlists_from_username($+{username}));
+    }
+    elsif ($arg =~ /$get_username_videos_re/) {
+        print_videos($yv_obj->uploads_from_username($+{username}));
+    }
+    else {
+        return;
+    }
+
+    return 1;
+}
+
+sub general_options {
+    my %args = @_;
+
+    my $url      = $args{url};
+    my $option   = $args{opt};
+    my $callback = $args{sub};
+    my $results  = $args{res};
+    my $info     = $args{info};
+
+    my $token     = undef;
+    my $has_token = 0;
+
+    if (ref($info->{results}) eq 'HASH' and exists $info->{results}{continuation}) {
+        $has_token = 1;
+        $token     = $info->{results}{continuation};
+    }
+
+    if (not defined($option)) {
+        return;
+    }
+
+    if ($option =~ /^(?:q|quit|exit)\z/) {
+        main_quit(0);
+    }
+    elsif ($option =~ /^(?:n|next)\z/ and defined $url) {
+        if ($has_token) {
+            if (defined $token) {
+                my $request = $yv_obj->next_page($url, $token);
+                $callback->($request);
+            }
+            else {
+                warn_last_page();
+            }
+        }
+        else {
+            my $request = $yv_obj->next_page($url);
+            $callback->($request);
+        }
+    }
+    elsif ($option =~ /^(?:b|back|p|prev|previous)\z/ and defined $url) {
+        my $request = $yv_obj->previous_page($url);
+        $callback->($request);
+    }
+    elsif ($option =~ /^(?:R|refresh)\z/ and defined $url) {
+        @{$results} = @{$yv_obj->_get_results($url)->{results}};
+    }
+    elsif ($option eq 'login') {
+        authenticate();
+    }
+    elsif ($option eq 'logout') {
+        logout();
+    }
+    elsif ($option =~ /^(?:reset|reload|restart)\z/) {
+        @ARGV = ();
+        do $0;
+    }
+    elsif ($option =~ /^dv${digit_or_equal_re}(.*)/ and ref($results) eq 'ARRAY') {
+        if (my @nums = get_valid_numbers($#{$results}, $1)) {
+            print "\n";
+            foreach my $num (@nums) {
+                require Data::Dump;
+                say Data::Dump::pp($results->[$num]);
+            }
+            press_enter_to_continue();
+        }
+        else {
+            warn_no_thing_selected('result');
+        }
+    }
+    elsif ($option =~ /^v(?:ideoids?)?=(.*)/) {
+        if (my @ids = split(/[,\s]+/, $1)) {
+            get_and_play_video_ids(@ids);
+        }
+        else {
+            warn colored("\n[!] No video ID specified!", 'bold red') . "\n";
+        }
+    }
+    elsif ($option =~ /^playlist(?:ID)?=(.*)/) {
+        get_and_print_videos_from_playlist($1);
+    }
+    else {
+        return;
+    }
+
+    return 1;
+}
+
+sub warn_no_results {
+    warn colored("\n[!] No $_[0] results!", 'bold red') . "\n";
+}
+
+sub warn_invalid {
+    my ($name, $option) = @_;
+    warn colored("\n[!] Invalid $name: <$option>", 'bold red') . "\n";
+}
+
+sub warn_cant_do {
+    my ($action, @ids) = @_;
+
+    foreach my $videoID (@ids) {
+        warn colored("\n[!] Can't $action video: " . sprintf($CONFIG{youtube_video_url}, $videoID), 'bold red') . "\n";
+
+        my %info = $yv_obj->_get_video_info($videoID);
+        my $resp = $yv_obj->parse_json_string($info{player_response} // next);
+
+        if (eval { exists($resp->{playabilityStatus}) and $resp->{playabilityStatus}{status} =~ /error/i }) {
+            warn colored("[+] Reason: $resp->{playabilityStatus}{reason}.", 'bold yellow') . "\n";
+        }
+    }
+}
+
+sub warn_last_page {
+    warn colored("\n[!] This is the last page!", "bold red") . "\n";
+}
+
+sub warn_first_page {
+    warn colored("\n[!] No previous page available...", 'bold red') . "\n";
+}
+
+sub warn_no_thing_selected {
+    warn colored("\n[!] No $_[0] selected!", 'bold red') . "\n";
+}
+
+sub warn_needs_auth {
+    warn colored("\n[!] This functionality needs authentication!", 'bold red') . "\n";
+}
+
+# ... GET INPUT SUBS ... #
+sub get_input_for_first_time {
+    return get_user_input(_bold_color("\n=>> Search for YouTube videos (:h for help)") . "\n> ");
+}
+
+sub get_input_for_channels {
+    return get_user_input(_bold_color("\n=>> Select a channel (:h for help)") . "\n> ");
+}
+
+sub get_input_for_search {
+    return get_user_input(_bold_color("\n=>> Select one or more videos to play (:h for help)") . "\n> ");
+}
+
+sub get_input_for_playlists {
+    return get_user_input(_bold_color("\n=>> Select a playlist (:h for help)") . "\n> ");
+}
+
+sub get_input_for_comments {
+    return get_user_input(_bold_color("\n=>> Press <ENTER> for the next page of comments (:h for help)") . "\n> ");
+}
+
+sub get_input_for_categories {
+    return get_user_input(_bold_color("\n=>> Select a category (:h for help)") . "\n> ");
+}
+
+sub ask_yn {
+    my (%opt) = @_;
+    my $c = join('/', map { $_ eq $opt{default} ? ucfirst($_) : $_ } qw(y n));
+
+    my $answ;
+    do {
+        $answ = lc($term->readline($opt{prompt} . " [$c]: "));
+        $answ = $opt{default} unless $answ =~ /\S/;
+    } while ($answ !~ /^y(?:es)?$/ and $answ !~ /^no?$/);
+
+    return chr(ord($answ)) eq 'y';
+}
+
+sub get_reply {
+    my (%opt) = @_;
+
+    my $default = 1;
+    while (my ($i, $choice) = each @{$opt{choices}}) {
+        print "\n" if $i == 0;
+        printf("%3d> %s\n", $i + 1, $choice);
+        if ($choice eq $opt{default}) {
+            $default = $i + 1;
+        }
+    }
+    print "\n";
+
+    my $answ;
+    do {
+        $answ = $term->readline($opt{prompt} . " [$default]: ");
+        $answ = $default unless $answ =~ /\S/;
+    } while ($answ !~ /^[0-9]+\z/ or $answ < 1 or $answ > @{$opt{choices}});
+
+    return $opt{choices}[$answ - 1];
+}
+
+sub valid_num {
+    my ($num, $array_ref) = @_;
+    return $num =~ /^[0-9]{1,3}\z/ && $num != 0 && $num <= @{$array_ref};
+}
+
+sub adjust_width {
+    my ($str, $len, $prepend) = @_;
+
+    if ($len <= 0) {
+        return $str;
+    }
+
+    state $pkg = (
+        eval {
+            require Unicode::GCString;
+            'Unicode::GCString';
+        } // eval {
+            require Text::CharWidth;
+            'Text::CharWidth';
+        } // do {
+            warn "[WARN] Please install Unicode::GCString or Text::CharWidth in order to use this functionality.\n";
+            '';
+        }
+    );
+
+    #
+    ## Unicode::GCString
+    #
+    if ($pkg eq 'Unicode::GCString') {
+
+        my $gcstr     = Unicode::GCString->new($str);
+        my $str_width = $gcstr->columns;
+
+        if ($str_width != $len) {
+            while ($str_width > $len) {
+                $gcstr     = $gcstr->substr(0, -1);
+                $str_width = $gcstr->columns;
+            }
+
+            $str = $gcstr->as_string;
+            my $spaces = ' ' x ($len - $str_width);
+            $str = $prepend ? "$spaces$str" : "$str$spaces";
+        }
+
+        return $str;
+    }
+
+    #
+    ## Text::CharWidth
+    #
+    if ($pkg eq 'Text::CharWidth') {
+
+        my $str_width = Text::CharWidth::mbswidth($str);
+
+        if ($str_width != $len) {
+            while ($str_width > $len) {
+                chop $str;
+                $str_width = Text::CharWidth::mbswidth($str);
+            }
+
+            my $spaces = ' ' x ($len - $str_width);
+            $str = $prepend ? "$spaces$str" : "$str$spaces";
+        }
+
+        return $str;
+    }
+
+    return $str;
+}
+
+# ... PRINT SUBROUTINES ... #
+sub print_channels {
+    my ($results) = @_;
+
+    if (not $yv_utils->has_entries($results)) {
+        warn_no_results("channel");
+    }
+
+    if ($opt{get_term_width} and $opt{results_fixed_width}) {
+        get_term_width();
+    }
+
+    my $url      = $results->{url};
+    my $channels = $results->{results} // [];
+
+    foreach my $i (0 .. $#{$channels}) {
+        my $channel = $channels->[$i];
+
+        if ($opt{results_with_details}) {
+            printf(
+                   "\n%s. %s\n    %s: %-23s %s: %-12s\n%s\n",
+                   colored(sprintf('%2d', $i + 1), 'bold') => colored($yv_utils->get_channel_title($channel), 'bold blue'),
+                   colored('Updated' => 'bold') => $yv_utils->get_publication_date($channel),
+                   colored('Author'  => 'bold') => $yv_utils->get_channel_title($channel),
+                   wrap_text(
+                             i_tab => q{ } x 4,
+                             s_tab => q{ } x 4,
+                             text  => [$yv_utils->get_description($channel) || 'No description available...']
+                            ),
+                  );
+        }
+        elsif ($opt{results_with_colors}) {
+            print "\n" if $i == 0;
+            printf("%s. %s (%s)\n",
+                   colored(sprintf('%2d', $i + 1),                    'bold'),
+                   colored($yv_utils->get_channel_title($channel),    'blue'),
+                   colored($yv_utils->get_publication_date($channel), 'magenta'),
+                  );
+        }
+        elsif ($opt{results_fixed_width}) {
+
+            require List::Util;
+
+            my @authors = map { $yv_utils->get_channel_id($_) } @{$channels};
+            my @dates   = map { $yv_utils->get_publication_date($_) } @{$channels};
+
+            my $author_width = List::Util::min(List::Util::max(map { length($_) } @authors), int($term_width / 5));
+            my $dates_width  = List::Util::max(map { length($_) } @dates);
+            my $title_length = $term_width - ($author_width + $dates_width + 2 + 3 + 1 + 2);
+
+            print "\n";
+            foreach my $i (0 .. $#{$channels}) {
+
+                my $channel = $channels->[$i];
+                my $title   = clear_title($yv_utils->get_channel_title($channel));
+
+                printf "%s. %s %s [%*s]\n", colored(sprintf('%2d', $i + 1), 'bold'),
+                  adjust_width($title, $title_length),
+                  adjust_width($authors[$i], $author_width, 1),
+                  $dates_width, $dates[$i];
+            }
+            last;
+        }
+        else {
+            print "\n" if $i == 0;
+            printf "%s. %s [%s]\n", colored(sprintf('%2d', $i + 1), 'bold'), $yv_utils->get_channel_title($channel),
+              $yv_utils->get_publication_date($channel);
+        }
+    }
+
+    my @keywords = get_input_for_channels();
+
+    my @for_search;
+    foreach my $key (@keywords) {
+        if ($key =~ /$valid_opt_re/) {
+
+            my $opt = $1;
+
+            if (
+                general_options(
+                                opt  => $opt,
+                                sub  => __SUB__,
+                                url  => $url,
+                                res  => $channels,
+                                info => $results,
+                               )
+              ) {
+                ## ok
+            }
+            elsif ($opt =~ /^(?:h|help)\z/) {
+                print $general_help;
+                press_enter_to_continue();
+            }
+            elsif ($opt =~ /^(?:r|return)\z/) {
+                return;
+            }
+            else {
+                warn_invalid('option', $opt);
+            }
+        }
+        elsif (youtube_urls($key)) {
+            ## ok
+        }
+        elsif (valid_num($key, $channels)) {
+            print_videos($yv_obj->uploads($yv_utils->get_channel_id($channels->[$key - 1])));
+        }
+        else {
+            push @for_search, $key;
+        }
+    }
+
+    if (@for_search) {
+        __SUB__->($yv_obj->search_channels(\@for_search));
+    }
+
+    __SUB__->(@_);
+}
+
+sub print_comments {
+    my ($results, $videoID) = @_;
+
+    if (not $yv_utils->has_entries($results)) {
+        warn_no_results("comments");
+    }
+
+    my $url      = $results->{url};
+    my $comments = $results->{results}{comments} // [];
+
+    my $i = 0;
+    foreach my $comment (@{$comments}) {
+        my $comment_id  = $yv_utils->get_comment_id($comment);
+        my $comment_age = $yv_utils->get_publication_age_approx($comment);
+
+        printf(
+               "\n%s (%s) commented:\n%s\n",
+               colored($yv_utils->get_author($comment), 'bold'),
+               (
+                $comment_age =~ /sec|min|hour|day/
+                ? "$comment_age ago"
+                : $yv_utils->get_publication_date($comment)
+               ),
+               wrap_text(
+                         i_tab => q{ } x 3,
+                         s_tab => q{ } x 3,
+                         text  => [$yv_utils->get_comment_content($comment) // 'Empty comment...']
+                        ),
+              );
+
+        #~ if (exists $comment->{replies}) {
+        #~ foreach my $reply (reverse @{$comment->{replies}{comments}}) {
+        #~ my $reply_age = $yv_utils->date_to_age($reply->{snippet}{publishedAt});
+        #~ printf(
+        #~ "\n   %s (%s) replied:\n%s\n",
+        #~ colored($reply->{snippet}{authorDisplayName}, 'bold'),
+        #~ (
+        #~ $reply_age =~ /sec|min|hour|day/
+        #~ ? "$reply_age ago"
+        #~ : $yv_utils->format_date($reply->{snippet}{publishedAt})
+        #~ ),
+        #~ wrap_text(
+        #~ i_tab => q{ } x 6,
+        #~ s_tab => q{ } x 6,
+        #~ text  => [$reply->{snippet}{textDisplay} // 'Empty comment...']
+        #~ ),
+        #~ );
+        #~ }
+        #~ }
+    }
+
+    my @keywords = get_input_for_comments();
+
+    foreach my $key (@keywords) {
+        if ($key =~ /$valid_opt_re/) {
+
+            my $opt = $1;
+
+            if (
+                general_options(
+                                opt  => $opt,
+                                sub  => __SUB__,
+                                url  => $url,
+                                res  => $comments,
+                                info => $results,
+                                mode => 'comments',
+                                args => [$videoID],
+                               )
+              ) {
+                ## ok
+            }
+            elsif ($opt =~ /^(?:h|help)\z/) {
+                print $comments_help;
+                press_enter_to_continue();
+            }
+            elsif ($opt =~ /^(?:c|comment)\z/) {
+                if (authenticated()) {
+                    require File::Temp;
+                    my ($fh, $filename) = File::Temp::tempfile();
+                    $yv_obj->proxy_system($ENV{EDITOR} // 'nano', $filename);
+                    if ($?) {
+                        warn colored("\n[!] Editor exited with a non-zero code. Unable to continue!", 'bold red') . "\n";
+                    }
+                    else {
+                        my $comment = do { local (@ARGV, $/) = $filename; <> };
+                        $comment =~ s/[^\s[:^cntrl:]]+//g;    # remove control characters
+
+                        if (length($comment) and $yv_obj->comment_to_video_id($comment, $videoID)) {
+                            print "\n:: Comment posted!\n";
+                        }
+                        else {
+                            warn colored("\n[!] Your comment has NOT been posted!", 'bold red') . "\n";
+                        }
+                    }
+                }
+            }
+            elsif ($opt =~ /^(?:r|return)\z/) {
+                return;
+            }
+            else {
+                warn_invalid('option', $opt);
+            }
+        }
+        elsif (youtube_urls($key)) {
+            ## ok
+        }
+        elsif (valid_num($key, $comments)) {
+            print_videos($yv_obj->get_videos_from_username($comments->[$key - 1]{author}));
+        }
+        else {
+            warn_invalid('keyword', $key);
+        }
+    }
+
+    __SUB__->(@_);
+}
+
+sub print_categories {
+    my ($results) = @_;
+
+    my $categories = $results;
+    return if ref($categories) ne 'ARRAY';
+
+    my $i = 0;
+    print "\n" if @{$categories};
+
+    foreach my $category (@{$categories}) {
+        printf "%s. %-40s\n", colored(sprintf('%2d', ++$i), 'bold'), $category->{title};
+    }
+
+    my @keywords = get_input_for_categories();
+
+    foreach my $key (@keywords) {
+        if ($key =~ /$valid_opt_re/) {
+
+            my $opt = $1;
+
+            if (
+                general_options(
+                                opt => $opt,
+                                sub => __SUB__,
+                                res => $results,
+                               )
+              ) {
+                ## ok
+            }
+            elsif ($opt =~ /^(?:h|help)\z/) {
+                print $general_help;
+                press_enter_to_continue();
+            }
+            elsif ($opt =~ /^(?:r|return)\z/) {
+                return;
+            }
+            else {
+                warn_invalid('option', $opt);
+            }
+        }
+        elsif (youtube_urls($key)) {
+            ## ok
+        }
+        elsif (valid_num($key, $categories)) {
+            my $category = $categories->[$key - 1];
+            my $cat_id   = $category->{id};
+            my $videos   = $yv_obj->trending_videos_from_category($cat_id);
+
+            print_videos($videos);
+        }
+        else {
+            warn_invalid('keyword', $key);
+        }
+    }
+
+    __SUB__->(@_);
+}
+
+sub print_playlists {
+    my ($results, %args) = @_;
+
+    if (not $yv_utils->has_entries($results)) {
+        warn_no_results("playlist");
+    }
+
+    if ($opt{get_term_width} and $opt{results_fixed_width}) {
+        get_term_width();
+    }
+
+    my $url       = $results->{url};
+    my $playlists = $results->{results} // [];
+
+    if (ref($playlists) eq 'HASH') {
+        if (exists $playlists->{playlists}) {
+            $playlists = $playlists->{playlists};
+        }
+        else {
+            warn "\n[!] No playlists...\n";
+            $playlists = [];
+        }
+    }
+
+    state $info_format = <<"FORMAT";
+
+TITLE: %s
+   ID: %s
+  URL: https://www.youtube.com/playlist?list=%s
+DESCR: %s
+FORMAT
+
+    foreach my $i (0 .. $#{$playlists}) {
+        my $playlist = $playlists->[$i];
+        if ($opt{results_with_details}) {
+            printf(
+                   "\n%s. %s\n    %s: %-25s %s: %s\n%s\n",
+                   colored(sprintf('%2d', $i + 1), 'bold') => colored($yv_utils->get_title($playlist), 'bold blue'),
+                   colored('Updated' => 'bold') => $yv_utils->get_publication_date($playlist),
+                   colored('Author'  => 'bold') => $yv_utils->get_channel_title($playlist),
+                   wrap_text(
+                             i_tab => q{ } x 4,
+                             s_tab => q{ } x 4,
+                             text  => [$yv_utils->get_description($playlist) || 'No description available...']
+                            ),
+                  );
+        }
+        elsif ($opt{results_with_colors}) {
+            print "\n" if $i == 0;
+            printf(
+                   "%s. %s (%s) %s\n",
+                   colored(sprintf('%2d', $i + 1),                     'bold'),
+                   colored($yv_utils->get_title($playlist),            'blue'),
+                   colored($yv_utils->get_publication_date($playlist), 'magenta'),
+                   colored($yv_utils->get_channel_title($playlist),    'green'),
+                  );
+        }
+        elsif ($opt{results_fixed_width}) {
+
+            require List::Util;
+
+            my @authors = map { $yv_utils->get_channel_title($_) } @{$playlists};
+            my @dates   = map { $yv_utils->get_publication_date($_) } @{$playlists};
+
+            my $author_width = List::Util::min(List::Util::max(map { length($_) } @authors), int($term_width / 5));
+            my $dates_width  = List::Util::max(map { length($_) } @dates);
+            my $title_length = $term_width - ($author_width + $dates_width + 2 + 3 + 1 + 2);
+
+            print "\n";
+            foreach my $i (0 .. $#{$playlists}) {
+
+                my $playlist = $playlists->[$i];
+                my $title    = clear_title($yv_utils->get_title($playlist));
+
+                printf "%s. %s %s [%*s]\n", colored(sprintf('%2d', $i + 1), 'bold'),
+                  adjust_width($title, $title_length),
+                  adjust_width($authors[$i], $author_width, 1),
+                  $dates_width, $dates[$i];
+            }
+            last;
+        }
+        else {
+            print "\n" if $i == 0;
+            printf(
+                   "%s. %s (by %s) [%s]\n",
+                   colored(sprintf('%2d', $i + 1), 'bold'), $yv_utils->get_title($playlist),
+                   $yv_utils->get_channel_title($playlist), $yv_utils->get_publication_date($playlist)
+                  );
+        }
+    }
+
+    state @keywords;
+    if ($args{auto}) { }    # do nothing...
+    else {
+        @keywords = get_input_for_playlists();
+        if (scalar(@keywords) == 0) {
+            __SUB__->(@_);
+        }
+    }
+
+    my $contains_keywords = grep /$non_digit_or_opt_re/, @keywords;
+
+    my @for_search;
+    foreach my $key (@keywords) {
+        if ($key =~ /$valid_opt_re/) {
+
+            my $opt = $1;
+
+            if (
+                general_options(
+                                opt  => $opt,
+                                sub  => __SUB__,
+                                url  => $url,
+                                res  => $playlists,
+                                info => $results,
+                                mode => 'playlists',
+                               )
+              ) {
+                ## ok
+            }
+            elsif ($opt =~ /^(?:h|help)\z/) {
+                print $playlists_help;
+                press_enter_to_continue();
+            }
+            elsif ($opt =~ /^(?:r|return)\z/) {
+                return;
+            }
+            elsif ($opt =~ /^i(?:nfo)?${digit_or_equal_re}(.*)/) {
+                if (my @ids = get_valid_numbers($#{$playlists}, $1)) {
+                    foreach my $id (@ids) {
+                        my $desc = wrap_text(
+                                       i_tab => q{ } x 7,
+                                       s_tab => q{ } x 7,
+                                       text => [$yv_utils->get_description($playlists->[$id]) || 'No description available...']
+                        );
+                        $desc =~ s/^\s+//;
+                        printf $info_format, $yv_utils->get_title($playlists->[$id]),
+                          ($yv_utils->get_playlist_id($playlists->[$id])) x 2, $desc;
+                    }
+                    press_enter_to_continue();
+                }
+                else {
+                    warn_no_thing_selected('playlist');
+                }
+            }
+            elsif ($opt =~ /^pp${digit_or_equal_re}(.*)/) {
+                if (my @ids = get_valid_numbers($#{$playlists}, $1)) {
+                    my $arg = "--pp=" . join(q{,}, map { $yv_utils->get_playlist_id($_) } @{$playlists}[@ids]);
+                    apply_input_arguments([$arg]);
+                }
+                else {
+                    warn_no_thing_selected('playlist');
+                }
+            }
+            else {
+                warn_invalid('option', $opt);
+            }
+        }
+        elsif (youtube_urls($key)) {
+            ## ok
+        }
+        elsif (valid_num($key, $playlists) and not $contains_keywords) {
+
+            my $id = $yv_utils->get_playlist_id($playlists->[$key - 1]);
+
+            if ($args{return_playlist_id}) {
+                return $id;
+            }
+
+            get_and_print_videos_from_playlist($id);
+        }
+        else {
+            push @for_search, $key;
+        }
+    }
+
+    if (@for_search) {
+        __SUB__->($yv_obj->search_playlists(\@for_search));
+    }
+
+    __SUB__->(@_);
+}
+
+sub compile_regex {
+    my ($value) = @_;
+    $value =~ s{^(?<quote>['"])(?<regex>.+)\g{quote}$}{$+{regex}}s;
+
+    my $re = eval { use re qw(eval); qr/$value/i };
+
+    if ($@) {
+        warn_invalid("regex", $@);
+        return;
+    }
+
+    return $re;
+}
+
+sub get_range_numbers {
+    my ($first, $second) = @_;
+
+    return (
+            $first > $second
+            ? (reverse($second .. $first))
+            : ($first .. $second)
+           );
+}
+
+sub get_valid_numbers {
+    my ($max, $input) = @_;
+
+    my @output;
+    foreach my $id (split(/[,\s]+/, $input)) {
+        push @output,
+            $id =~ /$range_num_re/ ? get_range_numbers($1, $2)
+          : $id =~ /^[0-9]{1,3}\z/ ? $id
+          :                          next;
+    }
+
+    return grep { $_ >= 0 and $_ <= $max } map { $_ - 1 } @output;
+}
+
+sub get_streaming_url {
+    my ($video_id) = @_;
+
+    my ($urls, $captions, $info) = $yv_obj->get_streaming_urls($video_id);
+
+    if (not defined $urls) {
+        return scalar {};
+    }
+
+    # Download the closed-captions
+    my $srt_file;
+    if (ref($captions) eq 'ARRAY' and @$captions and $opt{get_captions} and not $opt{novideo}) {
+        require WWW::PipeViewer::GetCaption;
+        my $yv_cap = WWW::PipeViewer::GetCaption->new(
+                                                       auto_captions => $opt{auto_captions},
+                                                       captions_dir  => $opt{cache_dir},
+                                                       captions      => $captions,
+                                                       languages     => $CONFIG{srt_languages},
+                                                       yv_obj        => $yv_obj,
+                                                      );
+        $srt_file = $yv_cap->save_caption($video_id);
+    }
+
+    require WWW::PipeViewer::Itags;
+    state $yv_itags = WWW::PipeViewer::Itags->new();
+
+    # Include DASH itags
+    my $dash = 1;
+
+    # Exclude DASH itags in download-mode or when no video output is required
+    if ($opt{novideo} or not $opt{dash_support}) {
+        $dash = 0;
+    }
+    elsif ($opt{download_video}) {
+        $dash = $opt{merge_into_mkv} ? 1 : 0;
+    }
+
+    my ($streaming, $resolution) = $yv_itags->find_streaming_url(
+        urls       => $urls,
+        resolution => ($opt{novideo} ? 'audio' : $opt{resolution}),
+
+        hfr        => $opt{hfr},
+        ignore_av1 => $opt{ignore_av1},
+
+        dash           => $dash,
+        dash_mp4_audio => ($opt{novideo}        ? 1 : $opt{dash_mp4_audio}),
+        dash_segmented => ($opt{download_video} ? 0 : $opt{dash_segmented}),
+                                                                );
+
+    return {
+            streaming  => $streaming,
+            srt_file   => $srt_file,
+            info       => $info,
+            resolution => $resolution,
+           };
+}
+
+sub download_from_url {
+    my ($url, $output_filename) = @_;
+
+    # Download with wget
+    if ($opt{download_with_wget}) {
+        my @cmd = ($opt{wget_cmd}, '-c', '-t', '10', '--waitretry=3', $url, '-O', "$output_filename.part");
+        $yv_obj->proxy_system(@cmd);
+        return if $?;
+        rename("$output_filename.part", $output_filename) or return undef;
+        return $output_filename;
+    }
+
+    state $lwp_dl = which_command('lwp-download');
+
+    # Download with lwp-download
+    if (defined($lwp_dl)) {
+        my @cmd = ($lwp_dl, $url, "$output_filename.part");
+        $yv_obj->proxy_system(@cmd);
+        return if $?;
+        rename("$output_filename.part", $output_filename) or return undef;
+        return $output_filename;
+    }
+
+    # Download with LWP::UserAgent
+    require LWP::UserAgent;
+
+    my $lwp = LWP::UserAgent->new(
+          show_progress => 1,
+          agent => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
+    );
+
+    $lwp->proxy(['http', 'https'], $yv_obj->get_http_proxy)
+      if defined($yv_obj->get_http_proxy);
+
+    my $resp = eval { $lwp->mirror($url, "$output_filename.part") };
+
+    if ($@ =~ /\bread timeout\b/i or not defined($resp) or not $resp->is_success) {
+        warn colored("\n[!] Encountered an error while downloading... Trying again...", 'bold red') . "\n\n";
+
+        if (defined(my $wget_path = which_command('wget'))) {
+            $CONFIG{wget_cmd}           = $wget_path;
+            $CONFIG{download_with_wget} = 1;
+            dump_configuration($config_file);
+        }
+        else {
+            warn colored("[!] Please install `wget` and try again...", 'bold red') . "\n\n";
+        }
+
+        unlink("$output_filename.part");
+        return download_from_url($url, $output_filename);
+    }
+
+    rename("$output_filename.part", $output_filename) or return undef;
+    return $output_filename;
+}
+
+sub download_video {
+    my ($streaming, $info) = @_;
+
+    my $fat32safe = $opt{fat32safe};
+    state $unix_like = $^O =~ /^(?:linux|freebsd|openbsd)\z/i;
+
+    if (not $fat32safe and not $unix_like) {
+        $fat32safe = 1;
+    }
+
+    my $video_filename = $yv_utils->format_text(
+                                                streaming => $streaming,
+                                                info      => $info,
+                                                text      => $opt{video_filename_format},
+                                                escape    => 0,
+                                                fat32safe => $fat32safe,
+                                               );
+
+    my $naked_filename = $video_filename =~ s/\.\w+\z//r;
+
+    $naked_filename =~ s/\h*:+\h*/ - /g;    # replace colons (":") with dashes ("-")
+
+    my $mkv_filename   = "$naked_filename.mkv";
+    my $srt_filename   = "$naked_filename.srt";
+    my $audio_filename = "$naked_filename - audio";
+
+    my $video_info = $streaming->{streaming};
+    my $audio_info = $streaming->{streaming}{__AUDIO__};
+
+    if ($audio_info) {
+        $audio_filename .= "." . $yv_utils->extension($audio_info->{type});
+    }
+
+    if (not -d $opt{downloads_dir}) {
+        require File::Path;
+        if (not File::Path::make_path($opt{downloads_dir})) {
+            warn colored("\n[!] Can't create directory '$opt{downloads_dir}': $1", 'bold red') . "\n";
+        }
+    }
+
+    if (not -w $opt{downloads_dir}) {
+        warn colored("\n[!] Can't write into directory '$opt{downloads_dir}': $!", 'bold red') . "\n";
+        $opt{downloads_dir} = (-w curdir()) ? curdir() : (-w $ENV{HOME}) ? $ENV{HOME} : return;
+        warn colored("[!] Video will be downloaded into directory: $opt{downloads_dir}", 'bold red') . "\n";
+    }
+
+    $mkv_filename   = catfile($opt{downloads_dir}, $mkv_filename);
+    $srt_filename   = catfile($opt{downloads_dir}, $srt_filename);
+    $audio_filename = catfile($opt{downloads_dir}, $audio_filename);
+    $video_filename = catfile($opt{downloads_dir}, $video_filename);
+
+    if ($opt{skip_if_exists} and -e $mkv_filename) {
+        $video_filename = $mkv_filename;
+        say ":: File `$mkv_filename` already exists. Skipping...";
+    }
+    else {
+        if ($opt{skip_if_exists} and -e $video_filename) {
+            say ":: File `$video_filename` already exists. Skipping...";
+        }
+        else {
+            $video_filename = download_from_url($video_info->{url}, $video_filename) // return;
+        }
+
+        if ($opt{skip_if_exists} and -e $audio_filename) {
+            say ":: File `$audio_filename` already exists. Skipping...";
+        }
+        elsif ($audio_info) {
+            $audio_filename = download_from_url($audio_info->{url}, $audio_filename) // return;
+        }
+    }
+
+    my @merge_files = ($video_filename);
+
+    if ($audio_info) {
+        push @merge_files, $audio_filename;
+    }
+
+    if (    $opt{merge_with_captions}
+        and defined($streaming->{srt_file})
+        and -f $streaming->{srt_file}) {
+        push @merge_files, $streaming->{srt_file};
+    }
+
+    if (    $opt{merge_into_mkv}
+        and scalar(@merge_files) > 1
+        and scalar(grep { -f $_ } @merge_files) == scalar(@merge_files)
+        and not -e $mkv_filename) {
+
+        say ":: Merging into MKV...";
+
+        my $ffmpeg_cmd  = $opt{ffmpeg_cmd};
+        my $ffmpeg_args = $opt{merge_into_mkv_args};
+
+        if (my @srt_files = grep { /\.srt\z/ } @merge_files) {
+            my $srt_file = $srt_files[0];
+            require File::Basename;
+            if (File::Basename::basename($srt_file) =~ m{^.{11}_([a-z]{2,4})}i) {
+                my $lang_code = $1;
+                $ffmpeg_args .= " -metadata:s:s:0 language=$lang_code";
+            }
+        }
+
+        my $merge_command =
+          join(' ', $ffmpeg_cmd, (map { "-i \Q$_\E" } @merge_files), $ffmpeg_args, "\Q$mkv_filename\E");
+
+        if ($yv_obj->get_debug) {
+            say "-> Command: $merge_command";
+        }
+
+        $yv_obj->proxy_system($merge_command);
+
+        if ($? == 0 and -e $mkv_filename) {
+            unlink @merge_files;
+            $video_filename = $mkv_filename;
+        }
+    }
+
+    # Convert the downloaded video
+    if (defined $opt{convert_to}) {
+        my $convert_filename = catfile($opt{downloads_dir}, "$naked_filename.$opt{convert_to}");
+        my $convert_cmd      = $opt{convert_cmd};
+
+        my %table = (
+                     'IN'  => $video_filename,
+                     'OUT' => $convert_filename,
+                    );
+
+        my $regex = do {
+            local $" = '|';
+            qr/\*(@{[keys %table]})\*/;
+        };
+
+        $convert_cmd =~ s/$regex/\Q$table{$1}\E/g;
+        say $convert_cmd if $yv_obj->get_debug;
+
+        $yv_obj->proxy_system($convert_cmd);
+
+        if ($? == 0) {
+
+            if (not $opt{keep_original_video}) {
+                unlink $video_filename
+                  or warn colored("\n[!] Can't unlink file '$video_filename': $!", 'bold red') . "\n\n";
+            }
+
+            $video_filename = $convert_filename if -e $convert_filename;
+        }
+    }
+
+    # Play the download video
+    if ($opt{download_and_play}) {
+
+        local $streaming->{streaming}{url}       = '';
+        local $streaming->{streaming}{__AUDIO__} = undef;
+        local $streaming->{srt_file}             = undef if ($opt{merge_into_mkv} && $opt{merge_with_captions});
+
+        my $command = get_player_command($streaming, $info);
+        say "-> Command: ", $command if $yv_obj->get_debug;
+
+        $yv_obj->proxy_system(join(q{ }, $command, quotemeta($video_filename)));
+
+        # Remove it afterwards
+        if ($? == 0 and $opt{remove_played_file}) {
+            unlink $video_filename
+              or warn colored("\n[!] Can't unlink file '$video_filename': $!", 'bold red') . "\n\n";
+        }
+    }
+
+    # Copy the .srt file to downloads-dir
+    if (    $opt{copy_caption}
+        and -e $video_filename
+        and defined($streaming->{srt_file})
+        and -e $streaming->{srt_file}) {
+
+        my $from = $streaming->{srt_file};
+        my $to   = $srt_filename;
+
+        require File::Copy;
+        File::Copy::cp($from, $to);
+    }
+
+    return 1;
+}
+
+sub save_watched_video {
+    my ($video_id) = @_;
+
+    if ($opt{remember_watched} and not exists($watched_videos{$video_id})) {
+        $watched_videos{$video_id} = 1;
+        open my $fh, '>>', $opt{watched_file} or return;
+        say {$fh} $video_id;
+        close $fh;
+    }
+
+    $watched_videos{$video_id} = 1;
+    return 1;
+}
+
+sub get_player_command {
+    my ($streaming, $video) = @_;
+
+    $MPLAYER{fullscreen} = $opt{fullscreen} ? $opt{video_players}{$opt{video_player_selected}}{fs}      // '' : q{};
+    $MPLAYER{novideo}    = $opt{novideo}    ? $opt{video_players}{$opt{video_player_selected}}{novideo} // '' : q{};
+    $MPLAYER{arguments}  = $opt{video_players}{$opt{video_player_selected}}{arg} // q{};
+
+    my $cmd = join(
+        q{ },
+        (
+            # Video player
+            $opt{video_players}{$opt{video_player_selected}}{cmd},
+
+            (    # Audio file (https://)
+               ref($streaming->{streaming}{__AUDIO__}) eq 'HASH'
+                 && exists($opt{video_players}{$opt{video_player_selected}}{audio})
+               ? $opt{video_players}{$opt{video_player_selected}}{audio}
+               : ()
+            ),
+
+            (    # Subtitle file (.srt)
+               defined($streaming->{srt_file})
+                 && exists($opt{video_players}{$opt{video_player_selected}}{srt})
+               ? $opt{video_players}{$opt{video_player_selected}}{srt}
+               : ()
+            ),
+
+            # Rest of the arguments
+            grep({ defined($_) and /\S/ } values %MPLAYER)
+        )
+    );
+
+    my $has_video = $cmd =~ /\*(?:VIDEO|URL|ID)\*/;
+
+    $cmd = $yv_utils->format_text(
+                                  streaming => $streaming,
+                                  info      => $video,
+                                  text      => $cmd,
+                                  escape    => 1,
+                                 );
+
+    if ($streaming->{streaming}{url} =~ m{^https://www\.youtube\.com/watch\?v=}) {
+        $cmd =~ s{\s*--no-ytdl\b}{ }g;
+    }
+
+    $has_video ? $cmd : join(' ', $cmd, quotemeta($streaming->{streaming}{url}));
+}
+
+sub autoplay {
+    my $video_id = get_valid_video_id(shift) // return;
+
+    my %seen = ($video_id => 1);    # make sure we don't get stuck in a loop
+    local $yv_obj->{maxResults} = 10;
+
+    while (1) {
+        get_and_play_video_ids($video_id) || return;
+        my $related = $yv_obj->related_to_videoID($video_id);
+        (my @video_ids = grep { !$seen{$_}++ } map { $yv_utils->get_video_id($_) } @{$related->{results}}) || return;
+        $video_id = $opt{shuffle} ? $video_ids[rand @video_ids] : $video_ids[0];
+    }
+
+    return 1;
+}
+
+sub play_videos {
+    my ($videos) = @_;
+
+    foreach my $video (@{$videos}) {
+
+        my $video_id = $yv_utils->get_video_id($video);
+
+        if ($opt{autoplay_mode}) {
+            local $opt{autoplay_mode} = 0;
+            autoplay($video_id);
+            next;
+        }
+
+        # Ignore already watched videos
+        if (exists($watched_videos{$video_id}) and $opt{skip_watched}) {
+            say ":: Already watched video (ID: $video_id)... Skipping...";
+            next;
+        }
+
+        if (defined($opt{max_seconds}) and $opt{max_seconds} >= 0) {
+            next if $yv_utils->get_duration($video) > $opt{max_seconds};
+        }
+
+        if (defined($opt{min_seconds}) and $opt{min_seconds} >= 0) {
+            next if $yv_utils->get_duration($video) < $opt{min_seconds};
+        }
+
+        my $streaming = get_streaming_url($video_id);
+
+        if (ref($streaming->{streaming}) ne 'HASH') {
+            warn colored("[!] No streaming URL has been found...", 'bold red') . "\n";
+            next;
+        }
+
+        if (   !defined($streaming->{streaming}{url})
+            and defined($streaming->{info}{status})
+            and $streaming->{info}{status} =~ /(?:error|fail)/i) {
+            warn colored("[!] Error on: ", 'bold red') . sprintf($CONFIG{youtube_video_url}, $video_id) . "\n";
+            warn colored(":: Reason: ",    'bold red') . $streaming->{info}{reason} =~ tr/+/ /r . "\n\n";
+        }
+
+        # Dump metadata information
+        if (defined($opt{dump})) {
+
+            my $file = $video_id . '.' . $opt{dump};
+            open(my $fh, '>:utf8', $file)
+              or die "Can't open file `$file' for writing: $!";
+
+            local $video->{streaming} = $streaming;
+
+            if ($opt{dump} eq 'json') {
+                print {$fh} JSON->new->pretty(1)->encode($video);
+            }
+            elsif ($opt{dump} eq 'perl') {
+                require Data::Dump;
+                print {$fh} Data::Dump::pp($video);
+            }
+
+            close $fh;
+        }
+
+        if ($opt{download_video}) {
+            print_video_info($video);
+            if (not download_video($streaming, $video)) {
+                return;
+            }
+        }
+        elsif (length($opt{extract_info})) {
+            my $fh = $opt{extract_info_fh} // \*STDOUT;
+            say {$fh}
+              $yv_utils->format_text(
+                                     streaming => $streaming,
+                                     info      => $video,
+                                     text      => $opt{extract_info},
+                                     escape    => $opt{escape_info},
+                                     fat32safe => $opt{fat32safe},
+                                    );
+        }
+        else {
+            print_video_info($video);
+            my $command = get_player_command($streaming, $video);
+
+            if ($yv_obj->get_debug) {
+                say "-> Resolution: $streaming->{resolution}";
+                say "-> Video itag: $streaming->{streaming}{itag}";
+                say "-> Audio itag: $streaming->{streaming}{__AUDIO__}{itag}" if exists $streaming->{streaming}{__AUDIO__};
+                say "-> Video type: $streaming->{streaming}{type}";
+                say "-> Audio type: $streaming->{streaming}{__AUDIO__}{type}" if exists $streaming->{streaming}{__AUDIO__};
+                say "-> Command: $command";
+            }
+
+            $yv_obj->proxy_system($command);    # execute the video player
+
+            if ($? and $? != 512) {
+                $opt{auto_next_page} = 0;
+                return;
+            }
+        }
+
+        save_watched_video($video_id);
+        press_enter_to_continue() if $opt{confirm};
+    }
+
+    return 1;
+}
+
+sub play_videos_matched_by_regex {
+    my %args = @_;
+
+    my $key    = $args{key};
+    my $regex  = $args{regex};
+    my $videos = $args{videos};
+
+    my $sub = \&{'WWW::PipeViewer::Utils' . '::' . 'get_' . $key};
+
+    if (not defined &$sub) {
+        warn colored("\n[!] Invalid key: <$key>.", 'bold red') . "\n";
+        return;
+    }
+
+    if (defined(my $re = compile_regex($regex))) {
+        if (my @nums = grep { $yv_utils->$sub($videos->[$_]) =~ /$re/ } 0 .. $#{$videos}) {
+            if (not play_videos([@{$videos}[@nums]])) {
+                return;
+            }
+        }
+        else {
+            warn colored("\n[!] No video <$key> matched by the regex: $re", 'bold red') . "\n";
+            return;
+        }
+    }
+
+    return 1;
+}
+
+sub print_video_info {
+    my ($video) = @_;
+
+    $opt{show_video_info} || return 1;
+
+    my $hr = '-' x ($opt{get_term_width} ? get_term_width() : $term_width);
+
+    printf(
+           "\n%s\n%s\n%s\n%s\n%s",
+           _bold_color('=> Description'),
+           $hr,
+           wrap_text(
+                     i_tab => q{},
+                     s_tab => q{},
+                     text  => [$yv_utils->get_description($video) || 'No description available...']
+                    ),
+           $hr,
+           _bold_color('=> URL: ')
+          );
+
+    print STDOUT sprintf($CONFIG{youtube_video_url}, $yv_utils->get_video_id($video));
+
+    my $title        = $yv_utils->get_title($video);
+    my $title_length = length($title);
+    my $rep          = ($term_width - $title_length) / 2 - 4;
+
+    $rep = 0 if $rep < 0;
+
+    print(
+          "\n$hr\n",
+          q{ } x $rep => (_bold_color("=>> $title <<=") . "\n\n"),
+          (
+           map    { sprintf(q{-> } . "%-*s: %s\n", $opt{_colors} ? 18 : 10, _bold_color($_->[0]), $_->[1]) }
+             grep { defined($_->[1]) and $_->[1] !~ /^(0|unknown)\z/i } (
+                                                     ['Channel'    => $yv_utils->get_channel_title($video)],
+                                                     ['ChannelID'  => $yv_utils->get_channel_id($video)],
+                                                     ['VideoID'    => $yv_utils->get_video_id($video)],
+                                                     ['Category'   => $yv_utils->get_category_name($video)],
+                                                     ['Definition' => $yv_utils->get_definition($video)],
+                                                     ['Duration'   => $yv_utils->get_time($video)],
+                                                     ['Likes'      => $yv_utils->set_thousands($yv_utils->get_likes($video))],
+                                                     ['Dislikes' => $yv_utils->set_thousands($yv_utils->get_dislikes($video))],
+                                                     ['Views'    => $yv_utils->set_thousands($yv_utils->get_views($video))],
+                                                     ['Published' => $yv_utils->get_publication_date($video)],
+             )
+          ),
+          "$hr\n"
+         );
+
+    return 1;
+}
+
+sub print_videos {
+    my ($results, %args) = @_;
+
+    if (not $yv_utils->has_entries($results)) {
+        warn_no_results("video");
+    }
+
+    if ($opt{get_term_width} and $opt{results_fixed_width}) {
+        get_term_width();
+    }
+
+    my $url    = $results->{url};
+    my $videos = $results->{results} // [];
+
+    if (ref($videos) eq 'HASH' and exists $videos->{videos}) {
+        $videos = $videos->{videos};
+    }
+
+    if (ref($videos) ne 'ARRAY') {
+
+        my $current_instance = $yv_obj->get_api_host();
+
+        say "\n:: Probably $current_instance is down. Try:";
+        say "\n\t$0 --api=auto\n";
+        say "See also: https://github.com/trizen/pipe-viewer#invidious-instances";
+        return;
+    }
+
+    #my $videos = $info->{items} // [];
+
+    #~ foreach my $entry (@$videos) {
+    #~ if ($yv_utils->is_activity($entry)) {
+    #~ my $type = $entry->{snippet}{type};
+
+    #~ if ($type eq 'upload') {
+    #~ $entry->{kind} = 'youtube#video';
+    #~ $entry->{id}   = $entry->{contentDetails}{upload}{videoId};
+    #~ }
+
+    #~ if ($type eq 'playlistItem') {
+    #~ $entry->{kind} = 'youtube#video';
+    #~ $entry->{id}   = $entry->{contentDetails}{playlistItem}{resourceId}{videoId};
+    #~ }
+
+    #~ if ($type eq 'bulletin' and $entry->{contentDetails}{bulletin}{resourceId}{kind} eq 'youtube#video') {
+    #~ $entry->{kind} = 'youtube#video';
+    #~ $entry->{id}   = $entry->{contentDetails}{bulletin}{resourceId}{videoId};
+    #~ }
+    #~ }
+    #~ }
+
+#<<<
+    #~ @$videos = grep {
+            #~ ref($_) eq 'HASH' && ref($_->{id}) eq 'HASH'
+                #~ ? (exists($_->{id}{kind})
+                    #~ ? $_->{id}{kind} eq 'youtube#video'
+                    #~ : 0)
+                #~ : 1
+    #~ } @$videos;
+#>>>
+
+    if ($opt{shuffle}) {
+        require List::Util;
+        $videos = [List::Util::shuffle(@{$videos})];
+    }
+
+    #~ if (@{$videos} and not $results->{has_extra_info}) {
+
+    #~ my @video_ids       = grep { defined } map { $yv_utils->get_video_id($_) } @{$videos};
+    #~ my $content_details = $yv_obj->video_details(join(',', @video_ids), VIDEO_PART);
+    #~ my $video_details   = $content_details->{results}{items};
+
+    #~ foreach my $i (0 .. $#{$videos}) {
+    #~ @{$videos->[$i]}{qw(id contentDetails statistics snippet)} =
+    #~ @{$video_details->[$i]}{qw(id contentDetails statistics snippet)};
+    #~ }
+
+    #~ $results->{has_extra_info} = 1;
+    #~ }
+
+#<<<
+    # Filter out private or deleted videos
+    #~ @$videos = grep {
+           #~ $yv_utils->get_video_id($_)
+       #~ and $yv_utils->get_time($_) ne '00:00'
+    #~ } @$videos;
+#>>>
+
+    my @formatted;
+
+    foreach my $i (0 .. $#{$videos}) {
+        my $video = $videos->[$i];
+
+        #use Data::Dump qw(pp);
+        #pp $video;
+
+        if ($opt{custom_layout}) {
+
+            my $entry = $opt{custom_layout_format};
+
+            if (ref($entry) eq '') {
+                $entry =~ s/\*NO\*/sprintf('%2d', $i+1)/ge;
+                $entry = $yv_utils->format_text(
+                                                info   => $video,
+                                                text   => $entry,
+                                                escape => 0,
+                                               );
+                push @formatted, "$entry\n";
+            }
+
+            if (ref($entry) eq 'ARRAY') {
+
+                my @columns;
+
+                foreach my $slot (@$entry) {
+
+                    my $text  = $slot->{text};
+                    my $width = $slot->{width} // 10;
+                    my $color = $slot->{color};
+                    my $align = $slot->{align} // 'left';
+
+                    if ($width =~ /^(\d+)%\z/) {
+                        $width = int(($term_width * $1) / 100);
+                    }
+
+                    $text =~ s/\*NO\*/$i+1/ge;
+
+                    $text = $yv_utils->format_text(
+                                                   info   => $video,
+                                                   text   => $text,
+                                                   escape => 0,
+                                                  );
+
+                    $text = clear_title($text);
+                    $text = adjust_width($text, $width, ($align eq 'right'));
+
+                    if (defined($color)) {
+                        $text = colored($text, $color);
+                    }
+
+                    push @columns, $text;
+                }
+
+                push @formatted, join(' ', @columns) . "\n";
+            }
+        }
+        elsif ($opt{results_with_details}) {
+            push @formatted,
+              ($i == 0 ? '' : "\n")
+              . sprintf(
+                        "%s. %s\n" . "    %s: %-16s %s: %-13s %s: %s\n" . "    %s: %-12s %s: %-10s %s: %s\n%s\n",
+                        colored(sprintf('%2d', $i + 1), 'bold') => colored($yv_utils->get_title($video), 'bold blue'),
+                        colored('Views'     => 'bold') => $yv_utils->set_thousands($yv_utils->get_views($video)),
+                        colored('Likes'     => 'bold') => $yv_utils->set_thousands($yv_utils->get_likes($video)),
+                        colored('Dislikes'  => 'bold') => $yv_utils->set_thousands($yv_utils->get_dislikes($video)),
+                        colored('Published' => 'bold') => $yv_utils->get_publication_date($video),
+                        colored('Duration'  => 'bold') => $yv_utils->get_time($video),
+                        colored('Author'    => 'bold') => $yv_utils->get_channel_title($video),
+                        wrap_text(
+                                  i_tab => q{ } x 4,
+                                  s_tab => q{ } x 4,
+                                  text  => [$yv_utils->get_description($video) || 'No description available...']
+                                 ),
+                       );
+        }
+        elsif ($opt{results_with_colors}) {
+            my $definition = $yv_utils->get_definition($video);
+            push @formatted,
+              sprintf(
+                      "%s. %s (%s) %s\n",
+                      colored(sprintf('%2d', $i + 1),               'bold'),
+                      colored($yv_utils->get_title($video),         'blue'),
+                      colored($yv_utils->get_time($video),          'magenta'),
+                      colored($yv_utils->get_channel_title($video), 'green'),
+                     );
+        }
+        elsif ($opt{results_fixed_width}) {
+
+            require List::Util;
+
+            my @durations = map { $yv_utils->get_duration($_) } @{$videos};
+            my @authors   = map { $yv_utils->get_channel_title($_) } @{$videos};
+
+            my $author_width = List::Util::min(List::Util::max(map { length($_) } @authors) || 1, int($term_width / 5));
+            my $time_width   = List::Util::first(sub { $_ >= 3600 }, @durations) ? 8 : 6;
+            my $title_length = $term_width - ($author_width + $time_width + 3 + 2 + 1);
+
+            foreach my $i (0 .. $#{$videos}) {
+
+                my $video = $videos->[$i];
+                my $title = clear_title($yv_utils->get_title($video));
+
+                push @formatted,
+                  sprintf("%s. %s %s %*s\n",
+                          colored(sprintf('%2d', $i + 1), 'bold'),
+                          adjust_width($title, $title_length),
+                          adjust_width($yv_utils->get_channel_title($video), $author_width, 1),
+                          $time_width, $yv_utils->get_time($video));
+            }
+            last;
+        }
+        else {
+            push @formatted,
+              sprintf(
+                      "%s. %s (by %s) [%s]\n",
+                      colored(sprintf('%2d', $i + 1), 'bold'), $yv_utils->get_title($video),
+                      $yv_utils->get_channel_title($video),    $yv_utils->get_time($video),
+                     );
+        }
+    }
+
+    if ($opt{highlight_watched}) {
+        foreach my $i (0 .. $#{$videos}) {
+            my $video = $videos->[$i];
+            if (exists($watched_videos{$yv_utils->get_video_id($video)})) {
+                $formatted[$i] = colored(colorstrip($formatted[$i]), $opt{highlight_color});
+            }
+        }
+    }
+
+    if (@formatted) {
+        print "\n" . join("", @formatted);
+    }
+
+    if ($opt{play_all} || $opt{play_backwards}) {
+        if (@{$videos}) {
+            if (
+                play_videos(
+                            $opt{play_backwards}
+                            ? [reverse @{$videos}]
+                            : $videos
+                           )
+              ) {
+                if ($opt{play_backwards}) {
+                    if (defined($url)) {
+                        __SUB__->($yv_obj->previous_page($url), auto => 1);
+                    }
+                    else {
+                        $opt{play_backwards} = 0;
+                        warn_first_page();
+                        return;
+                    }
+                }
+                else {
+                    if (defined($url)) {
+                        __SUB__->($yv_obj->next_page($url), auto => 1);
+                    }
+                    else {
+                        $opt{play_all} = 0;
+                        warn_last_page();
+                        return;
+                    }
+                }
+            }
+            else {
+                $opt{play_all}       = 0;
+                $opt{play_backwards} = 0;
+                __SUB__->($results);
+            }
+        }
+        else {
+            $opt{play_all}       = 0;
+            $opt{play_backwards} = 0;
+        }
+    }
+
+    state @keywords;
+    if ($args{auto}) { }    # do nothing...
+    else {
+        @keywords = get_input_for_search();
+
+        if (scalar(@keywords) == 0) {    # only arguments
+            __SUB__->($results);
+        }
+    }
+
+    state @for_search;
+    state @for_play;
+
+    my @copy_of_keywords  = @keywords;
+    my $contains_keywords = grep /$non_digit_or_opt_re/, @keywords;
+
+    while (@keywords) {
+        my $key = shift @keywords;
+        if ($key =~ /$valid_opt_re/) {
+
+            my $opt = $1;
+
+            if (
+                general_options(opt => $opt,
+                                res => $videos,)
+              ) {
+                ## ok
+            }
+            elsif ($opt =~ /^(?:h|help)\z/) {
+                print $complete_help;
+                press_enter_to_continue();
+            }
+            elsif ($opt =~ /^(?:n|next)\z/) {
+                if (defined($url)) {
+                    my $request = $yv_obj->next_page($url);
+                    __SUB__->($request, @keywords ? (auto => 1) : ());
+                }
+                else {
+                    warn_last_page();
+                    if ($opt{auto_next_page}) {
+                        $opt{auto_next_page} = 0;
+                        @copy_of_keywords = ();
+                        last;
+                    }
+                }
+            }
+            elsif ($opt =~ /^(?:b|back|p|prev|previous)\z/) {
+                if (defined($url)) {
+                    __SUB__->($yv_obj->previous_page($url), @keywords ? (auto => 1) : ());
+                }
+                else {
+                    warn_first_page();
+                }
+            }
+            elsif ($opt =~ /^(?:R|refresh)\z/) {
+                @{$videos} = @{$yv_obj->_get_results($url)->{results}};
+                $results->{has_extra_info} = 0;
+            }
+            elsif ($opt =~ /^(?:r|return)\z/) {
+                return;
+            }
+            elsif ($opt =~ /^(?:a|author|u|uploads)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    foreach my $id (@nums) {
+                        my $channel_id = $yv_utils->get_channel_id($videos->[$id]);
+                        my $request    = $yv_obj->uploads($channel_id);
+                        if ($yv_utils->has_entries($request)) {
+                            __SUB__->($request);
+                        }
+                        else {
+                            warn_no_results('video');
+                        }
+                    }
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt =~ /^(?:pv|popular)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    foreach my $id (@nums) {
+                        my $channel_id = $yv_utils->get_channel_id($videos->[$id]);
+                        my $request    = $yv_obj->popular_videos($channel_id);
+                        if ($yv_utils->has_entries($request)) {
+                            __SUB__->($request);
+                        }
+                        else {
+                            warn_no_results('popular video');
+                        }
+                    }
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt =~ /^(?:A|[Aa]ctivity)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    foreach my $id (@nums) {
+                        my $channel_id = $yv_utils->get_channel_id($videos->[$id]);
+                        my $request    = $yv_obj->activities($channel_id);
+                        if ($yv_utils->has_entries($request)) {
+                            __SUB__->($request);
+                        }
+                        else {
+                            warn_no_results('activity');
+                        }
+                    }
+                }
+                else {
+                    warn_no_thing_selected('activity');
+                }
+            }
+            elsif ($opt =~ /^(?:ps|s2p)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    select_and_save_to_playlist(map { $yv_utils->get_video_id($videos->[$_]) } @nums);
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt =~ /^(?:p|playlists?|up)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    foreach my $id (@nums) {
+                        my $request = $yv_obj->playlists($yv_utils->get_channel_id($videos->[$id]));
+                        if ($yv_utils->has_entries($request)) {
+                            print_playlists($request);
+                        }
+                        else {
+                            warn_no_results('playlist');
+                        }
+                    }
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt =~ /^((?:dis)?like)${digit_or_equal_re}(.*)/) {
+                my $rating = $1;
+                if (my @nums = get_valid_numbers($#{$videos}, $2)) {
+                    rate_videos($rating, map { $yv_utils->get_video_id($videos->[$_]) } @nums);
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt =~ /^(?:fav|favorite|F)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    favorite_videos(map { $yv_utils->get_video_id($videos->[$_]) } @nums);
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt =~ /^(?:subscribe|S)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    subscribe(map { $yv_utils->get_channel_id($videos->[$_]) } @nums);
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt =~ /^(?:q|queue|enqueue)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    push @{$opt{_queue_play}}, map { $yv_utils->get_video_id($videos->[$_]) } @nums;
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt =~ /^(?:pq|qp|play-queue)\z/) {
+                if (ref $opt{_queue_play} eq 'ARRAY' and @{$opt{_queue_play}}) {
+                    my $ids = 'v=' . join(q{,}, splice @{$opt{_queue_play}});
+                    general_options(opt => $ids);
+                }
+                else {
+                    warn colored("\n[!] The playlist is empty!", 'bold red') . "\n";
+                }
+            }
+            elsif ($opt =~ /^c(?:omments?)?${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    get_and_print_comments(map { $yv_utils->get_video_id($videos->[$_]) } @nums);
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt =~ /^r(?:elated)?${digit_or_equal_re}(.*)/) {
+                if (my ($id) = get_valid_numbers($#{$videos}, $1)) {
+                    get_and_print_related_videos($yv_utils->get_video_id($videos->[$id]));
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt =~ /^(?:ap|autoplay)${digit_or_equal_re}(.*)/) {
+                if (my ($id) = get_valid_numbers($#{$videos}, $1)) {
+                    local $opt{autoplay_mode} = 1;
+                    play_videos([$videos->[$id]]);
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt =~ /^d(?:ownload)?${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    local $opt{download_video} = 1;
+                    play_videos([@{$videos}[@nums]]);
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt =~ /^(?:play|P)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    local $opt{download_video} = 0;
+                    local $opt{extract_info}   = undef;
+                    play_videos([@{$videos}[@nums]]);
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt =~ /^i(?:nfo)?${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    foreach my $num (@nums) {
+                        local $opt{show_video_info} = 1;
+                        print_video_info($videos->[$num]);
+                    }
+                    press_enter_to_continue();
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt eq 'anp') {    # auto-next-page
+                $opt{auto_next_page} = 1;
+            }
+            elsif ($opt eq 'nnp') {    # no-next-page
+                $opt{auto_next_page} = 0;
+            }
+            elsif ($opt =~ /^[ks]re(?:gex)?=(.*)/) {
+                my $value = $1;
+                if ($value =~ /^([a-zA-Z]++)(?>,|=>)(.+)/) {
+                    play_videos_matched_by_regex(
+                                                 key    => $1,
+                                                 regex  => $2,
+                                                 videos => $videos,
+                                                )
+                      or __SUB__->($results);
+                }
+                else {
+                    warn_invalid("Special Regexp", $value);
+                }
+            }
+            elsif ($opt =~ /^re(?:gex)?=(.*)/) {
+                play_videos_matched_by_regex(
+                                             key    => 'title',
+                                             regex  => $1,
+                                             videos => $videos,
+                                            )
+                  or __SUB__->($results);
+            }
+            else {
+                warn_invalid('option', $opt);
+            }
+        }
+        elsif (youtube_urls($key)) {
+            ## ok
+        }
+        elsif (!$contains_keywords and (valid_num($key, $videos) or $key =~ /$range_num_re/)) {
+            my @for_play;
+            if ($key =~ /$range_num_re/) {
+                my $from = $1;
+                my $to   = $2 // do {
+                    $opt{auto_next_page} ? do { $from = 1 } : do { $opt{auto_next_page} = 1 };
+                    $#{$videos} + 1;
+                };
+                my @ids = get_valid_numbers($#{$videos}, "$from..$to");
+                if (@ids) {
+                    push @for_play, @ids;
+                }
+                else {
+                    push @for_search, $key;
+                }
+            }
+            else {
+                push @for_play, $key - 1;
+            }
+
+            if (@for_play and not play_videos([@{$videos}[@for_play]])) {
+                __SUB__->($results);
+            }
+        }
+        else {
+            push @for_search, $key;
+        }
+    }
+
+    if (@for_search) {
+        __SUB__->($yv_obj->search_videos([splice(@for_search)]));
+    }
+    elsif ($opt{auto_next_page}) {
+        @keywords = (':next', grep { $_ !~ /^:(n|next|anp)\z/ } @copy_of_keywords);
+
+        if (@keywords > 1) {
+            my $timeout = 2;
+            print colored("\n:: Press <ENTER> in $timeout seconds to stop the :anp option.", 'bold green');
+            eval {
+                local $SIG{ALRM} = sub {
+                    die "alarm\n";
+                };
+                alarm $timeout;
+                scalar <STDIN>;
+                alarm 0;
+            };
+
+            if ($@) {
+                if ($@ eq "alarm\n") {
+                    __SUB__->($results, auto => 1);
+                }
+                else {
+                    warn colored("\n[!] Unexpected error: <$@>.", 'bold red') . "\n";
+                }
+            }
+            else {
+                $opt{auto_next_page} = 0;
+                __SUB__->($results);
+            }
+        }
+        else {
+            warn colored("\n[!] Option ':anp' works only combined with other options!", 'bold red') . "\n";
+            $opt{auto_next_page} = 0;
+            __SUB__->($results);
+        }
+    }
+
+    __SUB__->($results) if not $args{auto};
+
+    return 1;
+}
+
+sub press_enter_to_continue {
+    say '';
+    scalar $term->readline(colored("=>> Press ENTER to continue...", 'bold'));
+}
+
+sub main_quit {
+    exit($_[0] // 0);
+}
+
+main_quit(0);
+
+=head1 CONFIGURATION OPTIONS
+
+=head2 api_host
+
+Hostname of an invidious instance. When set to C<"auto">, a random invidious is selected everytime when the program is started.
+
+=head2 auto_captions
+
+When set to C<1>, auto-generated captions will be retrieved. By default, auto-generated captions are ignored.
+
+=head2 autoplay_mode
+
+Enable autoplay mode, which will continuously play related videos.
+
+=head2 cache_dir
+
+Cache directory where to save temporary files.
+
+=head2 colors
+
+Use colors for text.
+
+=head2 comments_order
+
+The sorting order for comments. Valid values: "top", "new".
+
+=head2 confirm
+
+Display a confirmation message after each video played.
+
+=head2 convert_cmd
+
+Command to convert videos.
+
+Default value:
+
+    "ffmpeg -i *IN* *OUT*"
+
+B<*IN*> gets replaced with the input file.
+
+B<*OUT*> gets replaced with the output file.
+
+=head2 convert_to
+
+Format to convert each downloaded video into. (e.g.: C<"mp3">).
+
+=head2 cookie_file
+
+Load cookies from a file. Useful to overcome the "429: Too Many Requests" issue.
+
+The file must be a C<# Netscape HTTP Cookie File>. Same format as C<youtube-dl> requires.
+
+See also:
+
+    https://github.com/ytdl-org/youtube-dl#how-do-i-pass-cookies-to-youtube-dl
+
+=head2 copy_caption
+
+When downloading a video, copy the closed-caption (if any) in the same folder with the video.
+
+If C<merge_into_mkv> and C<merge_with_captions> are both enabled, there is no need to enable this option.
+
+=head2 custom_layout
+
+Use a custom layout for video results, defined in C<custom_layout_format>.
+
+Requires: L<Unicode::GCString> or L<Text::CharWidth>.
+
+=head2 custom_layout_format
+
+An array of hash values specifying a custom layout for video results.
+
+    align       # "left" or "right"
+    color       # any color supported by Term::ANSIColor
+    text        # the actual text
+    width       # width allocated for the text
+
+The value for C<width> can be either a number of characters (e.g.: 20) or can be a percentage of the terminal width (e.g.: "15%").
+
+The special tokens for C<text> are listed in:
+
+    pipe-viewer --tricks
+
+=head2 dash_mp4_audio
+
+Include or exclude MP4/M4A (AAC) audio files.
+
+=head2 dash_segmented
+
+Include or exclude streams in "Dynamic Adaptive Streaming over HTTP" (DASH) format.
+
+=head2 dash_support
+
+Enable or disable support for split videos.
+
+=head2 date
+
+Search for videos uploaded within a specific amount of time.
+
+Valid values: "hour", "today", "week", "month", "year".
+
+=head2 debug
+
+Enable debug/verbose mode, which will print some extra information.
+
+Valid values: 0, 1, 2, 3.
+
+=head2 download_and_play
+
+Play downloaded videos.
+
+=head2 download_with_wget
+
+Download videos with C<wget>.
+
+=head2 downloads_dir
+
+Directory where to download files and where to save converted files.
+
+=head2 env_proxy
+
+Load proxy settings from C<*_proxy> environment variables (if any).
+
+=head2 fat32safe
+
+When downloading a video, make the filename compatible with the FAT32 filesystem.
+
+=head2 ffmpeg_cmd
+
+Path to the C<ffmpeg> program.
+
+=head2 fullscreen
+
+Play videos in fullscreen mode.
+
+=head2 get_captions
+
+Download closed-captions for videos (if any).
+
+=head2 get_term_width
+
+Read the terminal width (`stty size`).
+
+=head2 hfr
+
+Include or exclude High Frame Rate (HFR) videos.
+
+=head2 highlight_color
+
+Highlight color used to highlight watched videos.
+
+Any color supported by L<Term::ANSIColor> can be used.
+
+=head2 highlight_watched
+
+Highlight watched videos.
+
+=head2 history
+
+Enable or disable support for input history.
+
+Requires L<Term::ReadLine::Gnu>.
+
+=head2 history_file
+
+File where to save the input history.
+
+=head2 history_limit
+
+Maximum number of entries in the history file.
+
+When the limit is reached, the first half of the history file will be deleted.
+
+Set the value to C<-1> for no limit.
+
+=head2 http_proxy
+
+Set HTTP(S)/SOCKS proxy, using the format:
+
+    proto://domain.tld:port/
+
+If authentication is required, use:
+
+    proto://user:pass@domain.tld:port/
+
+=head2 ignore_av1
+
+Ignore videos in AV1 format.
+
+=head2 interactive
+
+Interactive mode, prompting for user-input.
+
+=head2 keep_original_video
+
+Keep the original video after conversion. When set to C<0>, the original video will be deleted.
+
+=head2 maxResults
+
+How many results to display per page.
+
+Currently, this is not implemented.
+
+=head2 merge_into_mkv
+
+During download, merge the audio+video files into an MKV container.
+
+Requires C<ffmpeg>.
+
+=head2 merge_into_mkv_args
+
+Arguments for C<ffmpeg> how to merge the files.
+
+=head2 merge_with_captions
+
+Include closed-captions inside the MKV container (if any).
+
+=head2 order
+
+Search order for videos.
+
+Valid values: "relevance", "rating", "upload_date", "view_count".
+
+=head2 page
+
+Page number of results.
+
+=head2 prefer_av1
+
+Prefer videos in AV1 format. (just for testing)
+
+=head2 prefer_mp4
+
+Prefer videos in MP4 (AVC) format.
+
+=head2 region
+
+ISO 3166 country code (default: "US").
+
+=head2 remember_watched
+
+Set to C<1> to remember and highlight watched videos across multiple sessions.
+
+The video IDs are saved in the filename specified by C<watched_file>.
+
+=head2 remove_played_file
+
+When C<download_and_play> is enabled, remove the file after playing it.
+
+=head2 resolution
+
+Preferred resolution for videos.
+
+Valid values: best, 2160p, 1440p, 1080p, 720p, 480p, 360p, 240p, 144p, audio.
+
+=head2 results_fixed_width
+
+Results in fixed-width format.
+
+Requires: L<Unicode::GCString> or L<Text::CharWidth>.
+
+=head2 results_with_colors
+
+Results with colors.
+
+=head2 results_with_details
+
+Results with extra details.
+
+=head2 show_video_info
+
+Show extra info for videos when selected.
+
+=head2 skip_if_exists
+
+When downloading, skip if the file already exists locally.
+
+=head2 skip_watched
+
+Skip already watched/downloaded videos.
+
+=head2 srt_languages
+
+List of SRT languages in the order of preference.
+
+=head2 subscriptions_order
+
+Order of subscriptions. Currently, not implemented.
+
+=head2 thousand_separator
+
+Thousands separator character for numbers >= 1000.
+
+=head2 timeout
+
+HTTPS timeout value in seconds. The default value is 10 seconds.
+
+=head2 user_agent
+
+Token that is used to identify the user agent on the network. The agent value is sent as the C<User-Agent> header in the requests.
+
+=head2 video_filename_format
+
+The format of filename for downloaded files.
+
+The available special tokens are listed in:
+
+    pipe-viewer --tricks
+
+=head2 video_player_selected
+
+The selected video player defined the C<video_players> table.
+
+=head2 video_players
+
+A table of video players.
+
+The keys for each player are:
+
+    arg        # any arguments for the video player
+    audio      # option specifying the *AUDIO* file
+    cmd        # the main player command
+    fs         # the fullscreen option
+    novideo    # the no-video mode option
+    srt        # option specifying the *SUB* file
+
+=head2 videoCaption
+
+When set to C<1> or C<"true">, retrieve only the videos that contain closed-captions in search results.
+
+=head2 videoDefinition
+
+When set to C<"high">, retrieve only HD videos in search results.
+
+=head2 videoDimension
+
+When set to C<"3d">, retrieve only 3D videos in search results.
+
+=head2 videoDuration
+
+Retrieve only short or long videos in search results.
+
+Valid values: "any", "short", "long".
+
+=head2 videoLicense
+
+When set to C<"creative_commons">, retrieve only videos under the I<Creative Commons> license in search results.
+
+=head2 watched_file
+
+File where to save the video IDs of watched/downloaded videos when C<remember_watched> is set to a true value.
+
+=head2 wget_cmd
+
+Command for C<wget> when C<download_with_wget> is set to a true value.
+
+=head2 youtube_video_url
+
+Format for C<sprintf()> for constructing an YouTube video URL given the video ID.
+
+=head2 ytdl
+
+Use C<youtube-dl> for videos with encrypted signatures.
+
+When set to C<0>, invidious instances will be used instead.
+
+=head2 ytdl_cmd
+
+Command for C<youtube-dl> when C<ytdl> is set to a true value.
+
+=head1 CONFIGURATION FILES
+
+The configuration files are:
+
+    ~/.config/pipe-viewer/pipe-viewer.conf
+    ~/.config/pipe-viewer/gtk-pipe-viewer.conf
+
+=head1 INVIDIOUS API REFERENCE
+
+https://github.com/iv-org/invidious/wiki/API
+
+=head1 REPOSITORY
+
+https://github.com/trizen/pipe-viewer
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright 2010-2020 Trizen.
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+See L<https://dev.perl.org/licenses/> for more information.
+
+=cut

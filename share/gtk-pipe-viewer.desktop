@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=GTK Pipe Viewer
+Version=1.0
+Comment=Search and play YouTube videos.
+Exec=gtk-pipe-viewer
+Icon=gtk-pipe-viewer
+StartupNotify=false
+Terminal=false
+Type=Application
+Categories=AudioVideo;GTK;
