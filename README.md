@@ -8,7 +8,7 @@ The goal of this fork is to parse the YouTube website directly, removing the dep
 
 * command-line interface to YouTube.
 
-![pipe-viewer](https://user-images.githubusercontent.com/614513/73046877-5cae1200-3e7c-11ea-8ab3-f8c444f88b30.png)
+![pipe-viewer](https://user-images.githubusercontent.com/614513/97738550-6d0faf00-1ad6-11eb-84ec-d37f28073d9d.png)
 
 ### gtk-pipe-viewer
 
