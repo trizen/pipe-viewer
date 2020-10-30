@@ -14,15 +14,15 @@
 #
 #-------------------------------------------------------
 #  pipe-viewer
-#  Fork: 14 February 2020
-#  Edit: 06 October 2020
+#  Fork: 30 October 2020
+#  Edit: 30 October 2020
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
 # pipe-viewer is a command line utility for streaming YouTube videos in mpv/vlc.
 
-# This is a fork of youtube-viewer:
-#   https://github.com/trizen/youtube-viewer
+# This is a fork of straw-viewer:
+#   https://github.com/trizen/straw-viewer
 
 =encoding utf8
 
