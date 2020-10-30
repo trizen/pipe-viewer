@@ -152,12 +152,12 @@ When C<$part> is C<undef>, it defaults to I<snippet>.
 sub video_details {
     my ($self, $id, $fields) = @_;
 
-    $fields //= $self->basic_video_info_fields;
-    my $info = $self->_get_results($self->_make_feed_url("videos/$id", fields => $fields))->{results};
+    #~ $fields //= $self->basic_video_info_fields;
+    #~ my $info = $self->_get_results($self->_make_feed_url("videos/$id", fields => $fields))->{results};
 
-    if (ref($info) eq 'HASH' and exists $info->{videoId} and exists $info->{title}) {
-        return $info;
-    }
+    #~ if (ref($info) eq 'HASH' and exists $info->{videoId} and exists $info->{title}) {
+        #~ return $info;
+    #~ }
 
     if ($self->get_debug) {
         say STDERR ":: Extracting video info using the fallback method...";
