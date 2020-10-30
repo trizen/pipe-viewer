@@ -2,7 +2,7 @@
 
 A lightweight application (fork of [straw-viewer](https://github.com/trizen/straw-viewer)) for searching and playing videos from YouTube, using the [API](https://github.com/iv-org/invidious/wiki/API) of [invidio.us](https://invidio.us/).
 
-The goal of this fork is to parse the YouTube website directly, removing the dependency on invidious instances.
+The goal of this fork is to parse the YouTube website directly and rely on the invidious instances only as fallback methods.
 
 ### pipe-viewer
 
@@ -20,8 +20,6 @@ The goal of this fork is to parse the YouTube website directly, removing the dep
 ### STATUS
 
 The project is in its early stages of development and some features are not implemented yet.
-
-Currently, only the searching for videos uses the YouTube website directly.
 
 
 ### AVAILABILITY

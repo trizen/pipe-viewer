@@ -25,12 +25,22 @@ sub _make_channels_url {
 
 sub videos_from_channel_id {
     my ($self, $channel_id) = @_;
-    return $self->_get_results($self->_make_feed_url("channels/$channel_id/videos"));
+
+    my $url = $self->_make_feed_url("channels/$channel_id/videos");
+
+    if (my @results = $self->_channel_uploads($channel_id)) {
+        return {
+            url => $url,
+            results => \@results,
+        };
+    }
+
+    return $self->_get_results($url);
 }
 
 sub videos_from_username {
     my ($self, $channel_id) = @_;
-    return $self->_get_results($self->_make_feed_url("channels/$channel_id/videos"));
+    $self->videos_from_channel_id($channel_id);
 }
 
 =head2 popular_videos($channel_id)

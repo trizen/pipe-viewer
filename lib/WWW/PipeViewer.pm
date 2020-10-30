@@ -12,6 +12,7 @@ memoize('_extract_from_ytdl');
 memoize('_extract_from_invidious');
 
 use parent qw(
+  WWW::PipeViewer::InitialData
   WWW::PipeViewer::Search
   WWW::PipeViewer::Videos
   WWW::PipeViewer::Channels
