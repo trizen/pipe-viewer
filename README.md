@@ -54,9 +54,9 @@ For trying the latest commit of `pipe-viewer`, without installing it, execute th
 
 ```console
     cd /tmp
-    wget https://github.com/trizen/pipe-viewer/archive/master.zip -O pipe-viewer-master.zip
-    unzip -n pipe-viewer-master.zip
-    cd pipe-viewer-master/bin
+    wget https://github.com/trizen/pipe-viewer/archive/main.zip -O pipe-viewer-main.zip
+    unzip -n pipe-viewer-main.zip
+    cd pipe-viewer-main/bin
     perl -pi -ne 's{DEVEL = 0}{DEVEL = 1}' {gtk-,}pipe-viewer
     ./pipe-viewer
 ```
