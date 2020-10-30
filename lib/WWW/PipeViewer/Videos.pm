@@ -149,29 +149,34 @@ When C<$part> is C<undef>, it defaults to I<snippet>.
 
 =cut
 
-sub video_details {
+sub _invidious_video_details {
     my ($self, $id, $fields) = @_;
 
-    #~ $fields //= $self->basic_video_info_fields;
-    #~ my $info = $self->_get_results($self->_make_feed_url("videos/$id", fields => $fields))->{results};
+    $fields //= $self->basic_video_info_fields;
+    my $info = $self->_get_results($self->_make_feed_url("videos/$id", fields => $fields))->{results};
 
-    #~ if (ref($info) eq 'HASH' and exists $info->{videoId} and exists $info->{title}) {
-        #~ return $info;
-    #~ }
+    if (ref($info) eq 'HASH' and exists $info->{videoId} and exists $info->{title}) {
+        return $info;
+    }
+
+    return;
+}
+
+sub video_details {
+    my ($self, $id, $fields) = @_;
 
     if ($self->get_debug) {
         say STDERR ":: Extracting video info using the fallback method...";
     }
 
-    # Fallback using the `get_video_info` URL
     my %video_info = $self->_get_video_info($id);
-    my $video      = $self->parse_json_string($video_info{player_response} // return);
+    my $video = $self->parse_json_string($video_info{player_response} // return $self->_invidious_video_details($id, $fields));
 
     if (exists $video->{videoDetails}) {
         $video = $video->{videoDetails};
     }
     else {
-        return;
+        return $self->_invidious_video_details($id, $fields);
     }
 
     my %details = (
