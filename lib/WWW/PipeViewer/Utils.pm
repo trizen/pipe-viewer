@@ -522,22 +522,29 @@ sub get_thumbnail_url {
 
     if ($info->{type} eq 'channel') {
         ref($info->{authorThumbnails}) eq 'ARRAY' or return '';
-        return $info->{authorThumbnails}[0]{url};
+
+        foreach my $thumbnail (map { ref($_) eq 'ARRAY' ? @{$_} : $_ } @{$info->{authorThumbnails}}) {
+            if (exists $thumbnail->{quality} and $thumbnail->{quality} eq $type) {
+                return $thumbnail->{url};
+            }
+        }
+
+        return eval { $info->{authorThumbnails}[0]{url} } // '';
     }
 
     ref($info->{videoThumbnails}) eq 'ARRAY' or return '';
 
-    my @thumbs = @{$info->{videoThumbnails}};
-    my @wanted = grep { $_->{quality} eq $type } @thumbs;
+    my @thumbs = map  { ref($_) eq 'ARRAY' ? @{$_} : $_ } @{$info->{videoThumbnails}};
+    my @wanted = grep { $_->{quality} eq $type } grep { ref($_) eq 'HASH' } @thumbs;
 
     my $url;
 
     if (@wanted) {
-        $url = $wanted[0]{url};
+        $url = eval { $wanted[0]{url} } // return '';
     }
     else {
         warn "[!] Couldn't find thumbnail of type <<$type>>...";
-        $url = $thumbs[0]{url};
+        $url = eval { $thumbs[0]{url} } // return '';
     }
 
     # Clean URL of trackers and other junk
@@ -550,7 +557,7 @@ sub get_channel_title {
     my ($self, $info) = @_;
 
     #$info->{snippet}{channelTitle} || $self->get_channel_id($info);
-    $info->{author};
+    $info->{author} // $info->{title};
 }
 
 sub get_author {
@@ -561,6 +568,16 @@ sub get_author {
 sub get_comment_id {
     my ($self, $info) = @_;
     $info->{commentId};
+}
+
+sub get_video_count {
+    my ($self, $info) = @_;
+    $info->{videoCount} // 0;
+}
+
+sub get_subscriber_count {
+    my ($self, $info) = @_;
+    $info->{subCount} // 0;
 }
 
 sub get_comment_content {

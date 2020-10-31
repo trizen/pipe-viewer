@@ -56,24 +56,44 @@ sub _thumbnail_quality {
     $width  // return 'medium';
     $height // return 'medium';
 
-    if ($width == 1280 and $height == 720) {
+    if ($width == 1280) {
         return "maxres";
     }
 
-    if ($width == 640 and $height == 480) {
+    if ($width == 640) {
         return "sddefault";
     }
 
-    if ($width == 480 and $height == 360) {
+    if ($width == 480) {
         return 'high';
     }
 
-    if ($width == 320 and $height == 180) {
+    if ($width == 320) {
         return 'medium';
     }
 
-    if ($width == 120 and $height == 90) {
+    if ($width == 120) {
         return 'default';
+    }
+
+    if ($width <= 88) {
+        return 'small';
+    }
+
+    if ($width <= 176) {
+        return 'medium';
+    }
+
+    if ($width <= 480) {
+        return 'high';
+    }
+
+    if ($width <= 640) {
+        return 'sddefault';
+    }
+
+    if ($width <= 1280) {
+        return "maxres";
     }
 
     return 'medium';
@@ -117,6 +137,8 @@ sub _extract_youtube_mix {
     $mix{playlistThumbnail} = eval { _fix_url_protocol($header->{avatar}{thumbnails}[0]{url}) }
       // eval { _fix_url_protocol($info->{heroImage}{collageHeroImageRenderer}{leftThumbnail}{thumbnails}[0]{url}) };
 
+    $mix{description} = _extract_description({title => $info});
+
     $mix{author}   = eval { $header->{title}{runs}[0]{text} }                              // "YouTube";
     $mix{authorId} = eval { $header->{titleNavigationEndpoint}{browseEndpoint}{browseId} } // "youtube";
 
@@ -142,12 +164,21 @@ sub _extract_length_seconds {
 
 sub _extract_published_text {
     my ($info) = @_;
-    eval { $info->{publishedTimeText}{runs}[0]{text} };
+
+    my $text = eval { $info->{publishedTimeText}{runs}[0]{text} } || return undef;
+
+    if ($text =~ /(\d+) (\w+)/) {
+        return "$1 $2";
+    }
+
+    return $text;
 }
 
 sub _extract_channel_id {
     my ($info) = @_;
-    eval { $info->{channelId} } // eval { $info->{shortBylineText}{runs}[0]{navigationEndpoint}{browseEndpoint}{browseId} };
+    eval      { $info->{channelId} }
+      // eval { $info->{shortBylineText}{runs}[0]{navigationEndpoint}{browseEndpoint}{browseId} }
+      // eval { $info->{navigationEndpoint}{browseEndpoint}{browseId} };
 }
 
 sub _extract_view_count_text {
@@ -155,7 +186,7 @@ sub _extract_view_count_text {
     eval { $info->{shortViewCountText}{runs}[0]{text} };
 }
 
-sub _extract_video_thumbnails {
+sub _extract_thumbnails {
     my ($info) = @_;
     eval {
         [
@@ -183,13 +214,21 @@ sub _extract_description {
 
 sub _extract_view_count {
     my ($info) = @_;
-    _human_number_to_int(eval { $info->{viewCountText}{runs}[0]{text} } // 0);
+    _human_number_to_int(eval { $info->{viewCountText}{runs}[0]{text} } || 0);
 }
 
 sub _extract_video_count {
     my ($info) = @_;
-    _human_number_to_int(eval { $info->{videoCountShortText}{runs}[0]{text} }
-                         // eval { $info->{videoCountText}{runs}[0]{text} } // 0);
+    _human_number_to_int(   eval { $info->{videoCountShortText}{runs}[0]{text} }
+                         || eval { $info->{videoCountText}{runs}[0]{text} }
+                         || 0);
+}
+
+sub _extract_subscriber_count {
+    my ($info) = @_;
+
+    # FIXME: convert dd.dK into ddd00
+    _human_number_to_int(eval { $info->{subscriberCountText}{runs}[0]{text} } || 0);
 }
 
 sub _extract_playlist_id {
@@ -206,6 +245,8 @@ sub _extract_playlist_thumbnail {
 sub _extract_itemSection_entry {
     my ($self, $data, %args) = @_;
 
+    ref($data) eq 'HASH' or return;
+
     # Album
     if ($args{type} eq 'all' and exists $data->{horizontalCardListRenderer}) {    # TODO
         return;
@@ -215,7 +256,7 @@ sub _extract_itemSection_entry {
     if (exists($data->{compactVideoRenderer}) or exists($data->{playlistVideoRenderer})) {
 
         my %video;
-        my $info = eval { $data->{compactVideoRenderer} } // eval { $data->{playlistVideoRenderer} };
+        my $info = $data->{compactVideoRenderer} // $data->{playlistVideoRenderer};
 
         $video{type} = 'video';
 
@@ -231,7 +272,7 @@ sub _extract_itemSection_entry {
         $video{authorId}        = _extract_channel_id($info);
         $video{publishedText}   = _extract_published_text($info);
         $video{viewCountText}   = _extract_view_count_text($info);
-        $video{videoThumbnails} = _extract_video_thumbnails($info);
+        $video{videoThumbnails} = _extract_thumbnails($info);
         $video{description}     = _extract_description($info);
         $video{viewCount}       = _extract_view_count($info);
 
@@ -242,16 +283,37 @@ sub _extract_itemSection_entry {
     if ($args{type} ne 'video' and exists $data->{compactPlaylistRenderer}) {
 
         my %playlist;
-        my $info = eval { $data->{compactPlaylistRenderer} };
+        my $info = $data->{compactPlaylistRenderer};
 
         $playlist{type} = 'playlist';
 
         $playlist{title}             = _extract_title($info)       // return;
         $playlist{playlistId}        = _extract_playlist_id($info) // return;
+        $playlist{author}            = _extract_author_name($info);
+        $playlist{authorId}          = _extract_channel_id($info);
         $playlist{videoCount}        = _extract_video_count($info);
         $playlist{playlistThumbnail} = _extract_playlist_thumbnail($info);
+        $playlist{description}       = _extract_description($info);
 
         return \%playlist;
+    }
+
+    # Channel
+    if ($args{type} ne 'video' and exists $data->{compactChannelRenderer}) {
+
+        my %channel;
+        my $info = $data->{compactChannelRenderer};
+
+        $channel{type} = 'channel';
+
+        $channel{author}           = _extract_title($info)      // return;
+        $channel{authorId}         = _extract_channel_id($info) // return;
+        $channel{subCount}         = _extract_subscriber_count($info);
+        $channel{videoCount}       = _extract_video_count($info);
+        $channel{authorThumbnails} = _extract_thumbnails($info);
+        $channel{description}      = _extract_description($info);
+
+        return \%channel;
     }
 
     return;
@@ -421,7 +483,92 @@ sub yt_search {
 
     my $url = $self->get_m_youtube_url . "/results?search_query=$args{q}";
 
-    # TODO: add support for various search parameters
+    $args{type} //= 'video';
+
+    # FIXME:
+    #   Currently, only one parameter per search is supported.
+    #   Would be nice to figure it out how to combine multiple parameters into one.
+
+    if ($args{type} eq 'video') {
+
+        if (defined(my $duration = $self->get_videoDuration)) {
+            if ($duration eq 'long') {
+                $url .= "&sp=EgQQARgC";
+            }
+            elsif ($duration eq 'short') {
+                $url .= "&sp=EgQQARgB";
+            }
+        }
+
+        if (defined(my $date = $self->get_date)) {
+            if ($date eq 'hour') {
+                $url .= "&sp=EgQIARAB";
+            }
+            elsif ($date eq 'today') {
+                $url .= "&sp=EgQIAhAB";
+            }
+            elsif ($date eq 'week') {
+                $url .= "&sp=EgQIAxAB";
+            }
+            elsif ($date eq 'month') {
+                $url .= "&sp=EgQIBBAB";
+            }
+            elsif ($date eq 'year') {
+                $url .= "&sp=EgQIBRAB";
+            }
+        }
+
+        if (defined(my $order = $self->get_order)) {
+            if ($order eq 'upload_date') {
+                $url .= "&sp=CAISAhAB";
+            }
+            elsif ($order eq 'view_count') {
+                $url .= "&sp=CAMSAhAB";
+            }
+            elsif ($order eq 'rating') {
+                $url .= "&sp=CAESAhAB";
+            }
+        }
+
+        if (defined(my $license = $self->get_videoLicense)) {
+            if ($license eq 'creative_commons') {
+                $url .= "&sp=EgIwAQ%253D%253D";
+            }
+        }
+
+        if (defined(my $vd = $self->get_videoDefinition)) {
+            if ($vd eq 'high') {
+                $url .= "&sp=EgIgAQ%253D%253D";
+            }
+        }
+
+        if (defined(my $vc = $self->get_videoCaption)) {
+            if ($vc eq 'true' or $vc eq '1') {
+                $url .= "&sp=EgIoAQ%253D%253D";
+            }
+        }
+
+        if (defined(my $vd = $self->get_videoDimension)) {
+            if ($vd eq '3d') {
+                $url .= "&sp=EgI4AQ%253D%253D";
+            }
+        }
+    }
+
+    if ($args{type} eq 'video') {
+        if ($url !~ /&sp=/) {
+            $url .= "&sp=EgIQAQ%253D%253D";
+        }
+    }
+    elsif ($args{type} eq 'playlist') {
+        $url .= "&sp=EgIQAw%253D%253D";
+    }
+    elsif ($args{type} eq 'channel') {
+        $url .= "&sp=EgIQAg%253D%253D";
+    }
+    elsif ($args{type} eq 'movie') {    # TODO: implement support for movies
+        $url .= "&sp=EgIQBA%253D%253D";
+    }
 
     my $hash = $self->_get_initial_data($url) // return;
     $self->_extract_sectionList_results(eval { $hash->{contents}{sectionListRenderer} }, %args);

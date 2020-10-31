@@ -2471,22 +2471,26 @@ sub print_channels {
         }
         elsif ($opt{results_with_colors}) {
             print "\n" if $i == 0;
-            printf("%s. %s (%s)\n",
+            printf(
+                   "%s. %s [%s] [%s]\n",
                    colored(sprintf('%2d', $i + 1),                    'bold'),
                    colored($yv_utils->get_channel_title($channel),    'blue'),
                    colored($yv_utils->get_publication_date($channel), 'magenta'),
+                   colored($yv_utils->get_video_count($channel),      'green'),
                   );
         }
         elsif ($opt{results_fixed_width}) {
 
             require List::Util;
 
-            my @authors = map { $yv_utils->get_channel_id($_) } @{$channels};
-            my @dates   = map { $yv_utils->get_publication_date($_) } @{$channels};
+            my @authors      = map { $yv_utils->get_channel_id($_) } @{$channels};
+            my @dates        = map { $yv_utils->get_publication_date($_) } @{$channels};
+            my @video_counts = map { $yv_utils->get_video_count($_) } @{$channels};
 
-            my $author_width = List::Util::min(List::Util::max(map { length($_) } @authors), int($term_width / 5));
-            my $dates_width  = List::Util::max(map { length($_) } @dates);
-            my $title_length = $term_width - ($author_width + $dates_width + 2 + 3 + 1 + 2);
+            my $author_width      = List::Util::min(List::Util::max(map { length($_) } @authors), int($term_width / 5));
+            my $dates_width       = List::Util::max(map { length($_) } @dates);
+            my $video_count_width = List::Util::max(map { length($_) } @video_counts);
+            my $title_length      = $term_width - ($author_width + $dates_width + $video_count_width + 2 + 3 + 1 + 2 + 2 + 1);
 
             print "\n";
             foreach my $i (0 .. $#{$channels}) {
@@ -2494,17 +2498,18 @@ sub print_channels {
                 my $channel = $channels->[$i];
                 my $title   = clear_title($yv_utils->get_channel_title($channel));
 
-                printf "%s. %s %s [%*s]\n", colored(sprintf('%2d', $i + 1), 'bold'),
+                printf "%s. %s %s [%*s] [%*s]\n", colored(sprintf('%2d', $i + 1), 'bold'),
                   adjust_width($title, $title_length),
                   adjust_width($authors[$i], $author_width, 1),
-                  $dates_width, $dates[$i];
+                  $dates_width,       $dates[$i],
+                  $video_count_width, $video_counts[$i];
             }
             last;
         }
         else {
             print "\n" if $i == 0;
-            printf "%s. %s [%s]\n", colored(sprintf('%2d', $i + 1), 'bold'), $yv_utils->get_channel_title($channel),
-              $yv_utils->get_publication_date($channel);
+            printf "%s. %s [%s] [%s]\n", colored(sprintf('%2d', $i + 1), 'bold'), $yv_utils->get_channel_title($channel),
+              $yv_utils->get_publication_date($channel), $yv_utils->get_video_count($channel);
         }
     }
 
@@ -2758,6 +2763,7 @@ sub print_playlists {
     state $info_format = <<"FORMAT";
 
 TITLE: %s
+VIDEO: %s
    ID: %s
   URL: https://www.youtube.com/playlist?list=%s
 DESCR: %s
@@ -2781,23 +2787,26 @@ FORMAT
         elsif ($opt{results_with_colors}) {
             print "\n" if $i == 0;
             printf(
-                   "%s. %s (%s) %s\n",
+                   "%s. %s [%s] %s [%s]\n",
                    colored(sprintf('%2d', $i + 1),                     'bold'),
                    colored($yv_utils->get_title($playlist),            'blue'),
                    colored($yv_utils->get_publication_date($playlist), 'magenta'),
                    colored($yv_utils->get_channel_title($playlist),    'green'),
+                   colored($yv_utils->get_video_count($playlist),      'yellow'),
                   );
         }
         elsif ($opt{results_fixed_width}) {
 
             require List::Util;
 
-            my @authors = map { $yv_utils->get_channel_title($_) } @{$playlists};
-            my @dates   = map { $yv_utils->get_publication_date($_) } @{$playlists};
+            my @authors      = map { $yv_utils->get_channel_title($_) } @{$playlists};
+            my @dates        = map { $yv_utils->get_publication_date($_) } @{$playlists};
+            my @video_counts = map { $yv_utils->get_video_count($_) } @{$playlists};
 
-            my $author_width = List::Util::min(List::Util::max(map { length($_) } @authors), int($term_width / 5));
-            my $dates_width  = List::Util::max(map { length($_) } @dates);
-            my $title_length = $term_width - ($author_width + $dates_width + 2 + 3 + 1 + 2);
+            my $author_width      = List::Util::min(List::Util::max(map { length($_) } @authors), int($term_width / 5));
+            my $dates_width       = List::Util::max(map { length($_) } @dates);
+            my $video_count_width = List::Util::max(map { length($_) } @video_counts);
+            my $title_length      = $term_width - ($author_width + $dates_width + $video_count_width + 2 + 3 + 1 + 2 + 1 + 2);
 
             print "\n";
             foreach my $i (0 .. $#{$playlists}) {
@@ -2805,19 +2814,21 @@ FORMAT
                 my $playlist = $playlists->[$i];
                 my $title    = clear_title($yv_utils->get_title($playlist));
 
-                printf "%s. %s %s [%*s]\n", colored(sprintf('%2d', $i + 1), 'bold'),
+                printf "%s. %s %s [%*s] [%*s]\n", colored(sprintf('%2d', $i + 1), 'bold'),
                   adjust_width($title, $title_length),
                   adjust_width($authors[$i], $author_width, 1),
-                  $dates_width, $dates[$i];
+                  $dates_width,       $dates[$i],
+                  $video_count_width, $video_counts[$i];
             }
             last;
         }
         else {
             print "\n" if $i == 0;
             printf(
-                   "%s. %s (by %s) [%s]\n",
+                   "%s. %s (by %s) [%s] [%s]\n",
                    colored(sprintf('%2d', $i + 1), 'bold'), $yv_utils->get_title($playlist),
-                   $yv_utils->get_channel_title($playlist), $yv_utils->get_publication_date($playlist)
+                   $yv_utils->get_channel_title($playlist), $yv_utils->get_publication_date($playlist),
+                   $yv_utils->get_video_count($playlist),
                   );
         }
     }
@@ -2868,6 +2879,7 @@ FORMAT
                         );
                         $desc =~ s/^\s+//;
                         printf $info_format, $yv_utils->get_title($playlists->[$id]),
+                          $yv_utils->get_video_count($playlists->[$id]),
                           ($yv_utils->get_playlist_id($playlists->[$id])) x 2, $desc;
                     }
                     press_enter_to_continue();
