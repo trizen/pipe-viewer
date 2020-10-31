@@ -182,9 +182,9 @@ my %CONFIG = (
     hpaned_position             => 420,
 
     # Pipe options
-    dash_support   => 1,
-    dash_mp4_audio => 1,
-    dash_segmented => 1,        # may load slow
+    split_videos   => 1,
+    m4a_audio      => 1,
+    dash           => 1,        # may load slow
     prefer_mp4     => 0,
     prefer_av1     => 0,
     ignore_av1     => 0,
@@ -854,7 +854,7 @@ sub apply_configuration {
     $audio_only_checkbutton->set_active($CONFIG{audio_only});
 
     # DASH mode
-    $dash_checkbutton->set_active($CONFIG{dash_segmented});
+    $dash_checkbutton->set_active($CONFIG{dash});
 
     $clear_list_checkbutton->set_active($CONFIG{clear_search_list});
     $panel_account_type_combobox->set_active($CONFIG{active_panel_account_combobox});
@@ -1742,7 +1742,7 @@ sub toggled_audio_only {
 
 # DASH mode
 sub toggled_dash_support {
-    $CONFIG{dash_segmented} = $dash_checkbutton->get_active() || 0;
+    $CONFIG{dash} = $dash_checkbutton->get_active() || 0;
 }
 
 # Check buttons toggles
@@ -2978,9 +2978,9 @@ sub get_streaming_url {
         hfr        => $CONFIG{hfr},
         ignore_av1 => $CONFIG{ignore_av1},
 
-        dash           => $CONFIG{dash_support},
-        dash_mp4_audio => $CONFIG{dash_mp4_audio},
-        dash_segmented => $CONFIG{dash_segmented},
+        split     => $CONFIG{split_videos},
+        m4a_audio => $CONFIG{m4a_audio},
+        dash      => $CONFIG{dash},
                                                                 );
 
     return {
@@ -3141,13 +3141,12 @@ sub run_cli_pipe_viewer {
 sub get_options_as_arguments {
     my @args;
     my %options = (
-                   'no-interactive'    => q{},
-                   'resolution'        => $CONFIG{resolution},
-                   'download-dir'      => quotemeta(rel2abs($CONFIG{downloads_dir})),
-                   'fullscreen'        => $CONFIG{fullscreen}     ? q{}   : undef,
-                   'no-dash'           => $CONFIG{dash_support}   ? undef : q{},
-                   'no-dash-segmented' => $CONFIG{dash_segmented} ? undef : q{},
-                   'no-video'          => $CONFIG{audio_only}     ? q{}   : undef,
+                   'no-interactive' => q{},
+                   'resolution'     => $CONFIG{resolution},
+                   'download-dir'   => quotemeta(rel2abs($CONFIG{downloads_dir})),
+                   'fullscreen'     => $CONFIG{fullscreen} ? q{}   : undef,
+                   'no-dash'        => $CONFIG{dash}       ? undef : q{},
+                   'no-video'       => $CONFIG{audio_only} ? q{}   : undef,
                   );
 
     while (my ($argv, $value) = each %options) {

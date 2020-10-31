@@ -41,90 +41,90 @@ Reference: http://en.wikipedia.org/wiki/YouTube#Quality_and_formats
 sub get_itags {
     scalar {
 
-        'best' => [{value => 38,  format => 'mp4'},               # mp4 (3072p) (v-a)
-                   {value => 138, format => 'mp4', dash => 1},    # mp4 (2160p-4320p) (v)
-                   {value => 266, format => 'mp4', dash => 1},    # mp4 (2160p-2304p) (v)
+        'best' => [{value => 38,  format => 'mp4'},                # mp4 (3072p) (v-a)
+                   {value => 138, format => 'mp4', split => 1},    # mp4 (2160p-4320p) (v)
+                   {value => 266, format => 'mp4', split => 1},    # mp4 (2160p-2304p) (v)
                   ],
 
-        '2160' => [{value => 315, format => 'webm', dash => 1, hfr => 1},    # webm HFR (v)
-                   {value => 272, format => 'webm', dash => 1},              # webm (v)
-                   {value => 313, format => 'webm', dash => 1},              # webm (v)
-                   {value => 401, format => 'av1',  dash => 1},              # av1 (v)
+        '2160' => [{value => 315, format => 'webm', split => 1, hfr => 1},    # webm HFR (v)
+                   {value => 272, format => 'webm', split => 1},              # webm (v)
+                   {value => 313, format => 'webm', split => 1},              # webm (v)
+                   {value => 401, format => 'av1',  split => 1},              # av1 (v)
                   ],
 
-        '1440' => [{value => 308, format => 'webm', dash => 1, hfr => 1},    # webm HFR (v)
-                   {value => 271, format => 'webm', dash => 1},              # webm (v)
-                   {value => 264, format => 'mp4',  dash => 1},              # mp4 (v)
-                   {value => 400, format => 'av1',  dash => 1},              # av1 (v)
+        '1440' => [{value => 308, format => 'webm', split => 1, hfr => 1},    # webm HFR (v)
+                   {value => 271, format => 'webm', split => 1},              # webm (v)
+                   {value => 264, format => 'mp4',  split => 1},              # mp4 (v)
+                   {value => 400, format => 'av1',  split => 1},              # av1 (v)
                   ],
 
-        '1080' => [{value => 303, format => 'webm', dash => 1, hfr => 1},    # webm HFR (v)
-                   {value => 299, format => 'mp4',  dash => 1, hfr => 1},    # mp4 HFR (v)
-                   {value => 248, format => 'webm', dash => 1},              # webm (v)
-                   {value => 137, format => 'mp4',  dash => 1},              # mp4 (v)
-                   {value => 399, format => 'av1',  dash => 1, hfr => 1},    # av1 (v)
-                   {value => 46,  format => 'webm'},                         # webm (v-a)
-                   {value => 37,  format => 'mp4'},                          # mp4 (v-a)
-                   {value => 301, format => 'mp4', live => 1},               # mp4 (live) (v-a)
-                   {value => 96,  format => 'ts',  live => 1},               # ts (live) (v-a)
+        '1080' => [{value => 303, format => 'webm', split => 1, hfr => 1},    # webm HFR (v)
+                   {value => 299, format => 'mp4',  split => 1, hfr => 1},    # mp4 HFR (v)
+                   {value => 248, format => 'webm', split => 1},              # webm (v)
+                   {value => 137, format => 'mp4',  split => 1},              # mp4 (v)
+                   {value => 399, format => 'av1',  split => 1, hfr => 1},    # av1 (v)
+                   {value => 46,  format => 'webm'},                          # webm (v-a)
+                   {value => 37,  format => 'mp4'},                           # mp4 (v-a)
+                   {value => 301, format => 'mp4', live => 1},                # mp4 (live) (v-a)
+                   {value => 96,  format => 'ts',  live => 1},                # ts (live) (v-a)
                   ],
 
-        '720' => [{value => 302, format => 'webm', dash => 1, hfr => 1},    # webm HFR (v)
-                  {value => 298, format => 'mp4',  dash => 1, hfr => 1},    # mp4 HFR (v)
-                  {value => 247, format => 'webm', dash => 1},              # webm (v)
-                  {value => 136, format => 'mp4',  dash => 1},              # mp4 (v)
-                  {value => 398, format => 'av1',  dash => 1, hfr => 1},    # av1 (v)
-                  {value => 45,  format => 'webm'},                         # webm (v-a)
-                  {value => 22,  format => 'mp4'},                          # mp4 (v-a)
-                  {value => 300, format => 'mp4', live => 1},               # mp4 (live) (v-a)
-                  {value => 120, format => 'flv', live => 1},               # flv (live) (v-a)
-                  {value => 95,  format => 'ts',  live => 1},               # ts (live) (v-a)
+        '720' => [{value => 302, format => 'webm', split => 1, hfr => 1},    # webm HFR (v)
+                  {value => 298, format => 'mp4',  split => 1, hfr => 1},    # mp4 HFR (v)
+                  {value => 247, format => 'webm', split => 1},              # webm (v)
+                  {value => 136, format => 'mp4',  split => 1},              # mp4 (v)
+                  {value => 398, format => 'av1',  split => 1, hfr => 1},    # av1 (v)
+                  {value => 45,  format => 'webm'},                          # webm (v-a)
+                  {value => 22,  format => 'mp4'},                           # mp4 (v-a)
+                  {value => 300, format => 'mp4', live => 1},                # mp4 (live) (v-a)
+                  {value => 120, format => 'flv', live => 1},                # flv (live) (v-a)
+                  {value => 95,  format => 'ts',  live => 1},                # ts (live) (v-a)
                  ],
 
-        '480' => [{value => 244, format => 'webm', dash => 1},              # webm (v)
-                  {value => 135, format => 'mp4',  dash => 1},              # mp4 (v)
-                  {value => 397, format => 'av1',  dash => 1},              # av1 (v)
-                  {value => 44,  format => 'webm'},                         # webm (v-a)
-                  {value => 35,  format => 'flv'},                          # flv (v-a)
-                  {value => 94,  format => 'mp4', live => 1},               # mp4 (live) (v-a)
+        '480' => [{value => 244, format => 'webm', split => 1},              # webm (v)
+                  {value => 135, format => 'mp4',  split => 1},              # mp4 (v)
+                  {value => 397, format => 'av1',  split => 1},              # av1 (v)
+                  {value => 44,  format => 'webm'},                          # webm (v-a)
+                  {value => 35,  format => 'flv'},                           # flv (v-a)
+                  {value => 94,  format => 'mp4', live => 1},                # mp4 (live) (v-a)
                  ],
 
-        '360' => [{value => 243, format => 'webm', dash => 1},              # webm (v)
-                  {value => 134, format => 'mp4',  dash => 1},              # mp4 (v)
-                  {value => 396, format => 'av1',  dash => 1},              # av1 (v)
-                  {value => 43,  format => 'webm'},                         # webm (v-a)
-                  {value => 34,  format => 'flv'},                          # flv (v-a)
-                  {value => 93,  format => 'mp4', live => 1},               # mp4 (live) (v-a)
-                  {value => 18,  format => 'mp4'},                          # mp4 (v-a)
+        '360' => [{value => 243, format => 'webm', split => 1},              # webm (v)
+                  {value => 134, format => 'mp4',  split => 1},              # mp4 (v)
+                  {value => 396, format => 'av1',  split => 1},              # av1 (v)
+                  {value => 43,  format => 'webm'},                          # webm (v-a)
+                  {value => 34,  format => 'flv'},                           # flv (v-a)
+                  {value => 93,  format => 'mp4', live => 1},                # mp4 (live) (v-a)
+                  {value => 18,  format => 'mp4'},                           # mp4 (v-a)
                  ],
 
-        '240' => [{value => 242, format => 'webm', dash => 1},              # webm (v)
-                  {value => 133, format => 'mp4',  dash => 1},              # mp4 (v)
-                  {value => 395, format => 'av1',  dash => 1},              # av1 (v)
-                  {value => 6,   format => 'flv'},                          # flv (270p) (v-a)
-                  {value => 5,   format => 'flv'},                          # flv (v-a)
-                  {value => 36,  format => '3gp'},                          # 3gp (v-a)
-                  {value => 13,  format => '3gp'},                          # 3gp (v-a)
-                  {value => 92,  format => 'mp4', live => 1},               # mp4 (live) (v-a)
-                  {value => 132, format => 'ts',  live => 1},               # ts (live) (v-a)
+        '240' => [{value => 242, format => 'webm', split => 1},              # webm (v)
+                  {value => 133, format => 'mp4',  split => 1},              # mp4 (v)
+                  {value => 395, format => 'av1',  split => 1},              # av1 (v)
+                  {value => 6,   format => 'flv'},                           # flv (270p) (v-a)
+                  {value => 5,   format => 'flv'},                           # flv (v-a)
+                  {value => 36,  format => '3gp'},                           # 3gp (v-a)
+                  {value => 13,  format => '3gp'},                           # 3gp (v-a)
+                  {value => 92,  format => 'mp4', live => 1},                # mp4 (live) (v-a)
+                  {value => 132, format => 'ts',  live => 1},                # ts (live) (v-a)
                  ],
 
-        '144' => [{value => 278, format => 'webm', dash => 1},              # webm (v)
-                  {value => 160, format => 'mp4',  dash => 1},              # mp4 (v)
-                  {value => 394, format => 'av1',  dash => 1},              # av1 (v)
-                  {value => 17,  format => '3gp'},                          # 3gp (v-a)
-                  {value => 91,  format => 'mp4'},                          # mp4 (live) (v-a)
-                  {value => 151, format => 'ts'},                           # ts (live) (v-a)
+        '144' => [{value => 278, format => 'webm', split => 1},              # webm (v)
+                  {value => 160, format => 'mp4',  split => 1},              # mp4 (v)
+                  {value => 394, format => 'av1',  split => 1},              # av1 (v)
+                  {value => 17,  format => '3gp'},                           # 3gp (v-a)
+                  {value => 91,  format => 'mp4'},                           # mp4 (live) (v-a)
+                  {value => 151, format => 'ts'},                            # ts (live) (v-a)
                  ],
 
-        'audio' => [{value => 172, format => 'webm', kbps => 192},            # webm (192 kbps)
-                    {value => 251, format => 'opus', kbps => 160},            # webm opus (128-160 kbps)
-                    {value => 171, format => 'webm', kbps => 128},            # webm vorbis (92-128 kbps)
-                    {value => 140, format => 'm4a',  kbps => 128},            # mp4a (128 kbps)
-                    {value => 141, format => 'm4a',  kbps => 256},            # mp4a (256 kbps)
-                    {value => 250, format => 'opus', kbps => 64},             # webm opus (64 kbps)
-                    {value => 249, format => 'opus', kbps => 48},             # webm opus (48 kbps)
-                    {value => 139, format => 'm4a',  kbps => 48},             # mp4a (48 kbps)
+        'audio' => [{value => 172, format => 'webm', kbps => 192},             # webm (192 kbps)
+                    {value => 251, format => 'opus', kbps => 160},             # webm opus (128-160 kbps)
+                    {value => 171, format => 'webm', kbps => 128},             # webm vorbis (92-128 kbps)
+                    {value => 140, format => 'm4a',  kbps => 128},             # mp4a (128 kbps)
+                    {value => 141, format => 'm4a',  kbps => 256},             # mp4a (256 kbps)
+                    {value => 250, format => 'opus', kbps => 64},              # webm opus (64 kbps)
+                    {value => 249, format => 'opus', kbps => 48},              # webm opus (48 kbps)
+                    {value => 139, format => 'm4a',  kbps => 48},              # mp4a (48 kbps)
                    ],
            };
 }
@@ -176,12 +176,12 @@ sub _find_streaming_url {
             $args{ignore_av1} && next;    # ignore videos in AV1 format
         }
 
-        if ($itag->{dash}) {
+        if ($itag->{split}) {
 
-            $args{dash} || next;
+            $args{split} || next;
 
             my $video_info = $stream->{$itag->{value}};
-            my $audio_info = $self->_find_streaming_url(%args, resolution => 'audio', dash => 0);
+            my $audio_info = $self->_find_streaming_url(%args, resolution => 'audio', split => 0);
 
             if (defined($audio_info)) {
                 $video_info->{__AUDIO__} = $audio_info;
@@ -191,14 +191,14 @@ sub _find_streaming_url {
             next;
         }
 
-        if ($resolution eq 'audio' and not $args{dash_mp4_audio}) {
+        if ($resolution eq 'audio' and not $args{m4a_audio}) {
             if ($itag->{format} eq 'm4a') {
                 next;    # skip m4a audio URLs
             }
         }
 
         # Ignore segmented DASH URLs (they load pretty slow in mpv)
-        if (not $args{dash_segmented}) {
+        if (not $args{dash}) {
             next if ($entry->{url} =~ m{/api/manifest/dash/});
         }
 
@@ -215,9 +215,12 @@ Return the streaming URL which corresponds with the specified resolution.
     (
         urls           => \@streaming_urls,
         resolution     => 'resolution_name',     # from $obj->get_resolutions(),
-        dash           => 1/0,                   # include or exclude DASH itags
-        dash_mp4_audio => 1/0,                   # include or exclude DASH videos with MP4 audio
-        dash_segmented => 1/0,                   # include or exclude segmented DASH videos
+
+        hfr            => 1/0,     # include or exclude High Frame Rate videos
+        ignore_av1     => 1/0,     # true to ignore videos in AV1 format
+        split          => 1/0,     # include or exclude split videos
+        m4a_audio      => 1/0,     # incldue or exclude M4A audio files
+        dash           => 1/0,     # include or exclude streams in DASH format
     )
 
 =cut

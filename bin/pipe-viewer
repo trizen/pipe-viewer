@@ -163,10 +163,11 @@ my %CONFIG = (
         : undef    # auto-defined
     ),
 
+    split_videos => 1,
+    m4a_audio    => 1,
+
     # YouTube options
-    dash_support    => 1,
-    dash_mp4_audio  => 1,
-    dash_segmented  => 1,        # may load slow
+    dash            => 1,        # may load slow
     maxResults      => 20,
     hfr             => 1,        # true to prefer high frame rate (HFR) videos
     resolution      => 'best',
@@ -604,21 +605,21 @@ if ($opt{history}) {
 }
 
 my $yv_obj = WWW::PipeViewer->new(
-                                   escape_utf8 => 1,
-                                   config_dir  => $config_dir,
-                                   ytdl        => $opt{ytdl},
-                                   ytdl_cmd    => $opt{ytdl_cmd},
-                                   cache_dir   => $opt{cache_dir},
-                                   env_proxy   => $opt{env_proxy},
-                                   cookie_file => $opt{cookie_file},
-                                   http_proxy  => $opt{http_proxy},
-                                   user_agent  => $opt{user_agent},
-                                   timeout     => $opt{timeout},
-                                  );
+                                  escape_utf8 => 1,
+                                  config_dir  => $config_dir,
+                                  ytdl        => $opt{ytdl},
+                                  ytdl_cmd    => $opt{ytdl_cmd},
+                                  cache_dir   => $opt{cache_dir},
+                                  env_proxy   => $opt{env_proxy},
+                                  cookie_file => $opt{cookie_file},
+                                  http_proxy  => $opt{http_proxy},
+                                  user_agent  => $opt{user_agent},
+                                  timeout     => $opt{timeout},
+                                 );
 
 require WWW::PipeViewer::Utils;
 my $yv_utils = WWW::PipeViewer::Utils->new(youtube_url_format => $opt{youtube_video_url},
-                                            thousand_separator => $opt{thousand_separator},);
+                                           thousand_separator => $opt{thousand_separator},);
 
 {    # Apply the configuration file
     my %temp = %CONFIG;
@@ -806,9 +807,9 @@ usage: $execname [options] ([url] | [keywords])
    --proxy=s            : set HTTP(S)/SOCKS proxy: 'proto://domain.tld:port/'
                           If authentication is required,
                           use 'proto://user:pass\@domain.tld:port/'
-   --dash!              : include or exclude the DASH itags
-   --dash-mp4a!         : include or exclude the itags for MP4 audio streams
-   --dash-segmented!    : include or exclude segmented DASH streams
+   --split-videos!      : include or exclude the itags for split videos
+   --m4a-audio!         : include or exclude the itags for M4A audio streams
+   --dash!              : include or exclude segmented DASH streams
    --ytdl!              : use youtube-dl for videos with encrypted signatures
                           `--no-ytdl` will use invidious instances
    --ytdl-cmd=s         : youtube-dl command (default: youtube-dl)
@@ -1537,7 +1538,7 @@ sub parse_arguments {
         'fixed-width|W|fw!'     => \$opt{results_fixed_width},
         'captions!'             => \$opt{videoCaption},
         'fullscreen|fs|f!'      => \$opt{fullscreen},
-        'dash!'                 => \$opt{dash_support},
+        'split-videos!'         => \$opt{split_videos},
         'confirm!'              => \$opt{confirm},
 
         'prefer-mp4!' => \$opt{prefer_mp4},
@@ -1552,23 +1553,23 @@ sub parse_arguments {
 
         'api-host|instance=s' => \$opt{api_host},
 
-        'convert-command|convert-cmd=s'      => \$opt{convert_cmd},
-        'dash-m4a|dash-mp4-audio|dash-mp4a!' => \$opt{dash_mp4_audio},
-        'dash-segmented!'                    => \$opt{dash_segmented},
-        'wget-dl|wget-download!'             => \$opt{download_with_wget},
-        'filename|filename-format=s'         => \$opt{video_filename_format},
-        'rp|rem-played|remove-played-file!'  => \$opt{remove_played_file},
-        'info|i|video-info=s'                => \$opt{print_video_info},
-        'get-term-width!'                    => \$opt{get_term_width},
-        'page=i'                             => \$opt{page},
-        'novideo|no-video|n|audio!'          => \$opt{novideo},
-        'highlight!'                         => \$opt{highlight_watched},
-        'skip-watched!'                      => \$opt{skip_watched},
-        'results=i'                          => \$opt{maxResults},
-        'shuffle|s!'                         => \$opt{shuffle},
-        'more|m!'                            => \$opt{more_results},
-        'pos|position=i'                     => \$opt{position},
-        'ps|playlist-save=s'                 => \$opt{playlist_save},
+        'convert-command|convert-cmd=s'     => \$opt{convert_cmd},
+        'm4a-audio|mp4-audio!'              => \$opt{m4a_audio},
+        'dash|dash-segmented!'              => \$opt{dash},
+        'wget-dl|wget-download!'            => \$opt{download_with_wget},
+        'filename|filename-format=s'        => \$opt{video_filename_format},
+        'rp|rem-played|remove-played-file!' => \$opt{remove_played_file},
+        'info|i|video-info=s'               => \$opt{print_video_info},
+        'get-term-width!'                   => \$opt{get_term_width},
+        'page=i'                            => \$opt{page},
+        'novideo|no-video|n|audio!'         => \$opt{novideo},
+        'highlight!'                        => \$opt{highlight_watched},
+        'skip-watched!'                     => \$opt{skip_watched},
+        'results=i'                         => \$opt{maxResults},
+        'shuffle|s!'                        => \$opt{shuffle},
+        'more|m!'                           => \$opt{more_results},
+        'pos|position=i'                    => \$opt{position},
+        'ps|playlist-save=s'                => \$opt{playlist_save},
 
         'ytdl!'      => \$opt{ytdl},
         'ytdl-cmd=s' => \$opt{ytdl_cmd},
@@ -2965,27 +2966,27 @@ sub get_streaming_url {
     if (ref($captions) eq 'ARRAY' and @$captions and $opt{get_captions} and not $opt{novideo}) {
         require WWW::PipeViewer::GetCaption;
         my $yv_cap = WWW::PipeViewer::GetCaption->new(
-                                                       auto_captions => $opt{auto_captions},
-                                                       captions_dir  => $opt{cache_dir},
-                                                       captions      => $captions,
-                                                       languages     => $CONFIG{srt_languages},
-                                                       yv_obj        => $yv_obj,
-                                                      );
+                                                      auto_captions => $opt{auto_captions},
+                                                      captions_dir  => $opt{cache_dir},
+                                                      captions      => $captions,
+                                                      languages     => $CONFIG{srt_languages},
+                                                      yv_obj        => $yv_obj,
+                                                     );
         $srt_file = $yv_cap->save_caption($video_id);
     }
 
     require WWW::PipeViewer::Itags;
     state $yv_itags = WWW::PipeViewer::Itags->new();
 
-    # Include DASH itags
-    my $dash = 1;
+    # Include split-videos
+    my $split_videos = 1;
 
-    # Exclude DASH itags in download-mode or when no video output is required
-    if ($opt{novideo} or not $opt{dash_support}) {
-        $dash = 0;
+    # Exclude split-videos in download-mode or when no video output is required
+    if ($opt{novideo} or not $opt{split_videos}) {
+        $split_videos = 0;
     }
     elsif ($opt{download_video}) {
-        $dash = $opt{merge_into_mkv} ? 1 : 0;
+        $split_videos = $opt{merge_into_mkv} ? 1 : 0;
     }
 
     my ($streaming, $resolution) = $yv_itags->find_streaming_url(
@@ -2995,9 +2996,9 @@ sub get_streaming_url {
         hfr        => $opt{hfr},
         ignore_av1 => $opt{ignore_av1},
 
-        dash           => $dash,
-        dash_mp4_audio => ($opt{novideo}        ? 1 : $opt{dash_mp4_audio}),
-        dash_segmented => ($opt{download_video} ? 0 : $opt{dash_segmented}),
+        split     => $split_videos,
+        m4a_audio => ($opt{novideo}        ? 1 : $opt{m4a_audio}),
+        dash      => ($opt{download_video} ? 0 : $opt{dash}),
                                                                 );
 
     return {
@@ -4213,17 +4214,9 @@ The special tokens for C<text> are listed in:
 
     pipe-viewer --tricks
 
-=head2 dash_mp4_audio
-
-Include or exclude MP4/M4A (AAC) audio files.
-
-=head2 dash_segmented
+=head2 dash
 
 Include or exclude streams in "Dynamic Adaptive Streaming over HTTP" (DASH) format.
-
-=head2 dash_support
-
-Enable or disable support for split videos.
 
 =head2 date
 
@@ -4347,6 +4340,10 @@ Arguments for C<ffmpeg> how to merge the files.
 
 Include closed-captions inside the MKV container (if any).
 
+=head2 m4a_audio
+
+When set to C<0>, MP4/M4A (AAC) audio files will be ignored.
+
 =head2 order
 
 Search order for videos.
@@ -4410,6 +4407,10 @@ When downloading, skip if the file already exists locally.
 =head2 skip_watched
 
 Skip already watched/downloaded videos.
+
+=head2 split_videos
+
+Enable or disable support for split-videos. "Split-videos" are videos that do not include audio and video in the same file.
 
 =head2 srt_languages
 
