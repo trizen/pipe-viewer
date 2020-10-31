@@ -25,10 +25,7 @@ sub _make_playlists_url {
         $opts{'part'} = 'snippet,contentDetails';
     }
 
-    $self->_make_feed_url(
-                          'playlists',
-                          %opts,
-                         );
+    $self->_make_feed_url('playlists', %opts,);
 }
 
 sub get_playlist_id {
@@ -67,10 +64,11 @@ sub playlists {
     my $url = $self->_make_feed_url("channels/playlists/$channel_id");
 
     if (my @results = $self->_channel_playlists($channel_id)) {
-        return {
-            url => $url,
-            results => \@results,
-        };
+        return
+          scalar {
+                  url     => $url,
+                  results => \@results,
+                 };
     }
 
     $self->_get_results($url);

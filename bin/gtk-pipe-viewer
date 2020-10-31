@@ -1227,6 +1227,16 @@ sub menu_popup {
             $author->append($item);
         }
 
+        # Playlists created by this author
+        {
+            my $item = 'Gtk3::ImageMenuItem'->new("Playlists");
+            $item->signal_connect(activate => \&show_playlists_from_selected_author);
+            $item->set_property(tooltip_text => "Show playlists created by this author");
+            $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-documents-symbolic", q{menu}));
+            $item->show;
+            $author->append($item);
+        }
+
         # Favorites of this author
         {
             my $item = 'Gtk3::ImageMenuItem'->new("Favorites");
@@ -1248,16 +1258,6 @@ sub menu_popup {
             #~ $author->append($item);
         #~ }
 #>>>
-
-        # Playlists created by this author
-        {
-            my $item = 'Gtk3::ImageMenuItem'->new("Playlists");
-            $item->signal_connect(activate => \&show_playlists_from_selected_author);
-            $item->set_property(tooltip_text => "Show playlists created by this author");
-            $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-documents-symbolic", q{menu}));
-            $item->show;
-            $author->append($item);
-        }
 
         # Liked videos by this author
 #<<<
