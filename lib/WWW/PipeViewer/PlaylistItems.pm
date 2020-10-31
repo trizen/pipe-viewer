@@ -80,7 +80,17 @@ Get videos from a specific playlistID.
 
 sub videos_from_playlist_id {
     my ($self, $id) = @_;
-    $self->_get_results($self->_make_feed_url("playlists/$id"));
+
+    my $url = $self->_make_feed_url("playlists/$id");
+
+    if (my @results = $self->yt_playlist_videos($id)) {
+        return {
+                url     => $url,
+                results => \@results,
+               };
+    }
+
+    $self->_get_results($url);
 }
 
 =head2 favorites($channel_id)

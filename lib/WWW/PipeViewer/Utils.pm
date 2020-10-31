@@ -225,7 +225,7 @@ sub has_entries {
 
     if (ref($result->{results}) eq 'HASH') {
 
-        foreach my $type(qw(comments videos playlists)) {
+        foreach my $type (qw(comments videos playlists)) {
             if (exists $result->{results}{$type}) {
                 return scalar @{$result->{results}{$type}} > 0;
             }
@@ -246,8 +246,8 @@ sub has_entries {
         return 0;
     }
 
-    return 1;      # maybe?
-    #ref($result) eq 'HASH' and ($result->{results}{pageInfo}{totalResults} > 0);
+    return 1;    # maybe?
+                 #ref($result) eq 'HASH' and ($result->{results}{pageInfo}{totalResults} > 0);
 }
 
 =head2 normalize_video_title($title, $fat32safe)
@@ -384,8 +384,8 @@ sub format_text {
     $text =~ s/$escapes_re/$special_escapes{$1}/g;
 
     $escape
-      ? $text =~ s/$tokens_re/\Q${\$special_tokens{$1}()}\E/gr
-      : $text =~ s/$tokens_re/${\$special_tokens{$1}()}/gr;
+      ? $text =~ s<$tokens_re><\Q${\($special_tokens{$1}() // '')}\E>gr
+      : $text =~ s<$tokens_re><${\($special_tokens{$1}() // '')}>gr;
 }
 
 =head2 set_thousands($num)
@@ -421,22 +421,6 @@ Get videoID.
 sub get_video_id {
     my ($self, $info) = @_;
     $info->{videoId};
-
-    #~ ref($info->{id}) eq 'HASH'                        ? $info->{id}{videoId}
-      #~ : exists($info->{snippet}{resourceId}{videoId}) ? $info->{snippet}{resourceId}{videoId}
-      #~ : exists($info->{contentDetails}{videoId})      ? $info->{contentDetails}{videoId}
-      #~ : exists($info->{contentDetails}{playlistItem}{resourceId}{videoId})
-      #~ ? $info->{contentDetails}{playlistItem}{resourceId}{videoId}
-      #~ : exists($info->{contentDetails}{upload}{videoId}) ? $info->{contentDetails}{upload}{videoId}
-      #~ : do {
-        #~ my $id = $info->{id} // return undef;
-
-        #~ if (length($id) != 11) {
-            #~ return undef;
-        #~ }
-
-        #~ $id;
-      #~ };
 }
 
 sub get_playlist_id {
@@ -543,8 +527,8 @@ sub get_thumbnail_url {
 
     ref($info->{videoThumbnails}) eq 'ARRAY' or return '';
 
-    my @thumbs =  @{$info->{videoThumbnails}};
-    my @wanted = grep{$_->{quality} eq $type} @thumbs;
+    my @thumbs = @{$info->{videoThumbnails}};
+    my @wanted = grep { $_->{quality} eq $type } @thumbs;
 
     my $url;
 
@@ -564,6 +548,7 @@ sub get_thumbnail_url {
 
 sub get_channel_title {
     my ($self, $info) = @_;
+
     #$info->{snippet}{channelTitle} || $self->get_channel_id($info);
     $info->{author};
 }
@@ -585,18 +570,21 @@ sub get_comment_content {
 
 sub get_id {
     my ($self, $info) = @_;
+
     #$info->{id};
     $info->{videoId};
 }
 
 sub get_channel_id {
     my ($self, $info) = @_;
+
     #$info->{snippet}{resourceId}{channelId} // $info->{snippet}{channelId};
     $info->{authorId};
 }
 
 sub get_category_id {
     my ($self, $info) = @_;
+
     #$info->{snippet}{resourceId}{categoryId} // $info->{snippet}{categoryId};
     #"unknown";
     $info->{genre} // 'Unknown';
@@ -630,6 +618,7 @@ sub get_category_name {
 
 sub get_publication_date {
     my ($self, $info) = @_;
+
     #$self->format_date($info->{snippet}{publishedAt});
     #$self->format_date
     require Time::Piece;
@@ -639,7 +628,7 @@ sub get_publication_date {
 
 sub get_publication_age {
     my ($self, $info) = @_;
-    ($info->{publishedText} // '') =~ s/\sago\z//r;;
+    ($info->{publishedText} // '') =~ s/\sago\z//r;
 }
 
 sub get_publication_age_approx {
@@ -672,6 +661,7 @@ sub get_publication_age_approx {
 
 sub get_duration {
     my ($self, $info) = @_;
+
     #$self->format_duration($info->{contentDetails}{duration});
     #$self->format_duration($info->{lengthSeconds});
     $info->{lengthSeconds};
@@ -691,6 +681,7 @@ sub get_time {
 
 sub get_definition {
     my ($self, $info) = @_;
+
     #uc($info->{contentDetails}{definition} // '-');
     #...;
     "unknown";
@@ -698,6 +689,7 @@ sub get_definition {
 
 sub get_dimension {
     my ($self, $info) = @_;
+
     #uc($info->{contentDetails}{dimension});
     #...;
     "unknown";
@@ -705,6 +697,7 @@ sub get_dimension {
 
 sub get_caption {
     my ($self, $info) = @_;
+
     #$info->{contentDetails}{caption};
     #...;
     "unknown";
@@ -762,14 +755,14 @@ sub get_dislikes {
 
 sub get_comments {
     my ($self, $info) = @_;
+
     #$info->{statistics}{commentCount};
     1;
 }
 
 {
     no strict 'refs';
-    foreach my $pair (
-                      [playlist     => {'playlist'     => 1}],
+    foreach my $pair ([playlist => {'playlist' => 1}],
                       [channel      => {'channel'      => 1}],
                       [video        => {'video'        => 1, 'playlistItem' => 1}],
                       [subscription => {'subscription' => 1}],
@@ -780,23 +773,14 @@ sub get_comments {
             my ($self, $item) = @_;
 
             if ($pair->[0] eq 'video') {
-                return 1 if exists $item->{videoId};
+                return 1 if defined $item->{videoId};
+            }
+
+            if ($pair->[0] eq 'playlist') {
+                return 1 if defined $item->{playlistId};
             }
 
             exists $pair->[1]{$item->{type} // ''};
-
-            #~ if (ref($item->{id}) eq 'HASH') {
-                #~ if (exists $pair->[1]{$item->{id}{kind}}) {
-                    #~ return 1;
-                #~ }
-            #~ }
-            #~ elsif (exists $item->{kind}) {
-                #~ if (exists $pair->[1]{$item->{kind}}) {
-                    #~ return 1;
-                #~ }
-            #~ }
-
-            #~ return;
         };
 
     }

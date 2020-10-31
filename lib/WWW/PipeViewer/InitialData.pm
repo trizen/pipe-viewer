@@ -13,6 +13,9 @@ WWW::PipeViewer::InitialData - Extract initial data.
     use WWW::PipeViewer;
     my $obj = WWW::PipeViewer->new(%opts);
 
+    my $results   = $obj->yt_search(q => $keywords);
+    my $playlists = $obj->yt_channel_playlists($channel_ID);
+
 =head1 SUBROUTINES/METHODS
 
 =cut
@@ -120,6 +123,86 @@ sub _extract_youtube_mix {
     return \%mix;
 }
 
+sub _extract_author_name {
+    my ($info) = @_;
+    eval { $info->{longBylineText}{runs}[0]{text} } // eval { $info->{shortBylineText}{runs}[0]{text} };
+}
+
+sub _extract_video_id {
+    my ($info) = @_;
+    eval { $info->{videoId} } || eval { $info->{navigationEndpoint}{watchEndpoint}{videoId} } || undef;
+}
+
+sub _extract_length_seconds {
+    my ($info) = @_;
+    eval { $info->{lengthSeconds} }
+      || _time_to_seconds(eval { $info->{thumbnailOverlays}[0]{thumbnailOverlayTimeStatusRenderer}{text}{runs}[0]{text} } // 0)
+      || _time_to_seconds(eval { $info->{lengthText}{runs}[0]{text} // 0 });
+}
+
+sub _extract_published_text {
+    my ($info) = @_;
+    eval { $info->{publishedTimeText}{runs}[0]{text} };
+}
+
+sub _extract_channel_id {
+    my ($info) = @_;
+    eval { $info->{channelId} } // eval { $info->{shortBylineText}{runs}[0]{navigationEndpoint}{browseEndpoint}{browseId} };
+}
+
+sub _extract_view_count_text {
+    my ($info) = @_;
+    eval { $info->{shortViewCountText}{runs}[0]{text} };
+}
+
+sub _extract_video_thumbnails {
+    my ($info) = @_;
+    eval {
+        [
+         map {
+             my %thumb = %$_;
+             $thumb{quality} = _thumbnail_quality($thumb{width}, $thumb{height});
+             $thumb{url}     = _fix_url_protocol($thumb{url});
+             \%thumb;
+         } @{$info->{thumbnail}{thumbnails}}
+        ]
+    };
+}
+
+sub _extract_title {
+    my ($info) = @_;
+    eval { $info->{title}{runs}[0]{text} } // eval { $info->{title}{accessibility}{accessibilityData}{label} };
+}
+
+sub _extract_description {
+    my ($info) = @_;
+
+    # FIXME: this is not the video description
+    eval { $info->{title}{accessibility}{accessibilityData}{label} };
+}
+
+sub _extract_view_count {
+    my ($info) = @_;
+    _human_number_to_int(eval { $info->{viewCountText}{runs}[0]{text} } // 0);
+}
+
+sub _extract_video_count {
+    my ($info) = @_;
+    _human_number_to_int(eval { $info->{videoCountShortText}{runs}[0]{text} }
+                         // eval { $info->{videoCountText}{runs}[0]{text} } // 0);
+}
+
+sub _extract_playlist_id {
+    my ($info) = @_;
+    eval { $info->{playlistId} };
+}
+
+sub _extract_playlist_thumbnail {
+    my ($info) = @_;
+    eval { _fix_url_protocol($info->{thumbnailRenderer}{playlistVideoThumbnailRenderer}{thumbnail}{thumbnails}[0]{url}) }
+      // eval { _fix_url_protocol($info->{thumbnail}{thumbnails}[0]{url}) };
+}
+
 sub _extract_itemSection_entry {
     my ($self, $data, %args) = @_;
 
@@ -129,64 +212,44 @@ sub _extract_itemSection_entry {
     }
 
     # Video
-    if (exists $data->{compactVideoRenderer}) {
+    if (exists($data->{compactVideoRenderer}) or exists($data->{playlistVideoRenderer})) {
 
         my %video;
-        my $info = $data->{compactVideoRenderer};
+        my $info = eval { $data->{compactVideoRenderer} } // eval { $data->{playlistVideoRenderer} };
 
         $video{type} = 'video';
 
-        $video{title} =
-          eval { $info->{title}{runs}[0]{text} } // eval { $info->{title}{accessibility}{accessibilityData}{label} } // return;
+        # Deleted video
+        if (defined(eval { $info->{isPlayable} }) and not $info->{isPlayable}) {
+            return;
+        }
 
-        $video{videoId} = eval { $info->{navigationEndpoint}{watchEndpoint}{videoId} } // $info->{videoId} // return;
-        $video{author}  = eval { $info->{longBylineText}{runs}[0]{text} } // eval { $info->{shortBylineText}{runs}[0]{text} };
-        $video{authorId}      = eval { $info->{channelId} };
-        $video{publishedText} = eval { $info->{publishedTimeText}{runs}[0]{text} };
-        $video{viewCountText} = eval { $info->{shortViewCountText}{runs}[0]{text} };
-
-        $video{videoThumbnails} = eval {
-            [
-             map {
-                 my %thumb = %$_;
-                 $thumb{quality} = _thumbnail_quality($thumb{width}, $thumb{height});
-                 $thumb{url}     = _fix_url_protocol($thumb{url});
-                 \%thumb;
-             } @{$info->{thumbnail}{thumbnails}}
-            ]
-        };
-
-        # FIXME: this is not the video description
-        $video{description} = eval { $info->{title}{accessibility}{accessibilityData}{label} };
-        $video{lengthSeconds} = _time_to_seconds(
-            eval {
-                $info->{thumbnailOverlays}[0]{thumbnailOverlayTimeStatusRenderer}{text}{runs}[0]{text};
-              } // 0
-        );
-        $video{title}     = eval { $info->{title}{runs}[0]{text} };
-        $video{viewCount} = _human_number_to_int(eval { $info->{viewCountText}{runs}[0]{text} } // 0);
+        $video{videoId}         = _extract_video_id($info) // return;
+        $video{title}           = _extract_title($info)    // return;
+        $video{lengthSeconds}   = _extract_length_seconds($info) || return;
+        $video{author}          = _extract_author_name($info);
+        $video{authorId}        = _extract_channel_id($info);
+        $video{publishedText}   = _extract_published_text($info);
+        $video{viewCountText}   = _extract_view_count_text($info);
+        $video{videoThumbnails} = _extract_video_thumbnails($info);
+        $video{description}     = _extract_description($info);
+        $video{viewCount}       = _extract_view_count($info);
 
         return \%video;
     }
 
     # Playlist
-    if (exists $data->{compactPlaylistRenderer}) {
+    if ($args{type} ne 'video' and exists $data->{compactPlaylistRenderer}) {
 
         my %playlist;
-        my $info = $data->{compactPlaylistRenderer};
+        my $info = eval { $data->{compactPlaylistRenderer} };
 
         $playlist{type} = 'playlist';
 
-        $playlist{title} =
-          eval { $info->{title}{runs}[0]{text} } // eval { $info->{title}{accessibility}{accessibilityData}{label} } // return;
-
-        $playlist{playlistId} = $info->{playlistId};
-        $playlist{videoCount} = _human_number_to_int(eval { $info->{videoCountShortText}{runs}[0]{text} }
-                                                     // eval { $info->{videoCountText}{runs}[0]{text} } // 0);
-
-        $playlist{playlistThumbnail} =
-          eval { _fix_url_protocol($info->{thumbnailRenderer}{playlistVideoThumbnailRenderer}{thumbnail}{thumbnails}[0]{url}) }
-          // eval { _fix_url_protocol($info->{thumbnail}{thumbnails}[0]{url}) };
+        $playlist{title}             = _extract_title($info)       // return;
+        $playlist{playlistId}        = _extract_playlist_id($info) // return;
+        $playlist{videoCount}        = _extract_video_count($info);
+        $playlist{playlistThumbnail} = _extract_playlist_thumbnail($info);
 
         return \%playlist;
     }
@@ -205,7 +268,7 @@ sub _parse_itemSection {
 
         my $item = $self->_extract_itemSection_entry($entry, %args);
 
-        if (defined($item)) {
+        if (defined($item) and ref($item) eq 'HASH') {
             push @results, $item;
         }
     }
@@ -228,6 +291,13 @@ sub _extract_sectionList_results {
               $self->_parse_itemSection({contents => $entry->{shelfRenderer}{content}{verticalListRenderer}{items}}, %args);
         }
 
+        # Playlist videos
+        if (eval { ref($entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer}{contents}) eq 'ARRAY' }) {
+            push @results,
+              $self->_parse_itemSection($entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer}, %args);
+            next;
+        }
+
         # YouTube Mix
         if ($args{type} eq 'all' and exists $entry->{universalWatchCardRenderer}) {
 
@@ -238,7 +308,7 @@ sub _extract_sectionList_results {
             }
         }
 
-        # Search results
+        # Video results
         if (exists $entry->{itemSectionRenderer}) {
             push @results, $self->_parse_itemSection($entry->{itemSectionRenderer}, %args);
         }
@@ -296,6 +366,19 @@ sub _extract_channel_playlists {
     return @results;
 }
 
+sub _extract_playlist_videos {
+    my ($self, $data, %args) = @_;
+
+    my @results = $self->_extract_sectionList_results(
+        eval {
+            $data->{contents}{singleColumnBrowseResultsRenderer}{tabs}[0]{tabRenderer}{content}{sectionListRenderer};
+        },
+        %args
+                                                     );
+    $self->_add_author_to_results($data, \@results, %args);
+    return @results;
+}
+
 sub _get_initial_data {
     my ($self, $url) = @_;
 
@@ -308,17 +391,6 @@ sub _get_initial_data {
     }
 
     return;
-}
-
-sub _youtube_search {
-    my ($self, %args) = @_;
-
-    my $url = $self->get_m_youtube_url . "/results?search_query=$args{q}";
-
-    # TODO: add support for various search parameters
-
-    my $hash = $self->_get_initial_data($url) // return;
-    $self->_extract_sectionList_results(eval { $hash->{contents}{sectionListRenderer} }, %args);
 }
 
 sub _channel_data {
@@ -338,16 +410,66 @@ sub _channel_data {
     $self->_get_initial_data($url);
 }
 
-sub _channel_uploads {
+=head2 yt_search(q => $keyword, %args)
+
+Search for videos given a keyword (uri-escaped).
+
+=cut
+
+sub yt_search {
+    my ($self, %args) = @_;
+
+    my $url = $self->get_m_youtube_url . "/results?search_query=$args{q}";
+
+    # TODO: add support for various search parameters
+
+    my $hash = $self->_get_initial_data($url) // return;
+    $self->_extract_sectionList_results(eval { $hash->{contents}{sectionListRenderer} }, %args);
+}
+
+=head2 yt_channel_uploads($channel, %args)
+
+Latest uploads for a given channel ID or username.
+
+=cut
+
+sub yt_channel_uploads {
     my ($self, $channel, %args) = @_;
     my $hash = $self->_channel_data($channel, type => 'videos') // return;
     $self->_extract_channel_uploads($hash, %args, type => 'video');
 }
 
-sub _channel_playlists {
+=head2 yt_channel_playlists($channel, %args)
+
+Playlists for a given channel ID or username.
+
+=cut
+
+sub yt_channel_playlists {
     my ($self, $channel, %args) = @_;
     my $hash = $self->_channel_data($channel, type => 'playlists') // return;
     $self->_extract_channel_playlists($hash, %args, type => 'playlist');
+}
+
+=head2 yt_playlist_videos($playlist_id, %args)
+
+Videos from a given playlist ID.
+
+=cut
+
+sub yt_playlist_videos {
+    my ($self, $playlist_id, %args) = @_;
+
+    my $url  = $self->get_m_youtube_url . "/playlist?list=$playlist_id";
+    my $hash = $self->_get_initial_data($url) // return;
+
+    $self->_extract_sectionList_results(
+        eval {
+            $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs}[0]{tabRenderer}{content}{sectionListRenderer};
+        },
+        %args,
+        type => 'video'
+                                       );
 }
 
 =head1 AUTHOR

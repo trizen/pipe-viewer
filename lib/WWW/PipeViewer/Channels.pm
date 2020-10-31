@@ -28,11 +28,11 @@ sub videos_from_channel_id {
 
     my $url = $self->_make_feed_url("channels/$channel_id/videos");
 
-    if (my @results = $self->_channel_uploads($channel_id)) {
+    if (my @results = $self->yt_channel_uploads($channel_id)) {
         return {
-            url => $url,
-            results => \@results,
-        };
+                url     => $url,
+                results => \@results,
+               };
     }
 
     return $self->_get_results($url);

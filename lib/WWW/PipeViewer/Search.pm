@@ -97,12 +97,12 @@ sub search_for {
 
     if ($type eq 'video' and $url =~ /\?q=[^&]+&type=video\z/) {
 
-        if (my @results = $self->_youtube_search(q => $keywords, type => $type, %$args)) {
+        if (my @results = $self->yt_search(q => $keywords, type => $type, %$args)) {
             return {
                     url     => $url,
                     results => \@results,
-                    };
-             }
+                   };
+        }
     }
 
     return $self->_get_results($url);

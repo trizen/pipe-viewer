@@ -63,7 +63,7 @@ sub playlists {
 
     my $url = $self->_make_feed_url("channels/playlists/$channel_id");
 
-    if (my @results = $self->_channel_playlists($channel_id)) {
+    if (my @results = $self->yt_channel_playlists($channel_id)) {
         return
           scalar {
                   url     => $url,
