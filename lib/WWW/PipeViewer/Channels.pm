@@ -56,7 +56,16 @@ sub popular_videos {
         return $self->_get_results($self->_make_feed_url('popular'));
     }
 
-    return $self->_get_results($self->_make_feed_url("channels/$channel_id/videos", sort_by => 'popular'));
+    my $url = $self->_make_feed_url("channels/$channel_id/videos", sort_by => 'popular');
+
+    if (my @results = $self->yt_channel_uploads($channel_id, sort_by => 'popular')) {
+        return {
+                url     => $url,
+                results => \@results,
+               };
+    }
+
+    return $self->_get_results($url);
 }
 
 =head2 channels_from_categoryID($category_id)

@@ -469,6 +469,15 @@ sub _channel_data {
         $url .= "/c/$channel/$args{type}";
     }
 
+    if (defined(my $sort = $args{sort_by})) {
+        if ($sort eq 'popular') {
+            $url .= "?sort=p";
+        }
+        elsif ($sort eq 'old') {
+            $url .= "?sort=da";
+        }
+    }
+
     $self->_get_initial_data($url);
 }
 
@@ -582,7 +591,7 @@ Latest uploads for a given channel ID or username.
 
 sub yt_channel_uploads {
     my ($self, $channel, %args) = @_;
-    my $hash = $self->_channel_data($channel, type => 'videos') // return;
+    my $hash = $self->_channel_data($channel, %args, type => 'videos') // return;
     $self->_extract_channel_uploads($hash, %args, type => 'video');
 }
 
@@ -594,7 +603,7 @@ Playlists for a given channel ID or username.
 
 sub yt_channel_playlists {
     my ($self, $channel, %args) = @_;
-    my $hash = $self->_channel_data($channel, type => 'playlists') // return;
+    my $hash = $self->_channel_data($channel, %args, type => 'playlists') // return;
     $self->_extract_channel_playlists($hash, %args, type => 'playlist');
 }
 
