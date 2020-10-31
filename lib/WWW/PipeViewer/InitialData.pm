@@ -51,10 +51,9 @@ sub _human_number_to_int {
 }
 
 sub _thumbnail_quality {
-    my ($width, $height) = @_;
+    my ($width) = @_;
 
-    $width  // return 'medium';
-    $height // return 'medium';
+    $width // return 'medium';
 
     if ($width == 1280) {
         return "maxres";
@@ -76,7 +75,7 @@ sub _thumbnail_quality {
         return 'default';
     }
 
-    if ($width <= 88) {
+    if ($width <= 120) {
         return 'small';
     }
 
@@ -192,11 +191,26 @@ sub _extract_thumbnails {
         [
          map {
              my %thumb = %$_;
-             $thumb{quality} = _thumbnail_quality($thumb{width}, $thumb{height});
+             $thumb{quality} = _thumbnail_quality($thumb{width});
              $thumb{url}     = _fix_url_protocol($thumb{url});
              \%thumb;
          } @{$info->{thumbnail}{thumbnails}}
         ]
+    };
+}
+
+sub _extract_playlist_thumbnail {
+    my ($info) = @_;
+    eval {
+        _fix_url_protocol(
+                         (
+                          grep { _thumbnail_quality($_->{width}) =~ /medium|high/ }
+                            @{$info->{thumbnailRenderer}{playlistVideoThumbnailRenderer}{thumbnail}{thumbnails}}
+                         )[0]{url} // $info->{thumbnailRenderer}{playlistVideoThumbnailRenderer}{thumbnail}{thumbnails}[0]{url}
+        );
+    } // eval {
+        _fix_url_protocol((grep { _thumbnail_quality($_->{width}) =~ /medium|high/ } @{$info->{thumbnail}{thumbnails}})[0]{url}
+                          // $info->{thumbnail}{thumbnails}[0]{url});
     };
 }
 
@@ -234,12 +248,6 @@ sub _extract_subscriber_count {
 sub _extract_playlist_id {
     my ($info) = @_;
     eval { $info->{playlistId} };
-}
-
-sub _extract_playlist_thumbnail {
-    my ($info) = @_;
-    eval { _fix_url_protocol($info->{thumbnailRenderer}{playlistVideoThumbnailRenderer}{thumbnail}{thumbnails}[0]{url}) }
-      // eval { _fix_url_protocol($info->{thumbnail}{thumbnails}[0]{url}) };
 }
 
 sub _extract_itemSection_entry {
