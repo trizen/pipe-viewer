@@ -106,7 +106,8 @@ my %valid_options = (
 
 #<<<
     # LWP user agent
-    user_agent => {valid => qr/^.{5}/, default => 'Mozilla/5.0 (iPad; CPU OS 7_1_1 like Mac OS X) AppleWebKit/537.51.2 (KHTML, like Gecko) Version/7.0 Mobile/11D201 Safari/9537.53'},
+    #user_agent => {valid => qr/^.{5}/, default => 'Mozilla/5.0 (iPad; CPU OS 7_1_1 like Mac OS X) AppleWebKit/537.51.2 (KHTML, like Gecko) Version/7.0 Mobile/11D201 Safari/9537.53'},
+    user_agent => {valid => qr/^.{5}/, default => 'Mozilla/5.0 (Android 10; Tablet; rv:82.0) Gecko/82.0 Firefox/82.0,gzip(gfe)'},
 #>>>
 );
 
@@ -1181,6 +1182,22 @@ sub post_as_json {
 sub next_page_with_token {
     my ($self, $url, $token) = @_;
 
+    if ($token =~ /^ytsearch:(\w+):(.*)/) {
+        return $self->yt_search_next_page($url, $2, type => $1, url => $url);
+    }
+
+    if ($token =~ /^ytplaylist:(\w+):(.*)/) {
+        return $self->yt_playlist_next_page($url, $2, type => $1, url => $url);
+    }
+
+    if ($url =~ m{^https://m\.youtube\.com}) {
+        return
+          scalar {
+                  url     => $url,
+                  results => [],
+                 };
+    }
+
     if (not $url =~ s{[?&]continuation=\K([^&]+)}{$token}) {
         $url = $self->_append_url_args($url, continuation => $token);
     }
@@ -1195,6 +1212,14 @@ sub next_page {
 
     if ($token) {
         return $self->next_page_with_token($url, $token);
+    }
+
+    if ($url =~ m{^https://m\.youtube\.com}) {
+        return
+          scalar {
+                  url     => $url,
+                  results => [],
+                 };
     }
 
     if (not $url =~ s{[?&]page=\K(\d+)}{$1+1}e) {

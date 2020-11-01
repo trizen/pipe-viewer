@@ -83,11 +83,8 @@ sub videos_from_playlist_id {
 
     my $url = $self->_make_feed_url("playlists/$id");
 
-    if (my @results = $self->yt_playlist_videos($id)) {
-        return {
-                url     => $url,
-                results => \@results,
-               };
+    if (my $results = $self->yt_playlist_videos($id, url => $url)) {
+        return $results;
     }
 
     $self->_get_results($url);

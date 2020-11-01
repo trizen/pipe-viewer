@@ -225,7 +225,7 @@ sub has_entries {
 
     if (ref($result->{results}) eq 'HASH') {
 
-        foreach my $type (qw(comments videos playlists)) {
+        foreach my $type (qw(comments videos playlists entries)) {
             if (exists $result->{results}{$type}) {
                 return scalar @{$result->{results}{$type}} > 0;
             }

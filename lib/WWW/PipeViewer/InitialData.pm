@@ -116,6 +116,17 @@ sub _fix_url_protocol {
     return $url;
 }
 
+sub _unscramble {
+    my ($str) = @_;
+
+    my $i = my $l = length($str);
+
+    $str =~ s/(.)(.{$i})/$2$1/sg while (--$i > 0);
+    $str =~ s/(.)(.{$i})/$2$1/sg while (++$i < $l);
+
+    return $str;
+}
+
 sub _extract_youtube_mix {
     my ($self, $data) = @_;
 
@@ -343,6 +354,19 @@ sub _parse_itemSection {
         }
     }
 
+    if (@results and exists $entry->{continuations} and ref($entry->{continuations}) eq 'ARRAY') {
+
+        my $token = eval { $entry->{continuations}[0]{nextContinuationData}{continuation} };
+
+        if (defined($token)) {
+            push @results,
+              scalar {
+                      type  => 'nextpage',
+                      token => "ytplaylist:$args{type}:$token",
+                     };
+        }
+    }
+
     return @results;
 }
 
@@ -384,8 +408,18 @@ sub _extract_sectionList_results {
         }
 
         # Continuation page
-        if (exists $entry->{continuationItemRenderer}) {    # TODO
-            ## ...
+        if (exists $entry->{continuationItemRenderer}) {
+
+            my $info  = $entry->{continuationItemRenderer};
+            my $token = eval { $info->{continuationEndpoint}{continuationCommand}{token} };
+
+            if (defined($token)) {
+                push @results,
+                  scalar {
+                          type  => 'nextpage',
+                          token => "ytsearch:$args{type}:$token",
+                         };
+            }
         }
     }
 
@@ -395,9 +429,9 @@ sub _extract_sectionList_results {
 sub _add_author_to_results {
     my ($self, $data, $results, %args) = @_;
 
-    my $header = eval { $data->{header}{c4TabbedHeaderRenderer} };
+    my $header = eval { $data->{header}{c4TabbedHeaderRenderer} } // eval { $data->{metadata}{channelMetadataRenderer} };
 
-    my $channel_id   = eval { $header->{channelId} };
+    my $channel_id   = eval { $header->{channelId} } // eval { $header->{externalId} };
     my $channel_name = eval { $header->{title} };
 
     foreach my $result (@$results) {
@@ -486,7 +520,46 @@ sub _channel_data {
         }
     }
 
-    $self->_get_initial_data($url);
+    ($url, $self->_get_initial_data($url));
+}
+
+sub _prepare_results_for_return {
+    my ($self, $results, %args) = @_;
+
+    (defined($results) and ref($results) eq 'ARRAY') || return;
+
+    my @results = @$results;
+
+    if (@results and $results[-1]{type} eq 'nextpage') {
+
+        my $nextpage = pop(@results);
+
+        if (defined($nextpage->{token}) and @results) {
+
+            if ($self->get_debug) {
+                say STDERR ":: Returning results with a continuation page token...";
+            }
+
+            return {
+                    url     => $args{url},
+                    results => {
+                                entries      => \@results,
+                                continuation => $nextpage->{token},
+                               },
+                   };
+        }
+    }
+
+    my $url = $args{url};
+
+    if ($url =~ m{^https://m\.youtube\.com}) {
+        $url = undef;
+    }
+
+    return {
+            url     => $url,
+            results => \@results,
+           };
 }
 
 =head2 yt_search(q => $keyword, %args)
@@ -587,8 +660,10 @@ sub yt_search {
         $url .= "&sp=EgIQBA%253D%253D";
     }
 
-    my $hash = $self->_get_initial_data($url) // return;
-    $self->_extract_sectionList_results(eval { $hash->{contents}{sectionListRenderer} }, %args);
+    my $hash    = $self->_get_initial_data($url) // return;
+    my @results = $self->_extract_sectionList_results(eval { $hash->{contents}{sectionListRenderer} }, %args);
+
+    $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
 =head2 yt_channel_uploads($channel, %args)
@@ -599,8 +674,12 @@ Latest uploads for a given channel ID or username.
 
 sub yt_channel_uploads {
     my ($self, $channel, %args) = @_;
-    my $hash = $self->_channel_data($channel, %args, type => 'videos') // return;
-    $self->_extract_channel_uploads($hash, %args, type => 'video');
+    my ($url, $hash) = $self->_channel_data($channel, %args, type => 'videos');
+
+    $hash // return;
+
+    my @results = $self->_extract_channel_uploads($hash, %args, type => 'video');
+    $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
 =head2 yt_channel_playlists($channel, %args)
@@ -611,8 +690,12 @@ Playlists for a given channel ID or username.
 
 sub yt_channel_playlists {
     my ($self, $channel, %args) = @_;
-    my $hash = $self->_channel_data($channel, %args, type => 'playlists') // return;
-    $self->_extract_channel_playlists($hash, %args, type => 'playlist');
+    my ($url, $hash) = $self->_channel_data($channel, %args, type => 'playlists');
+
+    $hash // return;
+
+    my @results = $self->_extract_channel_playlists($hash, %args, type => 'playlist');
+    $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
 =head2 yt_playlist_videos($playlist_id, %args)
@@ -627,13 +710,118 @@ sub yt_playlist_videos {
     my $url  = $self->get_m_youtube_url . "/playlist?list=$playlist_id";
     my $hash = $self->_get_initial_data($url) // return;
 
-    $self->_extract_sectionList_results(
+    my @results = $self->_extract_sectionList_results(
         eval {
             $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs}[0]{tabRenderer}{content}{sectionListRenderer};
         },
         %args,
         type => 'video'
-                                       );
+                                                     );
+
+    $self->_prepare_results_for_return(\@results, %args, url => $url);
+}
+
+=head2 yt_playlist_next_page($url, $token, %args)
+
+Load more items from a playlist, given a continuation token.
+
+=cut
+
+sub yt_playlist_next_page {
+    my ($self, $url, $token, %args) = @_;
+
+    my $request_url = $url;
+
+    if ($request_url =~ /\?/) {
+        $request_url .= "&ctoken=$token";
+    }
+    else {
+        $request_url .= "?ctoken=$token";
+    }
+
+    #say $url;
+
+    #my $url  = $self->get_m_youtube_url . "/playlist?ctoken=$token";
+    my $hash = $self->_get_initial_data($request_url) // return;
+
+    #use Data::Dump qw(pp);
+    #pp $hash;
+
+    my @results = $self->_parse_itemSection(
+                                            eval      { $hash->{continuationContents}{playlistVideoListContinuation} }
+                                              // eval { $hash->{continuationContents}{itemSectionContinuation} },
+                                            %args
+                                           );
+
+    $self->_add_author_to_results($hash, \@results, %args);
+
+    $self->_prepare_results_for_return(\@results, %args, url => $url);
+}
+
+=head2 yt_search_next_page($url, $token, %args)
+
+Load more search results, given a continuation token.
+
+=cut
+
+sub yt_search_next_page {
+    my ($self, $url, $token, %args) = @_;
+
+    my %request = (
+                   "context" => {
+                              "client" => {
+                                  "browserName"      => "Firefox",
+                                  "browserVersion"   => "82.0",
+                                  "clientFormFactor" => "LARGE_FORM_FACTOR",
+                                  "clientName"       => "MWEB",
+                                  "clientVersion"    => "2.20201030.01.00",
+                                  "deviceMake"       => "generic",
+                                  "deviceModel"      => "android 11.0",
+                                  "gl"               => "US",
+                                  "hl"               => "en",
+                                  "mainAppWebInfo"   => {
+                                                       "graftUrl" => "https://m.youtube.com/results?search_query=youtube"
+                                                      },
+                                  "osName"             => "Android",
+                                  "osVersion"          => "10",
+                                  "platform"           => "TABLET",
+                                  "playerType"         => "UNIPLAYER",
+                                  "screenDensityFloat" => 1,
+                                  "screenHeightPoints" => 420,
+                                  "screenPixelDensity" => 1,
+                                  "screenWidthPoints"  => 1442,
+                                  "userAgent" => "Mozilla/5.0 (Android 10; Tablet; rv:82.0) Gecko/82.0 Firefox/82.0,gzip(gfe)",
+                                  "userInterfaceTheme" => "USER_INTERFACE_THEME_LIGHT",
+                                  "utcOffsetMinutes"   => 0,
+                              },
+                              "request" => {
+                                            "consistencyTokenJars"    => [],
+                                            "internalExperimentFlags" => [],
+                                           },
+                              "user" => {}
+                   },
+                   "continuation" => $token,
+                  );
+
+    my $content = $self->post_as_json(
+                                      $self->get_m_youtube_url
+                                        . _unscramble('o/ebseky?u1ri//hvcuyta=e')
+                                        . _unscramble('1HUCiSlOalFEcYQSS8_9q1LW4y8JAwI2zT_qA_G'),
+                                      \%request
+                                     ) // return;
+
+    my $hash = $self->parse_json_string($content);
+
+    my @results = $self->_extract_sectionList_results(
+        {
+         contents => eval {
+             $hash->{onResponseReceivedCommands}[0]{appendContinuationItemsAction}{continuationItems};
+           } // undef
+        },
+        %args
+                                                     );
+
+    return $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
 =head1 AUTHOR

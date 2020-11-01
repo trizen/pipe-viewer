@@ -2479,6 +2479,12 @@ sub display_results {
         elsif (exists $items->{playlists}) {
             $items = $items->{playlists};
         }
+        elsif (exists $items->{channels}) {
+            $items = $items->{channels};
+        }
+        elsif (exists $items->{entries}) {
+            $items = $items->{entries};
+        }
         else {
             warn "No results...\n";
         }

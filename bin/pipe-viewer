@@ -2453,6 +2453,19 @@ sub print_channels {
     my $url      = $results->{url};
     my $channels = $results->{results} // [];
 
+    if (ref($channels) eq 'HASH') {
+        if (exists $channels->{channels}) {
+            $channels = $channels->{channels};
+        }
+        elsif (exists $channels->{entries}) {
+            $channels = $channels->{entries};
+        }
+        else {
+            warn "\n[!] No channels...\n";
+            $channels = [];
+        }
+    }
+
     foreach my $i (0 .. $#{$channels}) {
         my $channel = $channels->[$i];
 
@@ -2753,6 +2766,9 @@ sub print_playlists {
     if (ref($playlists) eq 'HASH') {
         if (exists $playlists->{playlists}) {
             $playlists = $playlists->{playlists};
+        }
+        elsif (exists $playlists->{entries}) {
+            $playlists = $playlists->{entries};
         }
         else {
             warn "\n[!] No playlists...\n";
@@ -3543,6 +3559,16 @@ sub print_videos {
         $videos = $videos->{videos};
     }
 
+    if (ref($videos) eq 'HASH' and exists $videos->{entries}) {
+        $videos = $videos->{entries};
+    }
+
+    my $token = undef;
+
+    if (ref($results->{results}) eq 'HASH' and exists $results->{results}{continuation}) {
+        $token = $results->{results}{continuation};
+    }
+
     if (ref($videos) ne 'ARRAY') {
 
         my $current_instance = $yv_obj->get_api_host();
@@ -3770,7 +3796,7 @@ sub print_videos {
                 }
                 else {
                     if (defined($url)) {
-                        __SUB__->($yv_obj->next_page($url), auto => 1);
+                        __SUB__->($yv_obj->next_page($url, $token), auto => 1);
                     }
                     else {
                         $opt{play_all} = 0;
@@ -3825,7 +3851,7 @@ sub print_videos {
             }
             elsif ($opt =~ /^(?:n|next)\z/) {
                 if (defined($url)) {
-                    my $request = $yv_obj->next_page($url);
+                    my $request = $yv_obj->next_page($url, $token);
                     __SUB__->($request, @keywords ? (auto => 1) : ());
                 }
                 else {
