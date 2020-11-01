@@ -5,6 +5,15 @@
 
 [CHANGELOG]
 
+Version 0.0.2
+
+- Support for next pages.
+- Support for newest videos from a channel.
+- Support for popular videos from a channel.
+- Support for playlists from a channel.
+- Support for listing a playlist of videos.
+- Searching support for playlists and channels.
+
 Version 0.0.1
 
 - To be released soon.

@@ -739,13 +739,7 @@ sub yt_playlist_next_page {
         $request_url .= "?ctoken=$token";
     }
 
-    #say $url;
-
-    #my $url  = $self->get_m_youtube_url . "/playlist?ctoken=$token";
     my $hash = $self->_get_initial_data($request_url) // return;
-
-    #use Data::Dump qw(pp);
-    #pp $hash;
 
     my @results = $self->_parse_itemSection(
                                             eval      { $hash->{continuationContents}{playlistVideoListContinuation} }
@@ -754,7 +748,6 @@ sub yt_playlist_next_page {
                                            );
 
     $self->_add_author_to_results($hash, \@results, %args);
-
     $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
