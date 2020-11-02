@@ -41,10 +41,22 @@ sub _time_to_seconds {
 sub _human_number_to_int {
     my ($text) = @_;
 
+    # 7.6K -> 7600; 7.6M -> 7600000
+    if ($text =~ /([\d,.]+)\s*([KM])/i) {
+
+        my $v = $1;
+        my $u = $2;
+        my $m = ($u eq 'K' ? 1e3 : ($u eq 'M' ? 1e6 : 1));
+
+        $v =~ tr/,/./;
+
+        return int($v * $m);
+    }
+
     if ($text =~ /([\d,.]+)/) {
         my $v = $1;
-        $v =~ tr/.,//d;
-        return $v;
+        $v =~ tr/,.//d;
+        return int($v);
     }
 
     return 0;
@@ -251,8 +263,6 @@ sub _extract_video_count {
 
 sub _extract_subscriber_count {
     my ($info) = @_;
-
-    # FIXME: convert dd.dK into ddd00
     _human_number_to_int(eval { $info->{subscriberCountText}{runs}[0]{text} } || 0);
 }
 
@@ -511,12 +521,14 @@ sub _channel_data {
         $url .= "/c/$channel/$args{type}";
     }
 
+    $url .= "?hl=en";
+
     if (defined(my $sort = $args{sort_by})) {
         if ($sort eq 'popular') {
-            $url .= "?sort=p";
+            $url .= "&sort=p";
         }
         elsif ($sort eq 'old') {
-            $url .= "?sort=da";
+            $url .= "&sort=da";
         }
     }
 
@@ -571,7 +583,7 @@ Search for videos given a keyword (uri-escaped).
 sub yt_search {
     my ($self, %args) = @_;
 
-    my $url = $self->get_m_youtube_url . "/results?search_query=$args{q}";
+    my $url = $self->get_m_youtube_url . "/results?search_query=$args{q}&hl=en";
 
     $args{type} //= 'video';
 
@@ -707,7 +719,7 @@ Videos from a given playlist ID.
 sub yt_playlist_videos {
     my ($self, $playlist_id, %args) = @_;
 
-    my $url  = $self->get_m_youtube_url . "/playlist?list=$playlist_id";
+    my $url  = $self->get_m_youtube_url . "/playlist?list=$playlist_id&hl=en";
     my $hash = $self->_get_initial_data($url) // return;
 
     my @results = $self->_extract_sectionList_results(
