@@ -85,7 +85,12 @@ sub search_for {
 
     # Search in a channel's videos
     if (defined(my $channel_id = $self->get_channelId)) {
-        my $url = $self->_make_feed_url("channels/search/$channel_id", q => $keywords,);
+        my $url = $self->_make_feed_url("channels/search/$channel_id", q => $keywords);
+
+        if (my $results = $self->yt_channel_search($channel_id, q => $keywords, type => $type, url => $url, %$args)) {
+            return $results;
+        }
+
         return $self->_get_results($url);
     }
 
@@ -96,7 +101,7 @@ sub search_for {
                                      );
 
     #if ($type eq 'video' and $url =~ /\?q=[^&]+&type=video\z/) {
-    if (defined(my $results = $self->yt_search(q => $keywords, type => $type, url => $url, %$args))) {
+    if (my $results = $self->yt_search(q => $keywords, type => $type, url => $url, %$args)) {
         return $results;
     }
 

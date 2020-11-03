@@ -454,15 +454,19 @@ sub _add_author_to_results {
     return 1;
 }
 
+sub _find_sectionList {
+    my ($self, $data) = @_;
+
+    eval {
+        (grep { eval { exists($_->{tabRenderer}{content}{sectionListRenderer}{contents}) } }
+         @{$data->{contents}{singleColumnBrowseResultsRenderer}{tabs}})[0]{tabRenderer}{content}{sectionListRenderer};
+    };
+}
+
 sub _extract_channel_uploads {
     my ($self, $data, %args) = @_;
 
-    my @results = $self->_extract_sectionList_results(
-        eval {
-            $data->{contents}{singleColumnBrowseResultsRenderer}{tabs}[1]{tabRenderer}{content}{sectionListRenderer};
-        },
-        %args
-                                                     );
+    my @results = $self->_extract_sectionList_results($self->_find_sectionList($data), %args);
     $self->_add_author_to_results($data, \@results, %args);
     return @results;
 }
@@ -470,12 +474,7 @@ sub _extract_channel_uploads {
 sub _extract_channel_playlists {
     my ($self, $data, %args) = @_;
 
-    my @results = $self->_extract_sectionList_results(
-        eval {
-            $data->{contents}{singleColumnBrowseResultsRenderer}{tabs}[2]{tabRenderer}{content}{sectionListRenderer};
-        },
-        %args
-                                                     );
+    my @results = $self->_extract_sectionList_results($self->_find_sectionList($data), %args);
     $self->_add_author_to_results($data, \@results, %args);
     return @results;
 }
@@ -483,12 +482,7 @@ sub _extract_channel_playlists {
 sub _extract_playlist_videos {
     my ($self, $data, %args) = @_;
 
-    my @results = $self->_extract_sectionList_results(
-        eval {
-            $data->{contents}{singleColumnBrowseResultsRenderer}{tabs}[0]{tabRenderer}{content}{sectionListRenderer};
-        },
-        %args
-                                                     );
+    my @results = $self->_extract_sectionList_results($self->_find_sectionList($data), %args);
     $self->_add_author_to_results($data, \@results, %args);
     return @results;
 }
@@ -521,7 +515,7 @@ sub _channel_data {
         $url .= "/c/$channel/$args{type}";
     }
 
-    my %params = (hl => "en",);
+    my %params = (hl => "en");
 
     if (defined(my $sort = $args{sort_by})) {
         if ($sort eq 'popular') {
@@ -530,6 +524,10 @@ sub _channel_data {
         elsif ($sort eq 'old') {
             $params{sort} = 'da';
         }
+    }
+
+    if (exists($args{params}) and ref($args{params}) eq 'HASH') {
+        %params = (%params, %{$args{params}});
     }
 
     $url = $self->_append_url_args($url, %params);
@@ -679,6 +677,22 @@ sub yt_search {
     $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
+=head2 yt_channel_search($channel, q => $keywords, %args)
+
+Search for videos from a given channel ID or username.
+
+=cut
+
+sub yt_channel_search {
+    my ($self, $channel, %args) = @_;
+    my ($url, $hash) = $self->_channel_data($channel, %args, type => 'search', params => {query => $args{q}});
+
+    $hash // return;
+
+    my @results = $self->_extract_sectionList_results($self->_find_sectionList($hash), %args, type => 'video');
+    $self->_prepare_results_for_return(\@results, %args, url => $url);
+}
+
 =head2 yt_channel_uploads($channel, %args)
 
 Latest uploads for a given channel ID or username.
@@ -723,14 +737,7 @@ sub yt_playlist_videos {
     my $url  = $self->_append_url_args($self->get_m_youtube_url . "/playlist", list => $playlist_id, hl => "en");
     my $hash = $self->_get_initial_data($url) // return;
 
-    my @results = $self->_extract_sectionList_results(
-        eval {
-            $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs}[0]{tabRenderer}{content}{sectionListRenderer};
-        },
-        %args,
-        type => 'video'
-                                                     );
-
+    my @results = $self->_extract_sectionList_results($self->_find_sectionList($hash), %args, type => 'video');
     $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
