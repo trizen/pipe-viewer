@@ -42,11 +42,11 @@ sub _human_number_to_int {
     my ($text) = @_;
 
     # 7.6K -> 7600; 7.6M -> 7600000
-    if ($text =~ /([\d,.]+)\s*([KM])/i) {
+    if ($text =~ /([\d,.]+)\s*([KMB])/i) {
 
         my $v = $1;
         my $u = $2;
-        my $m = ($u eq 'K' ? 1e3 : ($u eq 'M' ? 1e6 : 1));
+        my $m = ($u eq 'K' ? 1e3 : ($u eq 'M' ? 1e6 : ($u eq 'B' ? 1e9 : 1)));
 
         $v =~ tr/,/./;
 
@@ -521,17 +521,18 @@ sub _channel_data {
         $url .= "/c/$channel/$args{type}";
     }
 
-    $url .= "?hl=en";
+    my %params = (hl => "en",);
 
     if (defined(my $sort = $args{sort_by})) {
         if ($sort eq 'popular') {
-            $url .= "&sort=p";
+            $params{sort} = 'p';
         }
         elsif ($sort eq 'old') {
-            $url .= "&sort=da";
+            $params{sort} = 'da';
         }
     }
 
+    $url = $self->_append_url_args($url, %params);
     ($url, $self->_get_initial_data($url));
 }
 
@@ -583,94 +584,94 @@ Search for videos given a keyword (uri-escaped).
 sub yt_search {
     my ($self, %args) = @_;
 
-    my $url = $self->get_m_youtube_url . "/results?search_query=$args{q}&hl=en";
+    my $url = $self->get_m_youtube_url . "/results?search_query=$args{q}";
+
+    my @sp;
+    my %params = (hl => 'en',);
 
     $args{type} //= 'video';
-
-    # FIXME:
-    #   Currently, only one parameter per search is supported.
-    #   Would be nice to figure it out how to combine multiple parameters into one.
 
     if ($args{type} eq 'video') {
 
         if (defined(my $duration = $self->get_videoDuration)) {
             if ($duration eq 'long') {
-                $url .= "&sp=EgQQARgC";
+                push @sp, 'EgQQARgC';
             }
             elsif ($duration eq 'short') {
-                $url .= "&sp=EgQQARgB";
+                push @sp, 'EgQQARgB';
             }
         }
 
         if (defined(my $date = $self->get_date)) {
             if ($date eq 'hour') {
-                $url .= "&sp=EgQIARAB";
+                push @sp, 'EgQIARAB';
             }
             elsif ($date eq 'today') {
-                $url .= "&sp=EgQIAhAB";
+                push @sp, "EgQIAhAB";
             }
             elsif ($date eq 'week') {
-                $url .= "&sp=EgQIAxAB";
+                push @sp, "EgQIAxAB";
             }
             elsif ($date eq 'month') {
-                $url .= "&sp=EgQIBBAB";
+                push @sp, "EgQIBBAB";
             }
             elsif ($date eq 'year') {
-                $url .= "&sp=EgQIBRAB";
+                push @sp, "EgQIBRAB";
             }
         }
 
         if (defined(my $order = $self->get_order)) {
             if ($order eq 'upload_date') {
-                $url .= "&sp=CAISAhAB";
+                push @sp, "CAISAhAB";
             }
             elsif ($order eq 'view_count') {
-                $url .= "&sp=CAMSAhAB";
+                push @sp, "CAMSAhAB";
             }
             elsif ($order eq 'rating') {
-                $url .= "&sp=CAESAhAB";
+                push @sp, "CAESAhAB";
             }
         }
 
         if (defined(my $license = $self->get_videoLicense)) {
             if ($license eq 'creative_commons') {
-                $url .= "&sp=EgIwAQ%253D%253D";
+                push @sp, "EgIwAQ%253D%253D";
             }
         }
 
         if (defined(my $vd = $self->get_videoDefinition)) {
             if ($vd eq 'high') {
-                $url .= "&sp=EgIgAQ%253D%253D";
+                push @sp, "EgIgAQ%253D%253D";
             }
         }
 
         if (defined(my $vc = $self->get_videoCaption)) {
             if ($vc eq 'true' or $vc eq '1') {
-                $url .= "&sp=EgIoAQ%253D%253D";
+                push @sp, "EgIoAQ%253D%253D";
             }
         }
 
         if (defined(my $vd = $self->get_videoDimension)) {
             if ($vd eq '3d') {
-                $url .= "&sp=EgI4AQ%253D%253D";
+                push @sp, "EgI4AQ%253D%253D";
             }
         }
     }
 
     if ($args{type} eq 'video') {
-        if ($url !~ /&sp=/) {
-            $url .= "&sp=EgIQAQ%253D%253D";
-        }
+        push @sp, "EgIQAQ%253D%253D";
     }
     elsif ($args{type} eq 'playlist') {
-        $url .= "&sp=EgIQAw%253D%253D";
+        push @sp, "EgIQAw%253D%253D";
     }
     elsif ($args{type} eq 'channel') {
-        $url .= "&sp=EgIQAg%253D%253D";
+        push @sp, "EgIQAg%253D%253D";
     }
     elsif ($args{type} eq 'movie') {    # TODO: implement support for movies
-        $url .= "&sp=EgIQBA%253D%253D";
+        push @sp, "EgIQBA%253D%253D";
     }
+
+    $params{sp} = join(',', @sp);
+    $url = $self->_append_url_args($url, %params);
 
     my $hash    = $self->_get_initial_data($url) // return;
     my @results = $self->_extract_sectionList_results(eval { $hash->{contents}{sectionListRenderer} }, %args);
@@ -719,7 +720,7 @@ Videos from a given playlist ID.
 sub yt_playlist_videos {
     my ($self, $playlist_id, %args) = @_;
 
-    my $url  = $self->get_m_youtube_url . "/playlist?list=$playlist_id&hl=en";
+    my $url  = $self->_append_url_args($self->get_m_youtube_url . "/playlist", list => $playlist_id, hl => "en");
     my $hash = $self->_get_initial_data($url) // return;
 
     my @results = $self->_extract_sectionList_results(
@@ -742,16 +743,8 @@ Load more items from a playlist, given a continuation token.
 sub yt_playlist_next_page {
     my ($self, $url, $token, %args) = @_;
 
-    my $request_url = $url;
-
-    if ($request_url =~ /\?/) {
-        $request_url .= "&ctoken=$token";
-    }
-    else {
-        $request_url .= "?ctoken=$token";
-    }
-
-    my $hash = $self->_get_initial_data($request_url) // return;
+    my $request_url = $self->_append_url_args($url, ctoken => $token);
+    my $hash        = $self->_get_initial_data($request_url) // return;
 
     my @results = $self->_parse_itemSection(
                                             eval      { $hash->{continuationContents}{playlistVideoListContinuation} }
