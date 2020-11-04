@@ -8,7 +8,9 @@
 Version 0.0.3
 
 - Support for multiple search parameters.
-- Support for searching for videos from a specific author (with --author=channelID).
+- Support for searching for videos from a given channel (with --author=channelID).
+- Support for next pages in more contexts.
+- Performance improvements and bug-fixes.
 
 Version 0.0.2
 

@@ -774,8 +774,7 @@ sub yt_playlist_next_page {
 
     if (!@results) {
         @results =
-          $self->_extract_sectionList_results(eval { $hash->{continuationContents}{sectionListContinuation} } // undef, %args,
-          );
+          $self->_extract_sectionList_results(eval { $hash->{continuationContents}{sectionListContinuation} } // undef, %args);
     }
 
     $self->_add_author_to_results($hash, \@results, %args);
@@ -837,11 +836,11 @@ sub yt_search_next_page {
     my $hash = $self->parse_json_string($content);
 
     my @results = $self->_extract_sectionList_results(
-        {
-         contents => eval {
-             $hash->{onResponseReceivedCommands}[0]{appendContinuationItemsAction}{continuationItems};
-           } // undef
-        } // undef,
+        scalar {
+            contents => eval {
+                $hash->{onResponseReceivedCommands}[0]{appendContinuationItemsAction}{continuationItems};
+              } // undef
+        },
         %args
                                                      );
 
