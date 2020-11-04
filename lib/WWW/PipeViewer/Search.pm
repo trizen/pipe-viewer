@@ -88,26 +88,23 @@ sub search_for {
 
         $self->set_channelId();    # clear the channel ID
 
-        my $url = $self->_make_feed_url("channels/search/$channel_id", q => $keywords);
-
-        if (my $results = $self->yt_channel_search($channel_id, q => $keywords, type => $type, url => $url, %$args)) {
+        if (my $results = $self->yt_channel_search($channel_id, q => $keywords, type => $type, %$args)) {
             return $results;
         }
 
+        my $url = $self->_make_feed_url("channels/search/$channel_id", q => $keywords);
         return $self->_get_results($url);
+    }
+
+    if (my $results = $self->yt_search(q => $keywords, type => $type, %$args)) {
+        return $results;
     }
 
     my $url = $self->_make_search_url(
                                       type => $type,
                                       q    => $keywords,
-                                      %$args,
+                                      %$args
                                      );
-
-    #if ($type eq 'video' and $url =~ /\?q=[^&]+&type=video\z/) {
-    if (my $results = $self->yt_search(q => $keywords, type => $type, url => $url, %$args)) {
-        return $results;
-    }
-
     return $self->_get_results($url);
 }
 

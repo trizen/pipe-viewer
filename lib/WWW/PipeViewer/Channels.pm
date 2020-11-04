@@ -26,12 +26,11 @@ sub _make_channels_url {
 sub videos_from_channel_id {
     my ($self, $channel_id) = @_;
 
-    my $url = $self->_make_feed_url("channels/$channel_id/videos");
-
-    if (my $results = $self->yt_channel_uploads($channel_id, url => $url)) {
+    if (my $results = $self->yt_channel_uploads($channel_id)) {
         return $results;
     }
 
+    my $url = $self->_make_feed_url("channels/$channel_id/videos");
     return $self->_get_results($url);
 }
 
@@ -53,12 +52,11 @@ sub popular_videos {
         return $self->_get_results($self->_make_feed_url('popular'));
     }
 
-    my $url = $self->_make_feed_url("channels/$channel_id/videos", sort_by => 'popular');
-
-    if (my $results = $self->yt_channel_uploads($channel_id, sort_by => 'popular', url => $url)) {
+    if (my $results = $self->yt_channel_uploads($channel_id, sort_by => 'popular')) {
         return $results;
     }
 
+    my $url = $self->_make_feed_url("channels/$channel_id/videos", sort_by => 'popular');
     return $self->_get_results($url);
 }
 

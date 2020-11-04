@@ -189,7 +189,11 @@ sub _extract_published_text {
 
     my $text = eval { $info->{publishedTimeText}{runs}[0]{text} } || return undef;
 
-    if ($text =~ /(\d+) (\w+)/) {
+    if ($text =~ /(\d+)\s+(\w+)/) {
+        return "$1 $2";
+    }
+
+    if ($text =~ /(\d+)\s*(\w+)/) {
         return "$1 $2";
     }
 
@@ -584,7 +588,7 @@ sub _prepare_results_for_return {
 
 =head2 yt_search(q => $keyword, %args)
 
-Search for videos given a keyword (uri-escaped).
+Search for videos given a keyword string (uri-escaped).
 
 =cut
 
@@ -686,9 +690,9 @@ sub yt_search {
     $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
-=head2 yt_channel_search($channel, q => $keywords, %args)
+=head2 yt_channel_search($channel, q => $keyword, %args)
 
-Search for videos from a given channel ID or username.
+Search for videos given a keyword string (uri-escaped) from a given channel ID or username.
 
 =cut
 
@@ -841,7 +845,7 @@ sub yt_search_next_page {
         %args
                                                      );
 
-    return $self->_prepare_results_for_return(\@results, %args, url => $url);
+    $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
 =head1 AUTHOR

@@ -81,12 +81,11 @@ Get videos from a specific playlistID.
 sub videos_from_playlist_id {
     my ($self, $id) = @_;
 
-    my $url = $self->_make_feed_url("playlists/$id");
-
-    if (my $results = $self->yt_playlist_videos($id, url => $url)) {
+    if (my $results = $self->yt_playlist_videos($id)) {
         return $results;
     }
 
+    my $url = $self->_make_feed_url("playlists/$id");
     $self->_get_results($url);
 }
 

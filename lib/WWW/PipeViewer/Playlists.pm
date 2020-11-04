@@ -61,12 +61,11 @@ Get and return playlists from a channel ID.
 sub playlists {
     my ($self, $channel_id) = @_;
 
-    my $url = $self->_make_feed_url("channels/playlists/$channel_id");
-
-    if (my $results = $self->yt_channel_playlists($channel_id, url => $url)) {
+    if (my $results = $self->yt_channel_playlists($channel_id)) {
         return $results;
     }
 
+    my $url = $self->_make_feed_url("channels/playlists/$channel_id");
     $self->_get_results($url);
 }
 
