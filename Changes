@@ -5,6 +5,11 @@
 
 [CHANGELOG]
 
+Version 0.0.3
+
+- Support for multiple search parameters.
+- Support for searching for videos from a specific author (with --author=channelID).
+
 Version 0.0.2
 
 - Support for next pages.

@@ -85,6 +85,9 @@ sub search_for {
 
     # Search in a channel's videos
     if (defined(my $channel_id = $self->get_channelId)) {
+
+        $self->set_channelId();    # clear the channel ID
+
         my $url = $self->_make_feed_url("channels/search/$channel_id", q => $keywords);
 
         if (my $results = $self->yt_channel_search($channel_id, q => $keywords, type => $type, url => $url, %$args)) {

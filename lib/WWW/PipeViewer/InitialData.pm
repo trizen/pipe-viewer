@@ -364,7 +364,7 @@ sub _parse_itemSection {
         }
     }
 
-    if (@results and exists $entry->{continuations} and ref($entry->{continuations}) eq 'ARRAY') {
+    if (exists($entry->{continuations}) and ref($entry->{continuations}) eq 'ARRAY') {
 
         my $token = eval { $entry->{continuations}[0]{nextContinuationData}{continuation} };
 
@@ -433,6 +433,10 @@ sub _extract_sectionList_results {
         }
     }
 
+    if (@results and exists $data->{continuations}) {
+        push @results, $self->_parse_itemSection($data, %args);
+    }
+
     return @results;
 }
 
@@ -458,8 +462,11 @@ sub _find_sectionList {
     my ($self, $data) = @_;
 
     eval {
-        (grep { eval { exists($_->{tabRenderer}{content}{sectionListRenderer}{contents}) } }
-         @{$data->{contents}{singleColumnBrowseResultsRenderer}{tabs}})[0]{tabRenderer}{content}{sectionListRenderer};
+        (
+         grep {
+             eval { exists($_->{tabRenderer}{content}{sectionListRenderer}{contents}) }
+         } @{$data->{contents}{singleColumnBrowseResultsRenderer}{tabs}}
+        )[0]{tabRenderer}{content}{sectionListRenderer};
     };
 }
 
@@ -758,6 +765,11 @@ sub yt_playlist_next_page {
                                               // eval { $hash->{continuationContents}{itemSectionContinuation} },
                                             %args
                                            );
+
+    if (!@results) {
+        @results =
+          $self->_extract_sectionList_results(eval { $hash->{continuationContents}{sectionListContinuation} }, %args,);
+    }
 
     $self->_add_author_to_results($hash, \@results, %args);
     $self->_prepare_results_for_return(\@results, %args, url => $url);
