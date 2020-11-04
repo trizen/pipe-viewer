@@ -548,6 +548,8 @@ sub _prepare_results_for_return {
 
     my @results = @$results;
 
+    @results || return;
+
     if (@results and $results[-1]{type} eq 'nextpage') {
 
         my $nextpage = pop(@results);
