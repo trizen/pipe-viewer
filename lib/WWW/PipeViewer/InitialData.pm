@@ -467,7 +467,7 @@ sub _find_sectionList {
              eval { exists($_->{tabRenderer}{content}{sectionListRenderer}{contents}) }
          } @{$data->{contents}{singleColumnBrowseResultsRenderer}{tabs}}
         )[0]{tabRenderer}{content}{sectionListRenderer};
-    };
+    } // undef;
 }
 
 sub _extract_channel_uploads {
@@ -679,7 +679,7 @@ sub yt_search {
     $url = $self->_append_url_args($url, %params);
 
     my $hash    = $self->_get_initial_data($url) // return;
-    my @results = $self->_extract_sectionList_results(eval { $hash->{contents}{sectionListRenderer} }, %args);
+    my @results = $self->_extract_sectionList_results(eval { $hash->{contents}{sectionListRenderer} } // undef, %args);
 
     $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
@@ -768,7 +768,8 @@ sub yt_playlist_next_page {
 
     if (!@results) {
         @results =
-          $self->_extract_sectionList_results(eval { $hash->{continuationContents}{sectionListContinuation} }, %args,);
+          $self->_extract_sectionList_results(eval { $hash->{continuationContents}{sectionListContinuation} } // undef, %args,
+          );
     }
 
     $self->_add_author_to_results($hash, \@results, %args);
@@ -834,7 +835,7 @@ sub yt_search_next_page {
          contents => eval {
              $hash->{onResponseReceivedCommands}[0]{appendContinuationItemsAction}{continuationItems};
            } // undef
-        },
+        } // undef,
         %args
                                                      );
 
