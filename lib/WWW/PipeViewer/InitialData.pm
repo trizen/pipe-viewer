@@ -501,7 +501,7 @@ sub _extract_playlist_videos {
 sub _get_initial_data {
     my ($self, $url) = @_;
 
-    my $content = $self->lwp_get($url);
+    my $content = $self->lwp_get($url) // return;
 
     if ($content =~ m{<div id="initial-data"><!--(.*?)--></div>}is) {
         my $json = $1;
