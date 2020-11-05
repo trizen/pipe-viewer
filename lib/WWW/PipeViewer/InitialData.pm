@@ -542,7 +542,14 @@ sub _channel_data {
     }
 
     $url = $self->_append_url_args($url, %params);
-    ($url, $self->_get_initial_data($url));
+    my $result = $self->_get_initial_data($url);
+
+    # When /c/ failed, try /user/
+    if ((!defined($result) or !scalar(keys %$result)) and $url =~ s{/c/}{/user/}) {
+        $result = $self->_get_initial_data($url);
+    }
+
+    ($url, $result);
 }
 
 sub _prepare_results_for_return {
