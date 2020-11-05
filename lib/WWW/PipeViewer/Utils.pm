@@ -223,23 +223,26 @@ Returns true if a given result has entries.
 sub has_entries {
     my ($self, $result) = @_;
 
+    $result // return 0;
+
     if (ref($result->{results}) eq 'HASH') {
 
         foreach my $type (qw(comments videos playlists entries)) {
             if (exists $result->{results}{$type}) {
-                return scalar @{$result->{results}{$type}} > 0;
+                ref($result->{results}{$type}) eq 'ARRAY' or return 0;
+                return (@{$result->{results}{$type}} > 0);
             }
         }
 
         my $type = $result->{results}{type} // '';
 
         if ($type eq 'playlist') {
-            return $result->{results}{videoCount} > 0;
+            return ($result->{results}{videoCount} > 0);
         }
     }
 
     if (ref($result->{results}) eq 'ARRAY') {
-        return scalar(@{$result->{results}}) > 0;
+        return (@{$result->{results}} > 0);
     }
 
     if (ref($result->{results}) eq 'HASH' and not keys %{$result->{results}}) {
@@ -247,7 +250,6 @@ sub has_entries {
     }
 
     return 1;    # maybe?
-                 #ref($result) eq 'HASH' and ($result->{results}{pageInfo}{totalResults} > 0);
 }
 
 =head2 normalize_video_title($title, $fat32safe)
