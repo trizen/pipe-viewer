@@ -680,22 +680,17 @@ sub get_publication_age_approx {
 
 sub get_duration {
     my ($self, $info) = @_;
-
-    #$self->format_duration($info->{contentDetails}{duration});
-    #$self->format_duration($info->{lengthSeconds});
     $info->{lengthSeconds};
 }
 
 sub get_time {
     my ($self, $info) = @_;
 
-    if ($info->{liveNow} or $self->get_duration($info) == 0) {
+    if ($info->{liveNow}) {
         return 'LIVE';
     }
 
     $self->format_time($self->get_duration($info));
-
-    #$self->format_time($self->get_duration($info));
 }
 
 sub get_definition {

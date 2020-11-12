@@ -194,7 +194,7 @@ sub video_details {
             } @{$video->{thumbnail}{thumbnails}}
         ],
 
-        liveNow       => $video->{isLiveContent},
+        liveNow       => ($video->{isLiveContent} || (($video->{lengthSeconds} || 0) == 0)),
         description   => $video->{shortDescription},
         lengthSeconds => $video->{lengthSeconds},
 

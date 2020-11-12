@@ -301,6 +301,7 @@ sub _extract_itemSection_entry {
         $video{videoId}         = _extract_video_id($info) // return;
         $video{title}           = _extract_title($info)    // return;
         $video{lengthSeconds}   = _extract_length_seconds($info) || 0;
+        $video{liveNow}         = ($video{lengthSeconds} == 0);
         $video{author}          = _extract_author_name($info);
         $video{authorId}        = _extract_channel_id($info);
         $video{publishedText}   = _extract_published_text($info);
