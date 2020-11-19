@@ -573,7 +573,7 @@ sub select_good_invidious_instances {
     my @candidates =
       grep { not $ignored{$_->[0]} }
       grep { $args{lax} ? 1 : eval { lc($_->[1]{monitor}{dailyRatios}[0]{label} // '') eq 'success' } }
-      grep { $args{lax} ? 1 : eval { lc($_->[1]{monitor}{weeklyRatio}{label} // '') eq 'success' } }
+      #~ grep { $args{lax} ? 1 : eval { lc($_->[1]{monitor}{weeklyRatio}{label} // '') eq 'success' } }
       grep { $args{lax} ? 1 : eval { lc($_->[1]{monitor}{statusClass} // '') eq 'success' } }
       #~ grep { $args{lax} ? 1 : !exists($_->[1]{stats}{error}) }
       grep { lc($_->[1]{type} // '') eq 'https' } @$instances;
