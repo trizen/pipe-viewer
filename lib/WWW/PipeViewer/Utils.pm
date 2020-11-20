@@ -638,11 +638,15 @@ sub get_category_name {
 sub get_publication_date {
     my ($self, $info) = @_;
 
-    #$self->format_date($info->{snippet}{publishedAt});
-    #$self->format_date
+    if (defined $info->{publishedText}) {
+        return "$info->{publishedText} ago";
+    }
+
+    require Encode;
     require Time::Piece;
+
     my $time = Time::Piece->new($info->{published});
-    $time->strftime("%d %B %Y");
+    Encode::decode_utf8($time->strftime("%d %B %Y"));
 }
 
 sub get_publication_age {
