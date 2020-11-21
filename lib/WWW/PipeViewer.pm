@@ -688,15 +688,20 @@ sub _make_feed_url {
 sub _extract_from_invidious {
     my ($self, $videoID) = @_;
 
-    my @instances = $self->select_good_invidious_instances();
+    my @candidates       = $self->select_good_invidious_instances();
+    my @extra_candidates = $self->select_good_invidious_instances(lax => 1);
 
-    if (not @instances) {
-        @instances = $self->select_good_invidious_instances(lax => 1);
-    }
+    require List::Util;
+
+#<<<
+    my %seen;
+    my @instances = grep { !$seen{$_}++ } (
+        List::Util::shuffle(map { $_->[0] } @candidates),
+        List::Util::shuffle(map { $_->[0] } @extra_candidates),
+    );
+#>>>
 
     if (@instances) {
-        require List::Util;
-        @instances = List::Util::shuffle(map { $_->[0] } @instances);
         push @instances, 'invidious.snopyta.org';
     }
     else {
