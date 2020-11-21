@@ -639,7 +639,7 @@ sub get_publication_date {
     my ($self, $info) = @_;
 
     if (defined $info->{publishedText}) {
-        return "$info->{publishedText} ago";
+        return $info->{publishedText};
     }
 
     require Encode;

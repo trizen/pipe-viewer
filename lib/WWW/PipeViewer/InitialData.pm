@@ -190,11 +190,11 @@ sub _extract_published_text {
     my $text = eval { $info->{publishedTimeText}{runs}[0]{text} } || return undef;
 
     if ($text =~ /(\d+)\s+(\w+)/) {
-        return "$1 $2";
+        return "$1 $2 ago";
     }
 
     if ($text =~ /(\d+)\s*(\w+)/) {
-        return "$1 $2";
+        return "$1 $2 ago";
     }
 
     return $text;
