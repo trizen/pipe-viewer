@@ -32,7 +32,7 @@ WWW::PipeViewer - A very easy interface to YouTube, using the API of invidio.us.
 
 =cut
 
-our $VERSION = '0.0.3';
+our $VERSION = '0.0.4';
 
 =head1 SYNOPSIS
 
@@ -566,7 +566,7 @@ sub select_good_invidious_instances {
                    'invidious.ggc-project.de' => 1,
                    'invidious.toot.koeln'     => 1,
                    'invidious.kavin.rocks'    => 0,
-                   'invidious.snopyta.org'    => 1,
+                   'invidious.snopyta.org'    => 0,
                   );
 
 #<<<

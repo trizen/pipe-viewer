@@ -31,7 +31,7 @@ sub parse_utf8_json_string {
     }
 
     require JSON;
-    my $hash = eval {  JSON::from_json($json)  };
+    my $hash = eval { JSON::from_json($json) };
     return $@ ? do { warn "[JSON]: $@\n"; {} } : $hash;
 }
 
@@ -43,7 +43,7 @@ sub parse_json_string {
     }
 
     require JSON;
-    my $hash = eval {  JSON::decode_json($json)  };
+    my $hash = eval { JSON::decode_json($json) };
     return $@ ? do { warn "[JSON]: $@\n"; {} } : $hash;
 }
 

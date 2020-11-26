@@ -5,6 +5,12 @@
 
 [CHANGELOG]
 
+Version 0.0.4
+
+- Support for YouTube usernames (-u=username).
+- No longer ignore live stream videos in search results.
+- Display the relative age of videos in search results.
+
 Version 0.0.3
 
 - Support for multiple search parameters.

@@ -36,11 +36,7 @@ Retrieve comments from a video ID.
 
 sub comments_from_video_id {
     my ($self, $video_id) = @_;
-    $self->_get_results(
-                          $self->_make_feed_url("comments/$video_id",
-                                        sort_by      => $self->get_comments_order,
-                                ),
-                         );
+    $self->_get_results($self->_make_feed_url("comments/$video_id", sort_by => $self->get_comments_order));
 }
 
 =head2 comment_to_video_id($comment, $videoID)
