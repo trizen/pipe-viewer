@@ -44,7 +44,7 @@ use warnings;
 no warnings 'once';
 
 my $DEVEL;                                 # true in devel mode
-use if ($DEVEL = 0), lib => qw(../lib);    # devel mode
+use if ($DEVEL = 1), lib => qw(../lib);    # devel mode
 
 use WWW::PipeViewer v0.0.4;
 use WWW::PipeViewer::RegularExpressions;

@@ -592,6 +592,9 @@ sub select_good_invidious_instances {
 
 sub pick_random_instance {
     my ($self) = @_;
+
+    # TODO: make sure the selected invidious instance actually works.
+
     my @candidates = $self->select_good_invidious_instances();
 
     if (not @candidates) {
