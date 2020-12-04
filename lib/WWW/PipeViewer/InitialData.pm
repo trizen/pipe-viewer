@@ -302,13 +302,19 @@ sub _extract_itemSection_entry {
         $video{title}           = _extract_title($info)    // return;
         $video{lengthSeconds}   = _extract_length_seconds($info) || 0;
         $video{liveNow}         = ($video{lengthSeconds} == 0);
-        $video{author}          = _extract_author_name($info) // return;
-        $video{authorId}        = _extract_channel_id($info)  // return;
+        $video{author}          = _extract_author_name($info);
+        $video{authorId}        = _extract_channel_id($info);
         $video{publishedText}   = _extract_published_text($info);
         $video{viewCountText}   = _extract_view_count_text($info);
         $video{videoThumbnails} = _extract_thumbnails($info);
         $video{description}     = _extract_description($info);
         $video{viewCount}       = _extract_view_count($info);
+
+        # Filter out private/deleted videos from playlists
+        if (exists($data->{playlistVideoRenderer})) {
+            $video{author}   // return;
+            $video{authorId} // return;
+        }
 
         return \%video;
     }
@@ -504,12 +510,6 @@ sub _get_initial_data {
 
     my $content = $self->lwp_get($url) // return;
 
-    if ($content =~ m{<div id="initial-data"><!--(.*?)--></div>}is) {
-        my $json = $1;
-        my $hash = $self->parse_utf8_json_string($json);
-        return $hash;
-    }
-
     if ($content =~ m{var\s+ytInitialData\s*=\s*'(.*?)'}is) {
         my $json = $1;
 
@@ -517,6 +517,12 @@ sub _get_initial_data {
         $json =~ s{\\u([[:xdigit:]]{4})}{chr(hex($1))}ge;
         $json =~ s{\\(["&])}{$1}g;
 
+        my $hash = $self->parse_utf8_json_string($json);
+        return $hash;
+    }
+
+    if ($content =~ m{<div id="initial-data"><!--(.*?)--></div>}is) {
+        my $json = $1;
         my $hash = $self->parse_utf8_json_string($json);
         return $hash;
     }
