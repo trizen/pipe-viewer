@@ -16,7 +16,7 @@ name: WWW-PipeViewer
 provides:
   WWW::PipeViewer:
     file: lib/WWW/PipeViewer.pm
-    version: v0.0.4
+    version: v0.0.5
   WWW::PipeViewer::Activities:
     file: lib/WWW/PipeViewer/Activities.pm
   WWW::PipeViewer::Authentication:
@@ -80,5 +80,5 @@ requires:
   perl: '5.016'
 resources:
   license: http://dev.perl.org/licenses/
-version: v0.0.4
+version: v0.0.5
 x_serialization_backend: 'CPAN::Meta::YAML version 0.018'

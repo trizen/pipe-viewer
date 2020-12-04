@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  GTK Pipe Viewer
 #  Fork: 30 October 2020
-#  Edit: 27 November 2020
+#  Edit: 04 December 2020
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -29,9 +29,9 @@ use warnings;
 no warnings 'once';
 
 my $DEVEL;                                 # true in devel mode
-use if ($DEVEL = 1), lib => qw(../lib);    # devel only
+use if ($DEVEL = 0), lib => qw(../lib);    # devel only
 
-use WWW::PipeViewer v0.0.4;
+use WWW::PipeViewer v0.0.5;
 use WWW::PipeViewer::RegularExpressions;
 
 use Gtk3 qw(-init);

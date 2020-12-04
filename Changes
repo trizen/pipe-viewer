@@ -5,6 +5,11 @@
 
 [CHANGELOG]
 
+Version 0.0.5
+
+- Fixed the search results, due to YouTube change.
+- Filter out private/deleted videos from playlists.
+
 Version 0.0.4
 
 - Support for YouTube usernames (-u=username).

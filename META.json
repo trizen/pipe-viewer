@@ -57,7 +57,7 @@
    "provides" : {
       "WWW::PipeViewer" : {
          "file" : "lib/WWW/PipeViewer.pm",
-         "version" : "v0.0.4"
+         "version" : "v0.0.5"
       },
       "WWW::PipeViewer::Activities" : {
          "file" : "lib/WWW/PipeViewer/Activities.pm"
@@ -120,6 +120,6 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "v0.0.4",
+   "version" : "v0.0.5",
    "x_serialization_backend" : "JSON::PP version 4.05"
 }
