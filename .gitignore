@@ -1,7 +1,7 @@
 !Build/
 .last_cover_stats
-#/META.yml
-#/META.json
+/META.yml
+/META.json
 /MYMETA.*
 *.o
 *.pm.tdy
@@ -33,4 +33,3 @@ inc/
 /MANIFEST.bak
 /pm_to_blib
 /*.zip
-/bin/*.json
