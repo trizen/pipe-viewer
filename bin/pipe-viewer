@@ -43,8 +43,8 @@ use 5.016;
 use warnings;
 no warnings 'once';
 
-my $DEVEL;                                 # true in devel mode
-use if ($DEVEL = 0), lib => qw(../lib);    # devel mode
+my $DEVEL;                                           # true in devel mode
+use if ($DEVEL = -w __FILE__), lib => qw(../lib);    # devel mode
 
 use WWW::PipeViewer v0.0.5;
 use WWW::PipeViewer::RegularExpressions;
