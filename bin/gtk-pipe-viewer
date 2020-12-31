@@ -549,10 +549,12 @@ foreach my $path ($CONFIG{cache_dir}) {
                     my $word = $words[$i];
 
                     for (my $j = $i ; $j <= $end_p ; ++$j) {
-                        my $part = $parts[$j];
 
                         my $matched;
                         my $continue = 1;
+
+                        my $part = $parts[$j];
+
                         while ($part eq $word) {
                             $order_score += 1 - 1 / (length($word) + 1)**2;
                             $matched ||= 1;
@@ -561,8 +563,9 @@ foreach my $path ($CONFIG{cache_dir}) {
                         }
 
                         if ($matched) {
-                            $order_score += 1 - 1 / (length($word) + 1)
-                              if ($continue and index($part, $word) == 0);
+                            if ($continue and index($part, $word) == 0) {
+                                $order_score += 1 - 1 / (length($word) + 1);
+                            }
                             last;
                         }
                         elsif (index($part, $word) == 0) {
@@ -686,7 +689,7 @@ foreach my $path ($CONFIG{cache_dir}) {
                     search();
                 }
             );
-            $item->set_property(tooltip_text => $text);
+            $item->set_property(tooltip_text => "Search for „${text}”");
             $item->set_image('Gtk3::Image'->new_from_icon_name("history-view", q{menu}));
             $item->show;
             $history_menu->append($item);
@@ -1407,7 +1410,7 @@ set_text(
     CTRL+U : show the saved user-list
     CTRL+D : show more video details for a selected video
     CTRL+W : show the warnings window
-    CTRL+G : show videos favorited by the author of a selected video
+    CTRL+G : show favorite videos of the author of a selected video
     CTRL+R : show related videos for a selected video
     CTRL+M : show videos from the author of a selected video
     CTRL+K : show playlists from the author of a selected video
@@ -1847,6 +1850,7 @@ sub set_youtube_tops {
 
 {
     my %channels;
+    my %removed_channels;
 
     # ------------ Usernames list window ------------ #
     sub set_usernames {
@@ -1891,7 +1895,6 @@ sub set_youtube_tops {
                          'UCUHW94eEFW7hkUMVaZz4eDg' => 'MinutePhysics',
                          'UCYeF244yNGuFefuFKqxIAXw' => 'The Royal Institution',
                          'UCX6b17PVsYBQ0ip5gyeme-Q' => 'CrashCourse',
-                         'UCwbsWIWfcOL2FiUZ2hKNJHQ' => 'UCBerkeley',
                          'UCEBb1b_L6zDS3xTUrIALZOw' => 'MIT OpenCourseWare',
                          'UCAuUUnT6oDeKwE6v1NGQxug' => 'TED',
                          'UCvBqzzvUBLCs8Y7Axb-jZew' => 'Sixty Symbols',
@@ -1904,10 +1907,15 @@ sub set_youtube_tops {
                          'UC0wbcfzV-bHhABbWGXKHwdg' => 'Utah Open Source',
                          'UCotwjyJnb-4KW7bmsOoLfkg' => 'Art of the Problem',
                          'UC7y4qaRSb5w2O8cCHOsKZDw' => 'YAPC NA',
+                         'UC1t6kKXoBvjdr8m9KJ2Fx7A' => 'Gresham College',
+                         'UCGHZpIpAWJQ-Jy_CeCdXhMA' => 'Cool Worlds',
+                         'UCXZIDlJ_DgzrEwYop2s3JOQ' => 'National Museum of Mathematics',
+                         'UCLnGGRG__uGSPLBLzyhg8dQ' => 'Oxford Mathematics',
+                         'UCmG6gHgD8JaEZVxuHWJijGQ' => 'UConn Mathematics',
                         );
         }
 
-        foreach my $channel (sort { ($channels{$a} // lc($a)) cmp($channels{$b} // lc($b)) } keys %channels) {
+        foreach my $channel (sort { CORE::fc($channels{$a} // $a) cmp CORE::fc($channels{$b} // $b) } keys %channels) {
             my $iter = $users_liststore->append;
 
             if (defined $channels{$channel}) {
@@ -2011,10 +2019,18 @@ sub set_youtube_tops {
         my $iter       = $selection->get_selected       // return;
         my $channel_id = $users_liststore->get($iter, 0);
         delete $channels{$channel_id};
+        $removed_channels{$channel_id} = 1;
         $users_liststore->remove($iter);
     }
 
     sub save_usernames_to_file {
+
+        set_usernames();    # update %channels
+
+        foreach my $id (keys %removed_channels) {
+            delete $channels{$id};
+        }
+
         open(my $fh, '>:utf8', $CONFIG{youtube_users_file}) or return;
         foreach my $channel (
                              sort { ($channels{$a} // $a) cmp($channels{$b} // $b) }
@@ -2361,6 +2377,8 @@ sub append_next_page {
                     5 => $continuation,
                     7 => 'next_page',
                    );
+
+    return $iter;
 }
 
 sub determine_image_format {
@@ -3137,7 +3155,6 @@ sub list_category {
 }
 
 sub list_tops {
-
     my $iter = $tops_treeview->get_selection->get_selected;
 
     my %top_opts;
