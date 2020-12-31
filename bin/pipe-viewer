@@ -4339,7 +4339,9 @@ Read the terminal width (`stty size`).
 
 =head2 hfr
 
-Include or exclude High Frame Rate (HFR) videos.
+Prefer or ignore High Frame Rate (HFR) video streams.
+
+Try to disable this option if the videos are lagging or dropping frames.
 
 =head2 highlight_color
 
@@ -4373,11 +4375,11 @@ Set the value to C<-1> for no limit.
 
 Set HTTP(S)/SOCKS proxy, using the format:
 
-    proto://domain.tld:port/
+    'proto://domain.tld:port/'
 
 If authentication is required, use:
 
-    proto://user:pass@domain.tld:port/
+    'proto://user:pass@domain.tld:port/'
 
 =head2 ignore_av1
 
@@ -4427,11 +4429,13 @@ Page number of results.
 
 =head2 prefer_av1
 
-Prefer videos in AV1 format. (just for testing)
+Prefer videos in AV1 format. (experimental)
 
 =head2 prefer_mp4
 
 Prefer videos in MP4 (AVC) format.
+
+Try to enable this option if the videos are lagging or dropping frames.
 
 =head2 region
 
@@ -4481,7 +4485,7 @@ Skip already watched/downloaded videos.
 
 =head2 split_videos
 
-Enable or disable support for split-videos. "Split-videos" are videos that do not include audio and video in the same file.
+Enable or disable support for split-videos. Split-videos are videos that do not include audio and video in the same file.
 
 =head2 srt_languages
 
@@ -4513,7 +4517,7 @@ The available special tokens are listed in:
 
 =head2 video_player_selected
 
-The selected video player defined the C<video_players> table.
+The selected video player defined in the C<video_players> table.
 
 =head2 video_players
 
