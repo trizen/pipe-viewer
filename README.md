@@ -27,6 +27,24 @@ The project is in its early stages of development and some features are not impl
 * Arch Linux (AUR): https://aur.archlinux.org/packages/pipe-viewer-git/
 
 
+### VIDEO REVIEWS
+
+* [EN] Pipe-Viewer and Straw-Viewer -- Search Youtube via Terminal - Linux CLI
+    * https://www.youtube.com/watch?v=I4tfHUmklWo
+
+
+### TRY
+
+For trying the latest commit of `pipe-viewer`, without installing it, execute the following commands:
+
+```console
+    cd /tmp
+    wget https://github.com/trizen/pipe-viewer/archive/main.zip -O pipe-viewer-main.zip
+    unzip -n pipe-viewer-main.zip
+    cd pipe-viewer-main/bin
+    ./pipe-viewer
+```
+
 ### INSTALLATION
 
 To install `pipe-viewer`, run:
@@ -44,20 +62,6 @@ To install `gtk-pipe-viewer` along with `pipe-viewer`, run:
     sudo ./Build installdeps
     sudo ./Build install
 ```
-
-
-### TRY
-
-For trying the latest commit of `pipe-viewer`, without installing it, execute the following commands:
-
-```console
-    cd /tmp
-    wget https://github.com/trizen/pipe-viewer/archive/main.zip -O pipe-viewer-main.zip
-    unzip -n pipe-viewer-main.zip
-    cd pipe-viewer-main/bin
-    ./pipe-viewer
-```
-
 
 ### DEPENDENCIES
 
