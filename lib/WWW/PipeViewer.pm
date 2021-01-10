@@ -32,7 +32,7 @@ WWW::PipeViewer - A very easy interface to YouTube, using the API of invidio.us.
 
 =cut
 
-our $VERSION = '0.0.5';
+our $VERSION = '0.0.6';
 
 =head1 SYNOPSIS
 

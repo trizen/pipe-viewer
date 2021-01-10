@@ -5,6 +5,12 @@
 
 [CHANGELOG]
 
+Version 0.0.6
+
+- Better layout for channels and playlists.
+- Better info (:info=n) for channels and playlists.
+- Fixed the video filering parameters (--date, --duration, --order, --caption, etc...).
+
 Version 0.0.5
 
 - Fixed the search results, due to YouTube change.
