@@ -582,6 +582,21 @@ sub get_subscriber_count {
     $info->{subCount} // 0;
 }
 
+sub get_channel_subscriber_count {
+    my ($self, $info) = @_;
+    $info->{subCount} // 0;
+}
+
+sub get_channel_video_count {
+    my ($self, $info) = @_;
+    $info->{videoCount} // 0;
+}
+
+sub get_playlist_item_count {
+    my ($self, $info) = @_;
+    $info->{videoCount} // 0;
+}
+
 sub get_comment_content {
     my ($self, $info) = @_;
     $info->{content};
@@ -645,7 +660,7 @@ sub get_publication_date {
     require Encode;
     require Time::Piece;
 
-    my $time = Time::Piece->new($info->{published});
+    my $time = Time::Piece->new($info->{published} // return undef);
     Encode::decode_utf8($time->strftime("%d %B %Y"));
 }
 

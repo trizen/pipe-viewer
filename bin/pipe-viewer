@@ -245,7 +245,7 @@ my %CONFIG = (
     custom_layout => undef,                           # auto-defined
     custom_layout_format => [{width => 3,     align => "right", color => "bold",      text => "*NO*.",},
                              {width => "55%", align => "left",  color => "bold blue", text => "*TITLE*",},
-                             {width => "15%", align => "left",  color => "yellow",    text => "*AUTHOR*",},
+                             {width => "15%", align => "left",  color => "magenta",   text => "*AUTHOR*",},
                              {width => 3,     align => "right", color => "green",     text => "*AGE_SHORT*",},
                              {width => 5,     align => "right", color => "green",     text => "*VIEWS_SHORT*",},
                              {width => 8,     align => "right", color => "blue",      text => "*TIME*",},
@@ -317,17 +317,26 @@ Examples:
     -sp classical music : search for playlists
 HELP
 
-my $playlists_help = <<"PL_HELP" . $general_help;
+my $playlists_help = <<"PLAYLISTS_HELP" . $general_help;
 
-# Playlists
+# Select a playlist
+<number>          : list videos from the selected playlist
 :pp=i,i           : play videos from the selected playlists
-PL_HELP
+PLAYLISTS_HELP
 
-my $comments_help = <<"COM_HELP" . $general_help;
+my $channels_help = <<"CHANNELS_HELP" . $general_help;
+
+# Select a channel
+<number>           : latest uploads from channel
+:pv=i :popular=i   : popular uploads from channel
+:p=i  :playlists=i : playlists from channel
+CHANNELS_HELP
+
+my $comments_help = <<"COMMENTS_HELP" . $general_help;
 
 # Comments
 :c(omment)        : send a comment to this video
-COM_HELP
+COMMENTS_HELP
 
 my $complete_help = <<"STDIN_HELP";
 
@@ -435,7 +444,7 @@ sub load_config {
         $update_config = 1;
     }
 
-    # Locating a video player
+    # Locate video player
     if (not $CONFIG{video_player_selected}) {
 
         foreach my $key (sort keys %{$CONFIG{video_players}}) {
@@ -512,6 +521,7 @@ sub load_config {
         else {
             $CONFIG{custom_layout}       = 0;
             $CONFIG{results_fixed_width} = 0;
+            $CONFIG{results_with_colors} = $CONFIG{colors};
         }
 
         $update_config = 1;
@@ -539,6 +549,7 @@ sub load_config {
 
     dump_configuration($config_file) if $update_config;
 
+    # Create the cache directory (if needed)
     foreach my $path ($CONFIG{cache_dir}) {
         next if -d $path;
         require File::Path;
@@ -689,7 +700,7 @@ usage: $execname [options] ([url] | [keywords])
    --captions!          : only videos with or without closed captions
    --order=s            : order the results using a specific sorting method
                           valid values: relevance rating upload_date view_count
-   --date=s             : short videos published in a time period
+   --time=s             : short videos published in a time period
                           valid values: hour today week month year
    --hd!                : search only for videos available in at least 720p
    --vd=s               : set the video definition (any or high)
@@ -709,7 +720,7 @@ usage: $execname [options] ([url] | [keywords])
  * [GET] Personal
    -U  --uploads:s       : show the uploads from your channel *
    -P  --playlists:s     : show the playlists from your channel *
-   -F  --favorites:s     : show the latest favorited videos *
+   -F  --favorites:s     : show the latest favorite videos *
    -S  --subscriptions:s : show the subscribed channels *
    -SV --subs-videos:s   : show the subscription videos (slow) *
        --subs-order=s    : change the subscription order
@@ -991,7 +1002,7 @@ Command: $execname --channels math lessons
 Results: search for YouTube channels.
 
 Command: $execname -uf=Google
-Results: show latest videos favorited by a user.
+Results: show the latest favorite videos by a user.
 
 
 ==== USER INPUT EXAMPLES ====
@@ -1479,7 +1490,7 @@ sub parse_arguments {
         'r|region|region-code=s' => \$opt{region},
 
         'order|order-by|sort|sort-by=s' => \$opt{order},
-        'date=s'                        => \$opt{date},
+        'time|date=s'                   => \$opt{date},
 
         'duration=s' => \$opt{videoDuration},
 
@@ -1774,6 +1785,7 @@ sub get_quotewords {
 sub clear_title {
     my ($title) = @_;
 
+    $title //= "";
     $title =~ s/[^\w\s[:punct:]]//g;
     $title = join(' ', split(' ', $title));
 
@@ -1894,7 +1906,7 @@ sub get_user_input {
 sub logout {
 
     unlink $authentication_file
-      or warn "Can't unlink: `$authentication_file' -> $!";
+      or warn "[!] Can't unlink: `$authentication_file' -> $!";
 
     $yv_obj->set_access_token();
     $yv_obj->set_refresh_token();
@@ -1932,7 +1944,7 @@ INFO
         if ($remember_me) {
             $yv_obj->set_authentication_file($authentication_file);
             $yv_obj->save_authentication_tokens()
-              or warn "Can't store the authentication tokens: $!";
+              or warn "[!] Can't store the authentication tokens: $!";
         }
         else {
             $yv_obj->set_authentication_file();
@@ -2297,7 +2309,7 @@ sub warn_last_page {
 }
 
 sub warn_first_page {
-    warn colored("\n[!] No previous page available...", 'bold red') . "\n";
+    warn colored("\n[!] This is the first page!", 'bold red') . "\n";
 }
 
 sub warn_no_thing_selected {
@@ -2466,16 +2478,6 @@ sub print_channels {
         }
     }
 
-    state $info_format = <<"FORMAT";
-
-TITLE: %s
- SUBS: %s
- VIDS: %s
-   ID: %s
-  URL: https://www.youtube.com/channel/%s
-DESCR: %s
-FORMAT
-
     foreach my $i (0 .. $#{$channels}) {
         my $channel = $channels->[$i];
 
@@ -2483,7 +2485,7 @@ FORMAT
             printf(
                    "\n%s. %s\n    %s: %-23s %s: %-12s\n%s\n",
                    colored(sprintf('%2d', $i + 1), 'bold') => colored($yv_utils->get_channel_title($channel), 'bold blue'),
-                   colored('Updated' => 'bold') => $yv_utils->get_publication_date($channel),
+                   colored('Created' => 'bold') => $yv_utils->get_publication_date($channel),
                    colored('Author'  => 'bold') => $yv_utils->get_channel_title($channel),
                    wrap_text(
                              i_tab => q{ } x 4,
@@ -2495,25 +2497,32 @@ FORMAT
         elsif ($opt{results_with_colors}) {
             print "\n" if $i == 0;
             printf(
-                   "%s. %s [%s] [%s]\n",
-                   colored(sprintf('%2d', $i + 1),                                                   'bold'),
-                   colored($yv_utils->get_channel_title($channel),                                   'blue'),
-                   colored($yv_utils->get_publication_date($channel),                                'magenta'),
-                   colored($yv_utils->short_human_number($yv_utils->get_subscriber_count($channel)), 'green'),
+                   "%s. %-50s %s  %s\n",
+                   colored(sprintf('%2d', $i + 1),                 'bold'),
+                   colored($yv_utils->get_channel_title($channel), 'blue'),
+                   colored(
+                           sprintf("%5s videos", $yv_utils->set_thousands($yv_utils->get_channel_video_count($channel))),
+                           'magenta'
+                          ),
+                   colored(
+                           sprintf("%4s subs",
+                                   $yv_utils->short_human_number($yv_utils->get_channel_subscriber_count($channel))),
+                           'green'
+                          ),
                   );
         }
         elsif ($opt{results_fixed_width}) {
 
             require List::Util;
 
-            my @authors              = map { $yv_utils->get_channel_id($_) } @{$channels};
-            my @dates                = map { $yv_utils->get_publication_date($_) } @{$channels};
-            my @get_subscriber_count = map { $yv_utils->short_human_number($yv_utils->get_subscriber_count($_)) } @{$channels};
+            my @video_counts =
+              map { sprintf("%5s videos", $yv_utils->set_thousands($yv_utils->get_channel_video_count($_))) } @$channels;
+            my @sub_counts = map { sprintf("%4s subs", $_) }
+              map { $yv_utils->short_human_number($yv_utils->get_channel_subscriber_count($_)) } @$channels;
 
-            my $author_width           = List::Util::min(List::Util::max(map { length($_) } @authors), int($term_width / 5));
-            my $dates_width            = List::Util::max(map { length($_) } @dates);
-            my $subscriber_count_width = List::Util::max(map { length($_) } @get_subscriber_count);
-            my $title_length = $term_width - ($author_width + $dates_width + $subscriber_count_width + 2 + 3 + 1 + 2 + 2 + 1);
+            my $sub_count_width   = List::Util::max(map { length($_) } @sub_counts);
+            my $video_count_width = List::Util::max(map { length($_) } @video_counts);
+            my $title_length      = $term_width - ($sub_count_width + $video_count_width + 2 + 3 + 2);
 
             print "\n";
             foreach my $i (0 .. $#{$channels}) {
@@ -2521,19 +2530,24 @@ FORMAT
                 my $channel = $channels->[$i];
                 my $title   = clear_title($yv_utils->get_channel_title($channel));
 
-                printf "%s. %s %s [%*s] [%*s]\n", colored(sprintf('%2d', $i + 1), 'bold'),
-                  adjust_width($title, $title_length),
-                  adjust_width($authors[$i], $author_width, 1),
-                  $dates_width,            $dates[$i],
-                  $subscriber_count_width, $get_subscriber_count[$i];
+                printf("%s. %s %s  %s\n",
+                       colored(sprintf('%2d', $i + 1),                                 'bold'),
+                       colored(adjust_width($title, $title_length),                    'blue'),
+                       colored(adjust_width($video_counts[$i], $video_count_width, 1), 'magenta'),
+                       colored(adjust_width($sub_counts[$i], $sub_count_width, 1),     'green'),
+                      );
             }
             last;
         }
         else {
             print "\n" if $i == 0;
-            printf "%s. %s [%s] [%s]\n", colored(sprintf('%2d', $i + 1), 'bold'), $yv_utils->get_channel_title($channel),
-              $yv_utils->get_publication_date($channel),
-              $yv_utils->short_human_number($yv_utils->get_subscriber_count($channel));
+            printf(
+                   "%s. %-40s %5s videos  %4s subs\n",
+                   colored(sprintf('%2d', $i + 1), 'bold'),
+                   $yv_utils->get_channel_title($channel),
+                   $yv_utils->set_thousands($yv_utils->get_channel_video_count($channel)),
+                   $yv_utils->short_human_number($yv_utils->get_channel_subscriber_count($channel)),
+                  );
         }
     }
 
@@ -2556,32 +2570,73 @@ FORMAT
               ) {
                 ## ok
             }
+
+            # :h, :help
             elsif ($opt =~ /^(?:h|help)\z/) {
-                print $general_help;
+                print $channels_help;
                 press_enter_to_continue();
             }
-            elsif ($opt =~ /^i(?:nfo)?${digit_or_equal_re}(.*)/) {
+
+            # :r, :return
+            elsif ($opt =~ /^(?:r|return)\z/) {
+                return;
+            }
+
+            # :i=i, :info=i
+            elsif ($opt =~ /^(?:i|info)${digit_or_equal_re}(.*)/) {
                 if (my @ids = get_valid_numbers($#{$channels}, $1)) {
                     foreach my $id (@ids) {
-                        my $desc = wrap_text(
-                                        i_tab => q{ } x 7,
-                                        s_tab => q{ } x 7,
-                                        text => [$yv_utils->get_description($channels->[$id]) || 'No description available...']
-                        );
-                        $desc =~ s/^\s+//;
-                        printf $info_format, $yv_utils->get_author($channels->[$id]),
-                          $yv_utils->short_human_number($yv_utils->get_subscriber_count($channels->[$id])),
-                          $yv_utils->short_human_number($yv_utils->get_video_count($channels->[$id])),
-                          ($yv_utils->get_channel_id($channels->[$id])) x 2, $desc;
+                        print_channel_info($channels->[$id]);
                     }
                     press_enter_to_continue();
+                }
+                else {
+                    warn_no_thing_selected('playlist');
+                }
+            }
+
+            # :pv=i, :popular=i
+            elsif ($opt =~ /^(?:pv|popular)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$channels}, $1)) {
+
+                    foreach my $id (@nums) {
+
+                        my $channel_id = $yv_utils->get_channel_id($channels->[$id]);
+                        my $request    = $yv_obj->popular_videos($channel_id);
+
+                        if ($yv_utils->has_entries($request)) {
+                            print_videos($request);
+                        }
+                        else {
+                            warn_no_results('popular video');
+                        }
+                    }
                 }
                 else {
                     warn_no_thing_selected('channel');
                 }
             }
-            elsif ($opt =~ /^(?:r|return)\z/) {
-                return;
+
+            # :p=i, :playlist=i
+            elsif ($opt =~ /^(?:p|playlists?|up)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$channels}, $1)) {
+
+                    foreach my $id (@nums) {
+
+                        my $channel_id = $yv_utils->get_channel_id($channels->[$id]);
+                        my $request    = $yv_obj->playlists($channel_id);
+
+                        if ($yv_utils->has_entries($request)) {
+                            print_playlists($request);
+                        }
+                        else {
+                            warn_no_results('playlist');
+                        }
+                    }
+                }
+                else {
+                    warn_no_thing_selected('channel');
+                }
             }
             else {
                 warn_invalid('option', $opt);
@@ -2807,23 +2862,14 @@ sub print_playlists {
         }
     }
 
-    state $info_format = <<"FORMAT";
-
-TITLE: %s
- VIDS: %s
-   ID: %s
-  URL: https://www.youtube.com/playlist?list=%s
-DESCR: %s
-FORMAT
-
     foreach my $i (0 .. $#{$playlists}) {
         my $playlist = $playlists->[$i];
         if ($opt{results_with_details}) {
             printf(
                    "\n%s. %s\n    %s: %-25s %s: %s\n%s\n",
                    colored(sprintf('%2d', $i + 1), 'bold') => colored($yv_utils->get_title($playlist), 'bold blue'),
-                   colored('Updated' => 'bold') => $yv_utils->get_publication_date($playlist),
-                   colored('Author'  => 'bold') => $yv_utils->get_channel_title($playlist),
+                   colored('Videos' => 'bold') => $yv_utils->get_playlist_item_count($playlist),
+                   colored('Author' => 'bold') => $yv_utils->get_channel_title($playlist),
                    wrap_text(
                              i_tab => q{ } x 4,
                              s_tab => q{ } x 4,
@@ -2834,26 +2880,24 @@ FORMAT
         elsif ($opt{results_with_colors}) {
             print "\n" if $i == 0;
             printf(
-                   "%s. %s [%s] %s [%s]\n",
-                   colored(sprintf('%2d', $i + 1),                                               'bold'),
-                   colored($yv_utils->get_title($playlist),                                      'blue'),
-                   colored($yv_utils->get_publication_date($playlist),                           'magenta'),
-                   colored($yv_utils->get_channel_title($playlist),                              'green'),
-                   colored($yv_utils->short_human_number($yv_utils->get_video_count($playlist)), 'yellow'),
+                   "%s. %-50s %s  %s\n",
+                   colored(sprintf('%2d', $i + 1),                                                              'bold'),
+                   colored($yv_utils->get_title($playlist),                                                     'blue'),
+                   colored($yv_utils->set_thousands($yv_utils->get_playlist_item_count($playlist)) . " videos", 'magenta'),
+                   colored($yv_utils->get_channel_title($playlist),                                             'green'),
                   );
         }
         elsif ($opt{results_fixed_width}) {
 
             require List::Util;
 
-            my @authors      = map { $yv_utils->get_channel_title($_) } @{$playlists};
-            my @dates        = map { $yv_utils->get_publication_date($_) } @{$playlists};
-            my @video_counts = map { $yv_utils->short_human_number($yv_utils->get_video_count($_)) } @{$playlists};
+            my @authors = map { $yv_utils->get_channel_title($_) } @{$playlists};
+            my @item_counts =
+              map { $yv_utils->set_thousands($yv_utils->get_playlist_item_count($_)) . " videos" } @{$playlists};
 
-            my $author_width      = List::Util::min(List::Util::max(map { length($_) } @authors), int($term_width / 5));
-            my $dates_width       = List::Util::max(map { length($_) } @dates);
-            my $video_count_width = List::Util::max(map { length($_) } @video_counts);
-            my $title_length      = $term_width - ($author_width + $dates_width + $video_count_width + 2 + 3 + 1 + 2 + 1 + 2);
+            my $author_width     = List::Util::min(List::Util::max(map { length($_) } @authors), int($term_width / 5));
+            my $item_count_width = List::Util::max(map { length($_) } @item_counts);
+            my $title_length     = $term_width - ($author_width + $item_count_width + 2 + 3 + 1 + 1);
 
             print "\n";
             foreach my $i (0 .. $#{$playlists}) {
@@ -2861,24 +2905,22 @@ FORMAT
                 my $playlist = $playlists->[$i];
                 my $title    = clear_title($yv_utils->get_title($playlist));
 
-                printf "%s. %s %s [%*s] [%*s]\n", colored(sprintf('%2d', $i + 1), 'bold'),
-                  adjust_width($title, $title_length),
-                  adjust_width($authors[$i], $author_width, 1),
-                  $dates_width,       $dates[$i],
-                  $video_count_width, $video_counts[$i];
+                printf("%s. %s %s  %s\n",
+                       colored(sprintf('%2d', $i + 1),                               'bold'),
+                       colored(adjust_width($title, $title_length),                  'blue'),
+                       colored(adjust_width($item_counts[$i], $item_count_width, 1), 'magenta'),
+                       colored(adjust_width($authors[$i], $author_width, 1),         'green'),
+                      );
             }
             last;
         }
         else {
             print "\n" if $i == 0;
-            printf(
-                   "%s. %s (by %s) [%s] [%s]\n",
+            printf("%s. %-40s %5s videos (%s)\n",
                    colored(sprintf('%2d', $i + 1), 'bold'),
                    $yv_utils->get_title($playlist),
-                   $yv_utils->get_channel_title($playlist),
-                   $yv_utils->get_publication_date($playlist),
-                   $yv_utils->short_human_number($yv_utils->get_video_count($playlist)),
-                  );
+                   $yv_utils->set_thousands($yv_utils->get_playlist_item_count($playlist)),
+                   $yv_utils->get_channel_title($playlist));
         }
     }
 
@@ -2918,18 +2960,12 @@ FORMAT
             elsif ($opt =~ /^(?:r|return)\z/) {
                 return;
             }
-            elsif ($opt =~ /^i(?:nfo)?${digit_or_equal_re}(.*)/) {
+
+            # :i=i, :info=i
+            elsif ($opt =~ /^(?:i|info)${digit_or_equal_re}(.*)/) {
                 if (my @ids = get_valid_numbers($#{$playlists}, $1)) {
                     foreach my $id (@ids) {
-                        my $desc = wrap_text(
-                                       i_tab => q{ } x 7,
-                                       s_tab => q{ } x 7,
-                                       text => [$yv_utils->get_description($playlists->[$id]) || 'No description available...']
-                        );
-                        $desc =~ s/^\s+//;
-                        printf $info_format, $yv_utils->get_title($playlists->[$id]),
-                          $yv_utils->short_human_number($yv_utils->get_video_count($playlists->[$id])),
-                          ($yv_utils->get_playlist_id($playlists->[$id])) x 2, $desc;
+                        print_playlist_info($playlists->[$id]);
                     }
                     press_enter_to_continue();
                 }
@@ -2937,6 +2973,8 @@ FORMAT
                     warn_no_thing_selected('playlist');
                 }
             }
+
+            # :pp=i
             elsif ($opt =~ /^pp${digit_or_equal_re}(.*)/) {
                 if (my @ids = get_valid_numbers($#{$playlists}, $1)) {
                     my $arg = "--pp=" . join(q{,}, map { $yv_utils->get_playlist_id($_) } @{$playlists}[@ids]);
@@ -3088,7 +3126,12 @@ sub download_from_url {
     if (defined($lwp_dl)) {
         my @cmd = ($lwp_dl, $url, "$output_filename.part");
         $yv_obj->proxy_system(@cmd);
-        return if $?;
+        if ($? == 256 and !defined(fileno(STDOUT))) {    # lwp-download bug
+            ## ok
+        }
+        else {
+            return if $?;
+        }
         rename("$output_filename.part", $output_filename) or return undef;
         return $output_filename;
     }
@@ -3245,6 +3288,7 @@ sub download_video {
 
     # Convert the downloaded video
     if (defined $opt{convert_to}) {
+
         my $convert_filename = catfile($opt{downloads_dir}, "$naked_filename.$opt{convert_to}");
         my $convert_cmd      = $opt{convert_cmd};
 
@@ -3522,6 +3566,102 @@ sub play_videos_matched_by_regex {
     return 1;
 }
 
+sub print_playlist_info {
+    my ($playlist) = @_;
+
+    my $hr = '-' x ($opt{get_term_width} ? get_term_width() : $term_width);
+
+    printf(
+           "\n%s\n%s\n%s\n",
+           _bold_color('=> Description'),
+           $hr,
+           wrap_text(
+                     i_tab => q{},
+                     s_tab => q{},
+                     text  => [$yv_utils->get_description($playlist) || 'No description available...']
+                    ),
+          );
+
+    my $id = $yv_utils->get_playlist_id($playlist);
+
+    if ($id =~ m{^/}) {
+        ## local playlist
+    }
+    else {
+        say STDOUT $hr, "\n", _bold_color('=> URL: '), sprintf("https://www.youtube.com/playlist?list=%s", $id);
+    }
+
+    my $title        = $yv_utils->get_title($playlist);
+    my $title_length = length($title);
+    my $rep          = ($term_width - $title_length) / 2 - 4;
+
+    $rep = 0 if $rep < 0;
+
+    print(
+          "$hr\n",
+          q{ } x $rep => (_bold_color("=>> $title <<=") . "\n\n"),
+          (
+           map    { sprintf(q{-> } . "%-*s: %s\n", $opt{_colors} ? 18 : 10, _bold_color($_->[0]), $_->[1]) }
+             grep { defined($_->[1]) } (
+                                        ['Title'      => $yv_utils->get_title($playlist)],
+                                        ['Author'     => $yv_utils->get_channel_title($playlist)],
+                                        ['ChannelID'  => $yv_utils->get_channel_id($playlist)],
+                                        ['PlaylistID' => ($id =~ m{^/} ? undef : $id)],
+                                        ['Videos' => $yv_utils->set_thousands($yv_utils->get_playlist_item_count($playlist))],
+                                        ['Published' => $yv_utils->get_publication_date($playlist)],
+                                       )
+          ),
+          "$hr\n"
+         );
+
+    return 1;
+}
+
+sub print_channel_info {
+    my ($channel) = @_;
+
+    my $hr = '-' x ($opt{get_term_width} ? get_term_width() : $term_width);
+
+    printf(
+           "\n%s\n%s\n%s\n%s\n%s",
+           _bold_color('=> Description'),
+           $hr,
+           wrap_text(
+                     i_tab => q{},
+                     s_tab => q{},
+                     text  => [$yv_utils->get_description($channel) || 'No description available...']
+                    ),
+           $hr,
+           _bold_color('=> URL: ')
+          );
+
+    print STDOUT sprintf("https://www.youtube.com/channel/%s", $yv_utils->get_channel_id($channel));
+
+    my $title        = $yv_utils->get_channel_title($channel);
+    my $title_length = length($title);
+    my $rep          = ($term_width - $title_length) / 2 - 4;
+
+    $rep = 0 if $rep < 0;
+
+    print(
+          "\n$hr\n",
+          q{ } x $rep => (_bold_color("=>> $title <<=") . "\n\n"),
+          (
+           map    { sprintf(q{-> } . "%-*s: %s\n", $opt{_colors} ? 20 : 12, _bold_color($_->[0]), $_->[1]) }
+             grep { defined($_->[1]) } (
+                                ['Channel'     => $title],
+                                ['ChannelID'   => $yv_utils->get_channel_id($channel)],
+                                ['Videos'      => $yv_utils->set_thousands($yv_utils->get_channel_video_count($channel))],
+                                ['Subscribers' => $yv_utils->set_thousands($yv_utils->get_channel_subscriber_count($channel))],
+                                ['Published'   => $yv_utils->get_publication_date($channel)],
+             )
+          ),
+          "$hr\n"
+         );
+
+    return 1;
+}
+
 sub print_video_info {
     my ($video) = @_;
 
@@ -3677,9 +3817,6 @@ sub print_videos {
     foreach my $i (0 .. $#{$videos}) {
         my $video = $videos->[$i];
 
-        #use Data::Dump qw(pp);
-        #pp $video;
-
         if ($opt{custom_layout}) {
 
             my $entry = $opt{custom_layout_format};
@@ -3753,7 +3890,7 @@ sub print_videos {
             my $definition = $yv_utils->get_definition($video);
             push @formatted,
               sprintf(
-                      "%s. %s (%s) %s\n",
+                      "%s. %-60s (%s) %s\n",
                       colored(sprintf('%2d', $i + 1),               'bold'),
                       colored($yv_utils->get_title($video),         'blue'),
                       colored($yv_utils->get_time($video),          'magenta'),
@@ -3788,7 +3925,7 @@ sub print_videos {
         else {
             push @formatted,
               sprintf(
-                      "%s. %s (by %s) [%s]\n",
+                      "%s. %-50s (by %s) [%s]\n",
                       colored(sprintf('%2d', $i + 1), 'bold'), $yv_utils->get_title($video),
                       $yv_utils->get_channel_title($video),    $yv_utils->get_time($video),
                      );
@@ -3896,6 +4033,8 @@ sub print_videos {
                     }
                 }
             }
+
+            # :back, :previous
             elsif ($opt =~ /^(?:b|back|p|prev|previous)\z/) {
                 if (defined($url)) {
                     __SUB__->($yv_obj->previous_page($url), @keywords ? (auto => 1) : ());
@@ -3904,13 +4043,19 @@ sub print_videos {
                     warn_first_page();
                 }
             }
+
+            # :refresh
             elsif ($opt =~ /^(?:R|refresh)\z/) {
                 @{$videos} = @{$yv_obj->_get_results($url)->{results}};
                 $results->{has_extra_info} = 0;
             }
+
+            # :return
             elsif ($opt =~ /^(?:r|return)\z/) {
                 return;
             }
+
+            # :author=i, :u=i
             elsif ($opt =~ /^(?:a|author|u|uploads)${digit_or_equal_re}(.*)/) {
                 if (my @nums = get_valid_numbers($#{$videos}, $1)) {
                     foreach my $id (@nums) {
@@ -3928,6 +4073,8 @@ sub print_videos {
                     warn_no_thing_selected('video');
                 }
             }
+
+            # :popular=i, :pv=i
             elsif ($opt =~ /^(?:pv|popular)${digit_or_equal_re}(.*)/) {
                 if (my @nums = get_valid_numbers($#{$videos}, $1)) {
                     foreach my $id (@nums) {
@@ -3945,6 +4092,8 @@ sub print_videos {
                     warn_no_thing_selected('video');
                 }
             }
+
+            # :activity (FIXME)
             elsif ($opt =~ /^(?:A|[Aa]ctivity)${digit_or_equal_re}(.*)/) {
                 if (my @nums = get_valid_numbers($#{$videos}, $1)) {
                     foreach my $id (@nums) {
@@ -3962,6 +4111,8 @@ sub print_videos {
                     warn_no_thing_selected('activity');
                 }
             }
+
+            # # :ps (FIXME)
             elsif ($opt =~ /^(?:ps|s2p)${digit_or_equal_re}(.*)/) {
                 if (my @nums = get_valid_numbers($#{$videos}, $1)) {
                     select_and_save_to_playlist(map { $yv_utils->get_video_id($videos->[$_]) } @nums);
@@ -3970,6 +4121,8 @@ sub print_videos {
                     warn_no_thing_selected('video');
                 }
             }
+
+            # :p=i, :playlist=i, :up=i
             elsif ($opt =~ /^(?:p|playlists?|up)${digit_or_equal_re}(.*)/) {
                 if (my @nums = get_valid_numbers($#{$videos}, $1)) {
                     foreach my $id (@nums) {
@@ -3986,6 +4139,8 @@ sub print_videos {
                     warn_no_thing_selected('video');
                 }
             }
+
+            # :like=i, :dislike=i (FIXME)
             elsif ($opt =~ /^((?:dis)?like)${digit_or_equal_re}(.*)/) {
                 my $rating = $1;
                 if (my @nums = get_valid_numbers($#{$videos}, $2)) {

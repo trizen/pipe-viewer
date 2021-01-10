@@ -962,6 +962,12 @@ sub set_text {
     my ($object, $text, %args) = @_;
     my $object_buffer = $object->get_buffer;
 
+    require Encode;
+
+    if (!Encode::is_utf8($text)) {
+        $text = Encode::decode_utf8($text);
+    }
+
     if ($args{append}) {
         my $iter = $object_buffer->get_end_iter;
         $object_buffer->insert($iter, $text);
@@ -2725,7 +2731,7 @@ sub add_subscription_entry {
       . "<b>$symbols{face}\t</b> "
       . encode_entities($channel_id) . "\n"
       . "<b>$symbols{crazy_arrow}\t</b> "
-      . $yv_utils->get_publication_date($subscription)
+      . ($yv_utils->get_publication_date($subscription) // 'unknown')
       . "\n\n<i>"
       . encode_entities($row_description) . '</i>';
 
@@ -2786,7 +2792,7 @@ sub add_video_entry {
                   . "<b>$symbols{views}\t</b> "
                   . $yv_utils->set_thousands($yv_utils->get_views($video)) . "\n"
                   . "<b>$symbols{right_arrow}\t </b>"
-                  . $yv_utils->get_publication_date($video));
+                  . ($yv_utils->get_publication_date($video) // 'unknown'));
 
     $liststore->set(
                     $iter,
@@ -2824,7 +2830,7 @@ sub add_channel_entry {
                   . "<b>$symbols{play}\t</b> "
                   . encode_entities($channel_id) . "\n"
                   . "<b>$symbols{crazy_arrow}\t</b> "
-                  . $yv_utils->get_publication_date($channel)
+                  . ($yv_utils->get_publication_date($channel) // 'unknown')
                   . "\n\n<i>"
                   . encode_entities($row_description)
                   . '</i>');
@@ -2868,7 +2874,7 @@ sub add_playlist_entry {
                   . "<b>$symbols{play}\t</b> "
                   . encode_entities($playlist_id) . "\n"
                   . "<b>$symbols{crazy_arrow}\t</b> "
-                  . $yv_utils->get_publication_date($playlist) . "\n\n" . '<i>'
+                  . ($yv_utils->get_publication_date($playlist) // 'unknown') . "\n\n" . '<i>'
                   . encode_entities($row_description)
                   . '</i>');
 
@@ -3427,7 +3433,7 @@ sub display_comments {
                                          . (
                                             $comment_age =~ /sec|min|hour|day/
                                             ? "$comment_age ago"
-                                            : $yv_utils->get_publication_date($comment)
+                                            : ($yv_utils->get_publication_date($comment) // 'unknown')
                                            )
                                          . ") commented:</big>\n"
                                          . encode_entities(

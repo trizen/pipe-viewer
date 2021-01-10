@@ -706,7 +706,7 @@ sub yt_search {
         push @sp, "EgIQBA%253D%253D";
     }
 
-    $params{sp} = join(',', @sp);
+    $params{sp} = join('+', @sp);
     $url = $self->_append_url_args($url, %params);
 
     my $hash    = $self->_get_initial_data($url) // return;
