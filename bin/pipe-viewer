@@ -805,7 +805,7 @@ usage: $execname [options] ([url] | [keywords])
        --use-colors!    : enable or disable the ANSI colors for text
 
  * Other
-   --api=s              : set an API host from https://instances.invidio.us/
+   --api=s              : set an API host from https://api.invidious.io/
    --api=auto           : use a random instance of invidious
    --cookies=s          : file to read cookies from and dump cookie
    --user-agent=s       : specify a custom user agent

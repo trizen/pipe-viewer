@@ -28,7 +28,7 @@ use parent qw(
 
 =head1 NAME
 
-WWW::PipeViewer - A very easy interface to YouTube, using the API of invidio.us.
+WWW::PipeViewer - A very easy interface to YouTube, using the API of invidious.
 
 =cut
 
@@ -530,7 +530,7 @@ sub get_invidious_instances {
 
         my $lwp = LWP::UserAgent->new(timeout => $self->get_timeout);
         $lwp->show_progress(1) if $self->get_debug;
-        my $resp = $lwp->get("https://instances.invidio.us/instances.json");
+        my $resp = $lwp->get("https://api.invidious.io/instances.json");
 
         $resp->is_success() or return;
 
@@ -813,9 +813,9 @@ sub _fallback_extract_urls {
         @formats && return @formats;
     }
 
-    # Use the API of invidio.us
+    # Use the API of invidious
     if ($self->get_debug) {
-        say STDERR ":: Using invidio.us to extract the streaming URLs...";
+        say STDERR ":: Using invidious to extract the streaming URLs...";
     }
 
     push @formats, $self->_extract_from_invidious($videoID);
