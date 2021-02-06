@@ -561,11 +561,14 @@ sub select_good_invidious_instances {
                    'yewtu.be'                 => 1,
                    'invidious.tube'           => 1,
                    'invidiou.site'            => 0,
+                   'invidious.site'           => 1,
+                   'invidious.zee.li'         => 1,
+                   'invidious.048596.xyz'     => 1,
                    'invidious.xyz'            => 1,
                    'vid.mint.lgbt'            => 1,
                    'invidious.ggc-project.de' => 1,
                    'invidious.toot.koeln'     => 1,
-                   'invidious.kavin.rocks'    => 0,
+                   'invidious.kavin.rocks'    => 1,
                    'invidious.snopyta.org'    => 0,
                   );
 
