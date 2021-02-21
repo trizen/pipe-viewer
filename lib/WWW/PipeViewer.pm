@@ -24,7 +24,7 @@ use parent qw(
   WWW::PipeViewer::CommentThreads
   WWW::PipeViewer::Authentication
   WWW::PipeViewer::VideoCategories
-  );
+);
 
 =head1 NAME
 
@@ -32,7 +32,7 @@ WWW::PipeViewer - A very easy interface to YouTube, using the API of invidious.
 
 =cut
 
-our $VERSION = '0.0.6';
+our $VERSION = '0.0.7';
 
 =head1 SYNOPSIS
 
@@ -300,7 +300,7 @@ sub set_lwp_useragent {
 
     require LWP::ConnCache;
     state $cache = LWP::ConnCache->new;
-    $cache->total_capacity(undef);                               # no limit
+    $cache->total_capacity(undef);    # no limit
 
     state $accepted_encodings = do {
         require HTTP::Message;
@@ -716,7 +716,7 @@ sub _extract_from_invidious {
           invidious.site
           invidious.fdn.fr
           invidious.snopyta.org
-          );
+        );
     }
 
     if ($self->get_debug) {
