@@ -508,6 +508,8 @@ sub _extract_playlist_videos {
 sub _get_initial_data {
     my ($self, $url) = @_;
 
+    $self->get_prefer_invidious() and return;
+
     my $content = $self->lwp_get($url) // return;
 
     if ($content =~ m{var\s+ytInitialData\s*=\s*'(.*?)'}is) {

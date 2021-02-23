@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  GTK Pipe Viewer
 #  Fork: 30 October 2020
-#  Edit: 22 February 2021
+#  Edit: 23 February 2021
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -176,21 +176,22 @@ my %CONFIG = (
     hpaned_position             => 420,
 
     # Pipe options
-    split_videos   => 1,
-    m4a_audio      => 1,
-    dash           => 1,        # may load slow
-    prefer_mp4     => 0,
-    prefer_av1     => 0,
-    ignore_av1     => 0,
-    maxResults     => 10,
-    hfr            => 1,        # true to prefer high frame rate (HFR) videos
-    resolution     => 'best',
-    videoDimension => undef,
-    videoLicense   => undef,
-    region         => undef,
+    split_videos     => 1,
+    m4a_audio        => 1,
+    dash             => 1,        # may load slow
+    prefer_mp4       => 0,
+    prefer_av1       => 0,
+    ignore_av1       => 0,
+    prefer_invidious => 0,
+    maxResults       => 10,
+    hfr              => 1,        # true to prefer high frame rate (HFR) videos
+    resolution       => 'best',
+    videoDimension   => undef,
+    videoLicense     => undef,
+    region           => undef,
 
-    comments_width => 80,       # wrap comments longer than `n` characters
-    comments_order => 'top',    # valid values: time, relevance
+    comments_width => 80,         # wrap comments longer than `n` characters
+    comments_order => 'top',      # valid values: time, relevance
 
     # API
     api_host => "auto",
@@ -864,11 +865,11 @@ sub apply_configuration {
 
     foreach my $option_name (
                              qw(
-                             comments_order
                              maxResults videoDimension videoLicense
                              region debug http_proxy user_agent
                              timeout cookie_file ytdl ytdl_cmd
                              api_host prefer_mp4 prefer_av1
+                             comments_order prefer_invidious
                              )
       ) {
 
@@ -2543,7 +2544,6 @@ sub display_results {
     if (ref($items) ne 'ARRAY') {
 
         my $current_instance = $yv_obj->get_api_host();
-        $yv_obj->pick_and_set_random_instance();    # set a random invidious instance
 
         die "Probably $current_instance is down.\n"
           . "\nTry changing the `api_host` in configuration file:\n\n"

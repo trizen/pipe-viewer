@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  pipe-viewer
 #  Fork: 30 October 2020
-#  Edit: 22 February 2021
+#  Edit: 23 February 2021
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -212,6 +212,7 @@ my %CONFIG = (
     prefer_mp4         => 0,
     prefer_av1         => 0,
     ignore_av1         => 0,
+    prefer_invidious   => 0,
     fat32safe          => $constant{win32},
     fullscreen         => 0,
     show_video_info    => 1,
@@ -811,6 +812,7 @@ usage: $execname [options] ([url] | [keywords])
     --custom-playlist-layout=s : custom layout format for playlists
 
  * Other
+   --invidious!         : prefer invidious instances over parsing YouTube
    --api=s              : set an API host from https://api.invidious.io/
    --api=auto           : use a random instance of invidious
    --cookies=s          : file to read cookies from and dump cookie
@@ -1113,7 +1115,7 @@ sub apply_configuration {
                              http_proxy page comments_order
                              subscriptions_order user_agent
                              cookie_file timeout ytdl ytdl_cmd
-                             prefer_mp4 prefer_av1
+                             prefer_mp4 prefer_av1 prefer_invidious
                              )
       ) {
 
@@ -1557,6 +1559,8 @@ sub parse_arguments {
         'prefer-mp4!' => \$opt{prefer_mp4},
         'prefer-av1!' => \$opt{prefer_av1},
         'ignore-av1!' => \$opt{ignore_av1},
+
+        'invidious|prefer-invidious!' => \$opt{prefer_invidious},
 
         'custom-layout-format=s'          => \$opt{custom_layout_format},
         'custom-channel-layout-format=s'  => \$opt{custom_channel_layout_format},
@@ -4438,6 +4442,10 @@ Prefer videos in AV1 format. (experimental)
 Prefer videos in MP4 (AVC) format.
 
 Try to enable this option if the videos are lagging or dropping frames.
+
+=head2 prefer_invidious
+
+Prefer invidious instances over parsing the YouTube website directly.
 
 =head2 region
 

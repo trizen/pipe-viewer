@@ -80,10 +80,11 @@ my %valid_options = (
     ytdl_cmd => {valid => qr/\w/, default => "youtube-dl"},
 
     # Booleans
-    env_proxy   => {valid => [1, 0], default => 1},
-    escape_utf8 => {valid => [1, 0], default => 0},
-    prefer_mp4  => {valid => [1, 0], default => 0},
-    prefer_av1  => {valid => [1, 0], default => 0},
+    env_proxy        => {valid => [1, 0], default => 1},
+    escape_utf8      => {valid => [1, 0], default => 0},
+    prefer_mp4       => {valid => [1, 0], default => 0},
+    prefer_av1       => {valid => [1, 0], default => 0},
+    prefer_invidious => {valid => [1, 0], default => 0},
 
     # API/OAuth
     key           => {valid => qr/^.{15}/, default => undef},
@@ -448,7 +449,9 @@ sub lwp_get {
     }
 
     # Too many errors. Pick another invidious instance.
-    # $self->pick_and_set_random_instance();
+    if ($url !~ m{\bm\.youtube\.com/}) {
+        $self->pick_and_set_random_instance();
+    }
 
     _warn_reponse_error($response, $url);
     return;
@@ -596,12 +599,33 @@ sub select_good_invidious_instances {
 sub pick_random_instance {
     my ($self) = @_;
 
-    # TODO: make sure the selected invidious instance actually works.
+    my @candidates       = $self->select_good_invidious_instances();
+    my @extra_candidates = $self->select_good_invidious_instances(lax => 1);
 
-    my @candidates = $self->select_good_invidious_instances();
+    require List::Util;
+    require WWW::PipeViewer::Utils;
+
+    state $yv_utils = WWW::PipeViewer::Utils->new();
+
+    foreach my $instance (List::Util::shuffle(@candidates), List::Util::shuffle(@extra_candidates)) {
+
+        ref($instance) eq 'ARRAY' or next;
+
+        my $uri = $instance->[1]{uri} // next;
+        $uri =~ s{/+\z}{};    # remove trailing '/'
+
+        local $self->{api_host}         = $uri;
+        local $self->{prefer_invidious} = 1;
+
+        my $results = $self->search_videos('test');
+
+        if ($yv_utils->has_entries($results)) {
+            return $instance;
+        }
+    }
 
     if (not @candidates) {
-        @candidates = $self->select_good_invidious_instances(lax => 1);
+        @candidates = @extra_candidates;
     }
 
     $candidates[rand @candidates];
