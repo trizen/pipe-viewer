@@ -256,11 +256,50 @@ sub find_streaming_url {
         $found_resolution = $resolution;
     }
 
+    state $resolutions = $self->get_resolutions();
+
+    # Find the nearest available resolution
+    if (defined($resolution) and not defined($streaming)) {
+
+        my $end = $#{$resolutions} - 1;    # -1 to ignore 'audio'
+
+        foreach my $i (0 .. $end) {
+            if ($resolutions->[$i] eq $resolution) {
+                for (my $k = 1 ; ; ++$k) {
+
+                    if ($i + $k > $end and $i - $k < 0) {
+                        last;
+                    }
+
+                    if ($i + $k <= $end) {    # nearest below
+
+                        my $res = $resolutions->[$i + $k];
+                        $streaming = $self->_find_streaming_url(%args, resolution => $res);
+
+                        if (defined($streaming)) {
+                            $found_resolution = $res;
+                            last;
+                        }
+                    }
+
+                    if ($i - $k >= 0) {       # nearest above
+
+                        my $res = $resolutions->[$i - $k];
+                        $streaming = $self->_find_streaming_url(%args, resolution => $res);
+
+                        if (defined($streaming)) {
+                            $found_resolution = $res;
+                            last;
+                        }
+                    }
+                }
+                last;
+            }
+        }
+    }
+
     # Otherwise, find the best resolution available
     if (not defined $streaming) {
-
-        state $resolutions = $self->get_resolutions();
-
         foreach my $res (@{$resolutions}) {
 
             $streaming = $self->_find_streaming_url(%args, resolution => $res);
