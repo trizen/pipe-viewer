@@ -25,6 +25,7 @@ The project is in its early stages of development and some features are not impl
 ### AVAILABILITY
 
 * Arch Linux (AUR): https://aur.archlinux.org/packages/pipe-viewer-git/
+* Void Linux: `sudo xbps-install pipe-viewer`
 
 
 ### VIDEO REVIEWS
