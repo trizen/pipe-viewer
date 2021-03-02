@@ -172,16 +172,23 @@ sub video_details {
     my %video_info = $self->_get_video_info($id);
     my $video = $self->parse_json_string($video_info{player_response} // return $self->_invidious_video_details($id, $fields));
 
+    my $videoDetails = {};
+    my $microformat  = {};
+
     if (exists $video->{videoDetails}) {
-        $video = $video->{videoDetails};
+        $videoDetails = $video->{videoDetails};
     }
     else {
         return $self->_invidious_video_details($id, $fields);
     }
 
+    if (exists $video->{microformat}) {
+        $microformat = eval { $video->{microformat}{playerMicroformatRenderer} } // {};
+    }
+
     my %details = (
-        title   => $video->{title},
-        videoId => $video->{videoId},
+        title   => eval { $microformat->{title}{simpleText} } // $videoDetails->{title},
+        videoId => $videoDetails->{videoId},
 
         videoThumbnails => [
             map {
@@ -191,19 +198,22 @@ sub video_details {
                         width   => $_->{width},
                         height  => $_->{height},
                        }
-            } @{$video->{thumbnail}{thumbnails}}
+            } @{$videoDetails->{thumbnail}{thumbnails}}
         ],
 
-        liveNow       => ($video->{isLiveContent} || (($video->{lengthSeconds} || 0) == 0)),
-        description   => $video->{shortDescription},
-        lengthSeconds => $video->{lengthSeconds},
+        liveNow       => ($videoDetails->{isLiveContent} || (($videoDetails->{lengthSeconds} || 0) == 0)),
+        description   => eval { $microformat->{description}{simpleText} } // $videoDetails->{shortDescription},
+        lengthSeconds => $videoDetails->{lengthSeconds}                   // $microformat->{lengthSeconds},
 
-        keywords  => $video->{keywords},
-        viewCount => $video->{viewCount},
+        category    => $microformat->{category},
+        publishDate => $microformat->{publishDate},
 
-        author   => $video->{author},
-        authorId => $video->{channelId},
-        rating   => $video->{averageRating},
+        keywords  => $videoDetails->{keywords},
+        viewCount => $videoDetails->{viewCount} // $microformat->{viewCount},
+
+        author   => $videoDetails->{author}    // $microformat->{ownerChannelName},
+        authorId => $videoDetails->{channelId} // $microformat->{externalChannelId},
+        rating   => $videoDetails->{averageRating},
                   );
 
     return \%details;

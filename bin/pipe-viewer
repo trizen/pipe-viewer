@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  pipe-viewer
 #  Fork: 30 October 2020
-#  Edit: 23 February 2021
+#  Edit: 03 March 2021
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -3633,6 +3633,12 @@ sub print_video_info {
 
     $opt{show_video_info} || return 1;
 
+    my $extra_info = $yv_obj->video_details($yv_utils->get_video_id($video) // return 1);
+
+    foreach my $key (keys %$extra_info) {
+        $video->{$key} = $extra_info->{$key};
+    }
+
     my $hr = '-' x ($opt{get_term_width} ? get_term_width() : $term_width);
 
     printf(
@@ -3665,6 +3671,7 @@ sub print_video_info {
                                                      ['Channel'    => $yv_utils->get_channel_title($video)],
                                                      ['ChannelID'  => $yv_utils->get_channel_id($video)],
                                                      ['VideoID'    => $yv_utils->get_video_id($video)],
+                                                     ['Rating'     => $yv_utils->get_rating($video)],
                                                      ['Category'   => $yv_utils->get_category_name($video)],
                                                      ['Definition' => $yv_utils->get_definition($video)],
                                                      ['Duration'   => $yv_utils->get_time($video)],

@@ -499,7 +499,7 @@ sub get_description {
     $desc = HTML::Entities::decode_entities($desc);
     $desc =~ s/^\s+//;
 
-    if (not $desc =~ /\S/) {
+    if (not $desc =~ /\S/ or length($desc) < length($info->{description} // '')) {
         $desc = $info->{description} // '';
     }
 
@@ -557,7 +557,7 @@ sub get_thumbnail_url {
         $url = eval { $wanted[0]{url} } // return '';
     }
     else {
-        warn "[!] Couldn't find thumbnail of type <<$type>>...";
+        ## warn "[!] Couldn't find thumbnail of type <<$type>>...";
         $url = eval { $thumbs[0]{url} } // return '';
     }
 
@@ -616,24 +616,23 @@ sub get_comment_content {
 
 sub get_id {
     my ($self, $info) = @_;
-
-    #$info->{id};
     $info->{videoId};
+}
+
+sub get_rating {
+    my ($self, $info) = @_;
+    my $rating = $info->{rating} // return;
+    sprintf('%.2f', $rating);
 }
 
 sub get_channel_id {
     my ($self, $info) = @_;
-
-    #$info->{snippet}{resourceId}{channelId} // $info->{snippet}{channelId};
     $info->{authorId};
 }
 
 sub get_category_id {
     my ($self, $info) = @_;
-
-    #$info->{snippet}{resourceId}{categoryId} // $info->{snippet}{categoryId};
-    #"unknown";
-    $info->{genre} // 'Unknown';
+    $info->{genre} // $info->{category} // 'Unknown';
 }
 
 sub get_category_name {
@@ -657,9 +656,7 @@ sub get_category_name {
                          29 => 'Nonprofits & Activism',
                         };
 
-    #$categories->{$self->get_category_id($info) // ''} // 'Unknown';
-
-    $info->{genre} // 'Unknown';
+    $info->{genre} // $info->{category} // 'Unknown';
 }
 
 sub get_publication_date {
@@ -672,8 +669,17 @@ sub get_publication_date {
     require Encode;
     require Time::Piece;
 
-    my $time = Time::Piece->new($info->{published} // return undef);
-    Encode::decode_utf8($time->strftime("%d %B %Y"));
+    my $time;
+
+    if (defined($info->{published})) {
+        $time = eval { Time::Piece->new($info->{published}) };
+    }
+
+    if (defined($info->{publishDate})) {
+        $time = eval { Time::Piece->strptime($info->{publishDate}, '%Y-%m-%d') };
+    }
+
+    defined($time) ? Encode::decode_utf8($time->strftime("%d %B %Y")) : undef;
 }
 
 sub get_publication_age {
