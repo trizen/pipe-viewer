@@ -2867,8 +2867,9 @@ sub add_playlist_entry {
                   . encode_entities($row_description)
                   . '</i>');
 
-    my $num_items_template = "$symbols{video}\t %d videos\n";
-    my $num_items_text     = sprintf($num_items_template, $yv_utils->get_playlist_video_count($playlist) // 0);
+    my $num_items_template = "$symbols{video}\t %s videos\n";
+    my $num_items_text =
+      sprintf($num_items_template, $yv_utils->set_thousands($yv_utils->get_playlist_video_count($playlist) // 0));
 
     my $type_label = reflow_text("$symbols{type}\t " . 'Playlist' . "\n" . $num_items_text);
 
