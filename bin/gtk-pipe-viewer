@@ -120,19 +120,21 @@ sub which_command {
 }
 
 my %symbols = (
-               up_arrow    => '↑',
-               down_arrow  => '↓',
-               diamond     => '❖',
-               face        => '☺',
-               black_face  => '☻',
-               average     => 'x̄',
-               ellipsis    => '…',
-               play        => '▶',
-               views       => '◈',
-               heart       => '❤',
-               right_arrow => '→',
-               crazy_arrow => '↬',
-               numero      => '№',
+               thumbs_up   => '👍',
+               thumbs_down => '👎',
+               type        => '💡',
+               author      => '😃',
+               author_id   => '🤖',
+               average     => '📊',
+               category    => '🗃️',
+               play        => '▶️',
+               views       => '👀',
+               heart       => '❤️',
+               published   => '⏱️',
+               updated     => '✨',
+               numero      => '#️⃣',
+               video       => '🎞️',
+               subs        => '👪',
               );
 
 # Main configuration
@@ -1905,10 +1907,8 @@ sub set_youtube_tops {
                          'UC0wbcfzV-bHhABbWGXKHwdg' => 'Utah Open Source',
                          'UCotwjyJnb-4KW7bmsOoLfkg' => 'Art of the Problem',
                          'UC7y4qaRSb5w2O8cCHOsKZDw' => 'YAPC NA',
-                         'UC1t6kKXoBvjdr8m9KJ2Fx7A' => 'Gresham College',
                          'UCGHZpIpAWJQ-Jy_CeCdXhMA' => 'Cool Worlds',
                          'UCXZIDlJ_DgzrEwYop2s3JOQ' => 'National Museum of Mathematics',
-                         'UCLnGGRG__uGSPLBLzyhg8dQ' => 'Oxford Mathematics',
                          'UCmG6gHgD8JaEZVxuHWJijGQ' => 'UConn Mathematics',
                          'UC81mayGa63QaJE1SjKIYp0w' => 'metaRising',
                          'UCSHZKyawb77ixDdsGog4iWA' => 'Lex Fridman',
@@ -2722,14 +2722,14 @@ sub add_subscription_entry {
         '<big><b>'
       . encode_entities($title)
       . "</b></big>\n\n"
-      . "<b>$symbols{face}\t</b> "
+      . "$symbols{author}\t "
       . encode_entities($channel_id) . "\n"
-      . "<b>$symbols{crazy_arrow}\t</b> "
+      . "$symbols{published}\t "
       . ($yv_utils->get_publication_date($subscription) // 'unknown')
       . "\n\n<i>"
       . encode_entities($row_description) . '</i>';
 
-    my $type_label = "<b>$symbols{diamond}</b>  " . 'Subscription' . "\n";
+    my $type_label = "$symbols{type}\t " . 'Subscription' . "\n";
 
     $liststore->set(
                     $iter,
@@ -2766,27 +2766,19 @@ sub add_video_entry {
     my $title_label =
       reflow_text(  "<big><b>"
                   . encode_entities($title)
-                  . "</b></big>\n"
-                  . "<b>$symbols{up_arrow}\t</b> "
-                  . $yv_utils->set_thousands($yv_utils->get_likes($video)) . "\n"
-                  . "<b>$symbols{down_arrow}\t</b> "
-                  . $yv_utils->set_thousands($yv_utils->get_dislikes($video)) . "\n"
-                  . "<b>$symbols{ellipsis}\t</b> "
-                  . encode_entities($yv_utils->get_category_name($video)) . "\n"
-                  . "<b>$symbols{face}\t</b> "
-                  . encode_entities($yv_utils->get_channel_title($video)) . "\n" . "<i>"
+                  . "</b></big>\n\n"
+                  . "$symbols{author}\t "
+                  . encode_entities($yv_utils->get_channel_title($video)) . "\n"
+                  . "$symbols{published}\t "
+                  . ($yv_utils->get_publication_date($video) // 'unknown') . "\n\n" . "<i>"
                   . encode_entities($row_description)
                   . "</i>");
 
     my $info_label =
-      reflow_text(  "<b>$symbols{play}\t</b> "
+      reflow_text(  "$symbols{play}\t "
                   . $yv_utils->get_time($video) . "\n"
-                  . "<b>$symbols{diamond}\t</b> "
-                  . $yv_utils->get_definition($video) . "\n"
-                  . "<b>$symbols{views}\t</b> "
-                  . $yv_utils->set_thousands($yv_utils->get_views($video)) . "\n"
-                  . "<b>$symbols{right_arrow}\t </b>"
-                  . ($yv_utils->get_publication_date($video) // 'unknown'));
+                  . "$symbols{views}\t "
+                  . $yv_utils->set_thousands($yv_utils->get_views($video)));
 
     $liststore->set(
                     $iter,
@@ -2819,17 +2811,22 @@ sub add_channel_entry {
       reflow_text(  '<big><b>'
                   . encode_entities($title)
                   . "</b></big>\n\n"
-                  . "<b>$symbols{face}\t</b> "
+                  . "$symbols{author}\t "
                   . encode_entities($yv_utils->get_channel_title($channel)) . "\n"
-                  . "<b>$symbols{play}\t</b> "
-                  . encode_entities($channel_id) . "\n"
-                  . "<b>$symbols{crazy_arrow}\t</b> "
-                  . ($yv_utils->get_publication_date($channel) // 'unknown')
-                  . "\n\n<i>"
+                  . "$symbols{author_id}\t "
+                  . encode_entities($channel_id) . "\n" . "\n<i>"
                   . encode_entities($row_description)
                   . '</i>');
 
-    my $type_label = reflow_text("<b>$symbols{diamond}</b>  " . 'Channel' . "\n");
+    my $type_label =
+      reflow_text(  "$symbols{type}\t "
+                  . 'Channel' . "\n"
+                  . "$symbols{video}\t "
+                  . $yv_utils->set_thousands($yv_utils->get_video_count($channel))
+                  . ' videos' . "\n"
+                  . "$symbols{subs}\t "
+                  . $yv_utils->short_human_number($yv_utils->get_subscriber_count($channel))
+                  . ' subs');
 
     $liststore->set(
                     $iter,
@@ -2863,19 +2860,17 @@ sub add_playlist_entry {
       reflow_text(  '<big><b>'
                   . encode_entities($title)
                   . "</b></big>\n\n"
-                  . "<b>$symbols{face}\t</b> "
+                  . "$symbols{author}\t "
                   . encode_entities($channel_title) . "\n"
-                  . "<b>$symbols{play}\t</b> "
-                  . encode_entities($playlist_id) . "\n"
-                  . "<b>$symbols{crazy_arrow}\t</b> "
-                  . ($yv_utils->get_publication_date($playlist) // 'unknown') . "\n\n" . '<i>'
+                  . "$symbols{play}\t "
+                  . encode_entities($playlist_id) . "\n\n" . '<i>'
                   . encode_entities($row_description)
                   . '</i>');
 
-    my $num_items_template = "<b>$symbols{numero}</b>  %d items\n";
-    my $num_items_text     = sprintf($num_items_template, $yv_utils->get_playlist_video_count($playlist));
+    my $num_items_template = "$symbols{video}\t %d videos\n";
+    my $num_items_text     = sprintf($num_items_template, $yv_utils->get_playlist_video_count($playlist) // 0);
 
-    my $type_label = reflow_text("<b>$symbols{diamond}</b>  " . 'Playlist' . "\n" . $num_items_text);
+    my $type_label = reflow_text("$symbols{type}\t " . 'Playlist' . "\n" . $num_items_text);
 
     $liststore->set(
                     $iter,
@@ -3582,9 +3577,7 @@ sub set_entry_details {
 
     # Currently, only video entries are supported.
 
-    my $type       = $liststore->get($iter, 7);
-    my $channel_id = get_channel_id_for_selected_video();
-
+    my $type = $liststore->get($iter, 7);
     my $info = $yv_obj->parse_json_string($liststore->get($iter, 8));
 
     if ($type eq 'video') {
@@ -3602,13 +3595,13 @@ sub set_entry_details {
     $gui->get_object('video_title_label')->set_tooltip_markup("<b>$title</b>");
 
     my $details_format = <<"EOT";
-‎$symbols{face}\t%s
-‎$symbols{ellipsis}\t%s
+‎$symbols{author}\t%s
+‎$symbols{category}\t%s
 $symbols{play}\t%s
 ‎$symbols{average}\t%s
 ‎$symbols{views}\t%s
-‎$symbols{right_arrow}\t%s
-$symbols{black_face}\t%s
+‎$symbols{published}\t%s
+$symbols{author_id}\t%s
 EOT
 
     my $text_info = sprintf($details_format,
@@ -3617,7 +3610,7 @@ EOT
                             $yv_utils->set_thousands($yv_utils->get_views($info)), $yv_utils->get_publication_date($info),
                             $yv_utils->get_channel_id($info),);
 
-    $gui->get_object('video_details_label')->set_label(encode_entities($text_info));
+    $gui->get_object('video_details_label')->set_label("<big>" . encode_entities("\n" . $text_info) . "</big>");
 
     # Setting the link button
     my $url        = make_youtube_url($type, $code);

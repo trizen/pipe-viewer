@@ -400,6 +400,10 @@ sub lwp_get {
     $url // return;
     $self->{lwp} // $self->set_lwp_useragent();
 
+    if ($url =~ m{^//}) {
+        $url = 'https:' . $url;
+    }
+
     my %lwp_header = ($opt{simple} ? () : $self->_auth_lwp_header);
     my $response   = $self->{lwp}->get($url, %lwp_header);
 
