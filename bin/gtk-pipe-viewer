@@ -693,7 +693,7 @@ foreach my $path ($CONFIG{cache_dir}) {
                 }
             );
             $item->set_property(tooltip_text => "Search for „${text}”");
-            $item->set_image('Gtk3::Image'->new_from_icon_name("history-view", q{menu}));
+            $item->set_image('Gtk3::Image'->new_from_icon_name("system-search", q{menu}));
             $item->show;
             $history_menu->append($item);
         }
@@ -1373,7 +1373,7 @@ sub menu_popup {
                 }
             );
             $item->set_property(tooltip_text => "Play as audio in a new terminal");
-            $item->set_image('Gtk3::Image'->new_from_icon_name("multimedia-audio-player", q{menu}));
+            $item->set_image('Gtk3::Image'->new_from_icon_name("audio-headphones", q{menu}));
             $item->show;
             $menu->append($item);
         }
