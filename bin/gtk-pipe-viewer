@@ -1587,7 +1587,7 @@ sub show_details_window {
     my ($code, $iter) = get_selected_entry_code();
     $code // return;
     $details_window->show;
-    set_entry_details($code, $iter);
+    Glib::Idle->add(sub { set_entry_details($code, $iter); return 0 }, [], Glib::G_PRIORITY_LOW);
     return 1;
 }
 
@@ -1622,7 +1622,7 @@ sub show_comments_window {
             return 0;
         },
         [],
-        Glib::G_PRIORITY_DEFAULT_IDLE
+        Glib::G_PRIORITY_LOW
                    );
 
     return 1;
@@ -2357,7 +2357,7 @@ sub get_code {
             return 0;
         },
         [$code, $iter],
-        Glib::G_PRIORITY_DEFAULT_IDLE
+        Glib::G_PRIORITY_LOW
                    );
 }
 
@@ -2703,7 +2703,7 @@ sub set_thumbnail {
             return 0;
         },
         [$entry, $liststore, $iter],
-        Glib::G_PRIORITY_DEFAULT_IDLE
+        Glib::G_PRIORITY_LOW
                    );
 }
 
@@ -2763,22 +2763,30 @@ sub add_video_entry {
 
     set_entry_tooltip($iter, $title, $description);
 
-    my $title_label =
-      reflow_text(  "<big><b>"
-                  . encode_entities($title)
-                  . "</b></big>\n\n"
-                  . "$symbols{author}\t "
-                  . encode_entities($yv_utils->get_channel_title($video)) . "\n"
-                  . "$symbols{published}\t "
-                  . ($yv_utils->get_publication_date($video) // 'unknown') . "\n\n" . "<i>"
-                  . encode_entities($row_description)
-                  . "</i>");
+    my $title_label = reflow_text(
+        sprintf(
+            "<big><b>%s</b></big>
 
-    my $info_label =
-      reflow_text(  "$symbols{play}\t "
-                  . $yv_utils->get_time($video) . "\n"
-                  . "$symbols{views}\t "
-                  . $yv_utils->set_thousands($yv_utils->get_views($video)));
+$symbols{author}\t %s
+$symbols{published}\t %s
+
+<i>%s</i>",
+
+            encode_entities($title),
+            encode_entities($yv_utils->get_channel_title($video)),
+            ($yv_utils->get_publication_date($video) // 'unknown'),
+            encode_entities($row_description),
+               )
+    );
+
+    my $info_label = reflow_text(
+        sprintf(
+            "$symbols{play}\t %s
+$symbols{views}\t %s",
+            $yv_utils->get_time($video),
+            $yv_utils->set_thousands($yv_utils->get_views($video)),
+               )
+    );
 
     $liststore->set(
                     $iter,
@@ -2807,26 +2815,31 @@ sub add_channel_entry {
 
     set_entry_tooltip($iter, $title, $description);
 
-    my $title_label =
-      reflow_text(  '<big><b>'
-                  . encode_entities($title)
-                  . "</b></big>\n\n"
-                  . "$symbols{author}\t "
-                  . encode_entities($yv_utils->get_channel_title($channel)) . "\n"
-                  . "$symbols{author_id}\t "
-                  . encode_entities($channel_id) . "\n" . "\n<i>"
-                  . encode_entities($row_description)
-                  . '</i>');
+    my $title_label = reflow_text(
+        sprintf(
+            "<big><b>%s</b></big>
 
-    my $type_label =
-      reflow_text(  "$symbols{type}\t "
-                  . 'Channel' . "\n"
-                  . "$symbols{video}\t "
-                  . $yv_utils->set_thousands($yv_utils->get_video_count($channel))
-                  . ' videos' . "\n"
-                  . "$symbols{subs}\t "
-                  . $yv_utils->short_human_number($yv_utils->get_subscriber_count($channel))
-                  . ' subs');
+$symbols{author}\t %s
+$symbols{author_id}\t %s
+
+<i>%s</i>",
+            encode_entities($title),
+            encode_entities($title),
+            encode_entities($channel_id),
+            encode_entities($row_description),
+               )
+    );
+
+    my $type_label = reflow_text(
+        sprintf(
+            "$symbols{type}\t Channel
+$symbols{video}\t %s videos
+$symbols{subs}\t %s subs",
+
+            $yv_utils->set_thousands($yv_utils->get_video_count($channel)),
+            $yv_utils->short_human_number($yv_utils->get_subscriber_count($channel)),
+               )
+    );
 
     $liststore->set(
                     $iter,
@@ -2856,22 +2869,29 @@ sub add_playlist_entry {
 
     set_entry_tooltip($iter, $title, $description);
 
-    my $title_label =
-      reflow_text(  '<big><b>'
-                  . encode_entities($title)
-                  . "</b></big>\n\n"
-                  . "$symbols{author}\t "
-                  . encode_entities($channel_title) . "\n"
-                  . "$symbols{play}\t "
-                  . encode_entities($playlist_id) . "\n\n" . '<i>'
-                  . encode_entities($row_description)
-                  . '</i>');
+    my $title_label = reflow_text(
+        sprintf(
+            "<big><b>%s</b></big>
 
-    my $num_items_template = "$symbols{video}\t %s videos\n";
-    my $num_items_text =
-      sprintf($num_items_template, $yv_utils->set_thousands($yv_utils->get_playlist_video_count($playlist) // 0));
+$symbols{author}\t %s
+$symbols{play}\t %s
 
-    my $type_label = reflow_text("$symbols{type}\t " . 'Playlist' . "\n" . $num_items_text);
+<i>%s</i>",
+
+            encode_entities($title),
+            encode_entities($channel_title),
+            encode_entities($playlist_id),
+            encode_entities($row_description),
+               )
+    );
+
+    my $type_label = reflow_text(
+        sprintf(
+            "$symbols{type}\t Playlist
+$symbols{video}\t %s videos",
+            $yv_utils->set_thousands($yv_utils->get_playlist_video_count($playlist) // 0)
+               )
+    );
 
     $liststore->set(
                     $iter,
@@ -3409,30 +3429,27 @@ sub display_comments {
 
     foreach my $comment (@{$comments}) {
 
-        #use Data::Dump qw(pp);
-        #pp $comment;
-
         #my $comment_age = $yv_utils->date_to_age($snippet->{publishedAt});
         my $comment_id  = $yv_utils->get_comment_id($comment);
         my $comment_age = $yv_utils->get_publication_age_approx($comment);
 
         my $comment_text = reflow_text(
-                                           "<big><b>"
-                                         . encode_entities($yv_utils->get_author($comment))
-                                         . "</b> ("
-                                         . (
-                                            $comment_age =~ /sec|min|hour|day/
-                                            ? "$comment_age ago"
-                                            : ($yv_utils->get_publication_date($comment) // 'unknown')
-                                           )
-                                         . ") commented:</big>\n"
-                                         . encode_entities(
+                                      sprintf(
+                                              "<big><b>%s</b> (%s) commented:</big>\n%s",
+                                              encode_entities($yv_utils->get_author($comment)),
+                                              (
+                                               $comment_age =~ /sec|min|hour|day/
+                                               ? "$comment_age ago"
+                                               : ($yv_utils->get_publication_date($comment) // 'unknown')
+                                              ),
+                                              encode_entities(
                                                   wrap_text(
                                                       i_tab => "\t",
                                                       s_tab => "\t",
                                                       text => [$yv_utils->get_comment_content($comment) // 'Empty comment...'],
                                                   )
-                                         )
+                                              ),
+                                             )
                                       );
 
         my $iter = $feeds_liststore->append;
@@ -3574,14 +3591,14 @@ sub show_playlists_from_selected_author {
 }
 
 sub set_entry_details {
-    my ($code, $iter) = @_;
+    my ($code, $iter, %opt) = @_;
 
     # Currently, only video entries are supported.
 
     my $type = $liststore->get($iter, 7);
     my $info = $yv_obj->parse_json_string($liststore->get($iter, 8));
 
-    if ($type eq 'video') {
+    if ($type eq 'video' and $opt{extra_info}) {
 
         my $extra_info = $yv_obj->video_details($yv_utils->get_video_id($info));
 
@@ -3606,10 +3623,14 @@ $symbols{author_id}\t%s
 EOT
 
     my $text_info = sprintf($details_format,
-                            $yv_utils->get_channel_title($info),                   $yv_utils->get_category_name($info),
-                            $yv_utils->get_time($info),                            $yv_utils->get_rating($info) // 'unknown',
-                            $yv_utils->set_thousands($yv_utils->get_views($info)), $yv_utils->get_publication_date($info),
-                            $yv_utils->get_channel_id($info),);
+                            $yv_utils->get_channel_title($info) // 'unknown',
+                            $yv_utils->get_category_name($info) // 'unknown',
+                            $yv_utils->get_time($info)          // 'unknown',
+                            $yv_utils->get_rating($info)        // 'unknown',
+                            $yv_utils->set_thousands($yv_utils->get_views($info) // 0),
+                            $yv_utils->get_publication_date($info) // 'unknown',
+                            $yv_utils->get_channel_id($info)       // 'unknown',
+                           );
 
     $gui->get_object('video_details_label')->set_label("<big>" . encode_entities("\n" . $text_info) . "</big>");
 
@@ -3653,12 +3674,17 @@ EOT
                 return 0;
             },
             [$type],
-            Glib::G_PRIORITY_DEFAULT_IDLE
+            Glib::G_PRIORITY_LOW
                        );
     }
 
     # Setting textview description
     set_text($gui->get_object('description_textview'), $yv_utils->get_description($info));
+
+    if (not $opt{extra_info}) {
+        Glib::Idle->add(sub { set_entry_details($code, $iter, extra_info => 1); return 0 }, [], Glib::G_PRIORITY_LOW);
+    }
+
     return 1;
 }
 
@@ -3695,7 +3721,7 @@ if ($CONFIG{remember_session} and -f $session_file) {
                     return 0;
                 },
                 [],
-                Glib::G_PRIORITY_DEFAULT_IDLE
+                Glib::G_PRIORITY_LOW
                            );
         }
     }
@@ -3709,15 +3735,7 @@ if (@ARGV) {
     my $text = join(' ', @ARGV);
     $search_entry->set_text($text);
     $search_entry->set_position(length($text));
-
-    Glib::Idle->add(
-        sub {
-            search();
-            return 0;
-        },
-        [],
-        Glib::G_PRIORITY_DEFAULT_IDLE
-                   );
+    Glib::Idle->add(sub { search(); return 0 }, [], Glib::G_PRIORITY_LOW);
 }
 
 'Gtk3'->main;

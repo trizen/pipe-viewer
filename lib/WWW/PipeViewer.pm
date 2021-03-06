@@ -600,18 +600,15 @@ sub select_good_invidious_instances {
     return @candidates;
 }
 
-sub pick_random_instance {
-    my ($self) = @_;
-
-    my @candidates       = $self->select_good_invidious_instances();
-    my @extra_candidates = $self->select_good_invidious_instances(lax => 1);
+sub _find_working_instance {
+    my ($self, $candidates, $extra_candidates) = @_;
 
     require List::Util;
     require WWW::PipeViewer::Utils;
 
     state $yv_utils = WWW::PipeViewer::Utils->new();
 
-    foreach my $instance (List::Util::shuffle(@candidates), List::Util::shuffle(@extra_candidates)) {
+    foreach my $instance (List::Util::shuffle(@$candidates), List::Util::shuffle(@$extra_candidates)) {
 
         ref($instance) eq 'ARRAY' or next;
 
@@ -624,6 +621,21 @@ sub pick_random_instance {
         my $results = $self->search_videos('test');
 
         if ($yv_utils->has_entries($results)) {
+            return $instance;
+        }
+    }
+
+    return;
+}
+
+sub pick_random_instance {
+    my ($self) = @_;
+
+    my @candidates       = $self->select_good_invidious_instances();
+    my @extra_candidates = $self->select_good_invidious_instances(lax => 1);
+
+    if ($self->get_prefer_invidious) {
+        if (defined(my $instance = $self->_find_working_instance(\@candidates, \@extra_candidates))) {
             return $instance;
         }
     }
