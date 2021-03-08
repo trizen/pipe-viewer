@@ -1294,17 +1294,15 @@ sub menu_popup {
             $author->append($item);
         }
 
-        # Subscribe to channel
+        my $info         = $yv_obj->parse_json_string($liststore->get($iter, 8));
+        my $channel_name = $yv_utils->get_channel_title($info);
+
+        # Save channel in the user-list
         {
-            my $item = 'Gtk3::ImageMenuItem'->new("Subscribe");
-            $item->signal_connect(
-                activate => sub {
-                    $yv_obj->subscribe_channel($channel_id)
-                      or warn "Failed to subscribe to channel <$channel_id>: $!";
-                }
-            );
-            $item->set_property(tooltip_text => "Subscribe to this channel");
-            $item->set_image('Gtk3::Image'->new_from_pixbuf($feed_icon_gray_pixbuf));
+            my $item = 'Gtk3::ImageMenuItem'->new("Save channel");
+            $item->set_property(tooltip_text => "Save the channel in the user-list");
+            $item->signal_connect(activate => sub { save_channel_by_id($channel_id, $channel_name) });
+            $item->set_image('Gtk3::Image'->new_from_icon_name("star-new-symbolic", q{menu}));
             $item->show;
             $author->append($item);
         }
@@ -2011,8 +2009,15 @@ sub set_youtube_tops {
     }
 
     sub add_user_to_favorites {
-        my $channel_id = get_channel_id_for_selected_video() // return;
-        save_channel_by_id($channel_id);
+        my $selection = $treeview->get_selection() // return;
+        my $iter      = $selection->get_selected() // return;
+
+        my $info = $yv_obj->parse_json_string($liststore->get($iter, 8));
+
+        my $channel_id   = $liststore->get($iter, 6);
+        my $channel_name = $yv_utils->get_channel_title($info);
+
+        save_channel_by_id($channel_id, $channel_name);
     }
 
     sub remove_selected_user {
@@ -2739,6 +2744,7 @@ sub add_subscription_entry {
                     4 => encode_entities($description),
                     6 => $channel_id,
                     7 => 'subscription',
+                    8 => $yv_obj->make_json_string($subscription),
                    );
 
     if ($CONFIG{show_thumbs}) {
@@ -2849,6 +2855,7 @@ $symbols{subs}\t %s subs",
                     4 => encode_entities($description),
                     6 => $channel_id,
                     7 => 'channel',
+                    8 => $yv_obj->make_json_string($channel),
                    );
 
     if ($CONFIG{show_thumbs}) {
@@ -2901,6 +2908,7 @@ $symbols{video}\t %s videos",
                     4 => encode_entities($description),
                     6 => $channel_id,
                     7 => 'playlist',
+                    8 => $yv_obj->make_json_string($playlist),
                    );
 
     if ($CONFIG{show_thumbs}) {
