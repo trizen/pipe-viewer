@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.38.1
+<!-- Generated with glade 3.38.2 
 
 Copyright (C) Copyright © 2010-2021 Trizen
 
@@ -2176,7 +2176,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
   </object>
   <object class="GtkWindow" id="details_window">
     <property name="can-focus">False</property>
-    <property name="title" translatable="yes">Video details</property>
+    <property name="title" translatable="yes">Extra details</property>
     <property name="modal">True</property>
     <property name="window-position">center-on-parent</property>
     <property name="default-height">400</property>
