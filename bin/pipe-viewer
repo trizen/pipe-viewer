@@ -3138,19 +3138,12 @@ sub download_from_url {
 sub download_video {
     my ($streaming, $info) = @_;
 
-    my $fat32safe = $opt{fat32safe};
-    state $unix_like = $^O =~ /^(?:linux|freebsd|openbsd)\z/i;
-
-    if (not $fat32safe and not $unix_like) {
-        $fat32safe = 1;
-    }
-
     my $video_filename = $yv_utils->format_text(
                                                 streaming => $streaming,
                                                 info      => $info,
                                                 text      => $opt{video_filename_format},
                                                 escape    => 0,
-                                                fat32safe => $fat32safe,
+                                                fat32safe => $opt{fat32safe},
                                                );
 
     my $naked_filename = $video_filename =~ s/\.\w+\z//r;
