@@ -5,6 +5,18 @@
 
 [CHANGELOG]
 
+Version 0.0.8
+
+- Added the `prefer_invidious` config-option (disabled by default).
+- Added support for auto-translated subtitles with `auto_captions => 1`.
+- Added the "--srt-languages=s" command-line option.
+- gtk3: use emoji instead of asciii symbols.
+- gtk3: added the right-click "Author -> Save channel" menu entry.
+- gtk3: added the right-click "Show more details" for playlist results.
+- Fixed the next pages for user videos and playlists (due to YouTube change).
+- Show the full video description in `:info=i` and in Gtk3 "Extra details" window.
+- When the selected resolution is not available, select the nearest one available.
+
 Version 0.0.7
 
 - Added support changing the layout of channel and playlist results.
