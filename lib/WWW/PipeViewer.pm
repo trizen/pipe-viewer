@@ -108,7 +108,7 @@ my %valid_options = (
 #<<<
     # LWP user agent
     #user_agent => {valid => qr/^.{5}/, default => 'Mozilla/5.0 (iPad; CPU OS 7_1_1 like Mac OS X) AppleWebKit/537.51.2 (KHTML, like Gecko) Version/7.0 Mobile/11D201 Safari/9537.53'},
-    user_agent => {valid => qr/^.{5}/, default => 'Mozilla/5.0 (Android 10; Tablet; rv:82.0) Gecko/82.0 Firefox/82.0,gzip(gfe)'},
+    user_agent => {valid => qr/^.{5}/, default => 'Mozilla/5.0 (Android 11; Tablet; rv:83.0) Gecko/83.0 Firefox/83.0,gzip(gfe)'},
 #>>>
 );
 
@@ -1247,8 +1247,13 @@ sub post_as_json {
 sub next_page_with_token {
     my ($self, $url, $token) = @_;
 
-    if ($token =~ /^ytsearch:(\w+):(.*)/) {
-        return $self->yt_search_next_page($url, $2, type => $1, url => $url);
+    if ($token =~ /^yt(search|browse):(\w+):(.*)/) {
+        if ($1 eq 'browse') {
+            return $self->yt_browse_next_page($url, $3, type => $2, url => $url);
+        }
+        else {
+            return $self->yt_search_next_page($url, $3, type => $2, url => $url);
+        }
     }
 
     if ($token =~ /^ytplaylist:(\w+):(.*)/) {

@@ -391,6 +391,32 @@ sub _parse_itemSection {
     return @results;
 }
 
+sub _parse_itemSection_nextpage {
+    my ($self, $entry, %args) = @_;
+
+    eval { ref($entry->{contents}) eq 'ARRAY' } || return;
+
+    foreach my $entry (@{$entry->{contents}}) {
+
+        # Continuation page
+        if (exists $entry->{continuationItemRenderer}) {
+
+            my $info  = $entry->{continuationItemRenderer};
+            my $token = eval { $info->{continuationEndpoint}{continuationCommand}{token} };
+
+            if (defined($token)) {
+                return
+                  scalar {
+                          type  => 'nextpage',
+                          token => "ytbrowse:$args{type}:$token",
+                         };
+            }
+        }
+    }
+
+    return;
+}
+
 sub _extract_sectionList_results {
     my ($self, $data, %args) = @_;
 
@@ -402,14 +428,17 @@ sub _extract_sectionList_results {
 
         # Playlists
         if (eval { ref($entry->{shelfRenderer}{content}{verticalListRenderer}{items}) eq 'ARRAY' }) {
-            push @results,
-              $self->_parse_itemSection({contents => $entry->{shelfRenderer}{content}{verticalListRenderer}{items}}, %args);
+            my $res = {contents => $entry->{shelfRenderer}{content}{verticalListRenderer}{items}};
+            push @results, $self->_parse_itemSection($res, %args);
+            push @results, $self->_parse_itemSection_nextpage($res, %args);
+            next;
         }
 
         # Playlist videos
         if (eval { ref($entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer}{contents}) eq 'ARRAY' }) {
-            push @results,
-              $self->_parse_itemSection($entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer}, %args);
+            my $res = $entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer};
+            push @results, $self->_parse_itemSection($res, %args);
+            push @results, $self->_parse_itemSection_nextpage($res, %args);
             next;
         }
 
@@ -425,7 +454,9 @@ sub _extract_sectionList_results {
 
         # Video results
         if (exists $entry->{itemSectionRenderer}) {
-            push @results, $self->_parse_itemSection($entry->{itemSectionRenderer}, %args);
+            my $res = $entry->{itemSectionRenderer};
+            push @results, $self->_parse_itemSection($res, %args);
+            push @results, $self->_parse_itemSection_nextpage($res, %args);
         }
 
         # Continuation page
@@ -808,6 +839,73 @@ sub yt_playlist_next_page {
     $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
+sub yt_browse_next_page {
+    my ($self, $url, $token, %args) = @_;
+
+    my %request = (
+                   context => {
+                               client => {
+                                    browserName      => "Firefox",
+                                    browserVersion   => "83.0",
+                                    clientFormFactor => "LARGE_FORM_FACTOR",
+                                    clientName       => "MWEB",
+                                    clientVersion    => "2.20210308.03.00",
+                                    deviceMake       => "Generic",
+                                    deviceModel      => "Android 11.0",
+                                    hl               => "en",
+                                    mainAppWebInfo   => {
+                                                       graftUrl => $url,
+                                                      },
+                                    originalUrl        => $url,
+                                    osName             => "Android",
+                                    osVersion          => "11",
+                                    platform           => "TABLET",
+                                    playerType         => "UNIPLAYER",
+                                    screenDensityFloat => 1,
+                                    screenHeightPoints => 500,
+                                    screenPixelDensity => 1,
+                                    screenWidthPoints  => 1800,
+                                    timeZone           => "UTC",
+                                    userAgent => "Mozilla/5.0 (Android 11; Tablet; rv:83.0) Gecko/83.0 Firefox/83.0,gzip(gfe)",
+                                    userInterfaceTheme => "USER_INTERFACE_THEME_LIGHT",
+                                    utcOffsetMinutes   => 0,
+                               },
+                               request => {
+                                           consistencyTokenJars    => [],
+                                           internalExperimentFlags => [],
+                                          },
+                               user => {},
+                              },
+                   continuation => $token,
+                  );
+
+    my $content = $self->post_as_json(
+                $self->get_m_youtube_url . '/youtubei/v1/browse?key=' . _unscramble('1HUCiSlOalFEcYQSS8_9q1LW4y8JAwI2zT_qA_G'),
+                \%request) // return;
+
+    my $hash = $self->parse_json_string($content);
+
+    my $res =
+      eval    { $hash->{continuationContents}{playlistVideoListContinuation} }
+      // eval { $hash->{continuationContents}{itemSectionContinuation} }
+      // eval { {contents => $hash->{onResponseReceivedActions}[0]{appendContinuationItemsAction}{continuationItems}} }
+      // undef;
+
+    my @results = $self->_parse_itemSection($res, %args);
+
+    if (@results) {
+        push @results, $self->_parse_itemSection_nextpage($res, %args);
+    }
+
+    if (!@results) {
+        @results =
+          $self->_extract_sectionList_results(eval { $hash->{continuationContents}{sectionListContinuation} } // undef, %args);
+    }
+
+    $self->_add_author_to_results($hash, \@results, %args);
+    $self->_prepare_results_for_return(\@results, %args, url => $url);
+}
+
 =head2 yt_search_next_page($url, $token, %args)
 
 Load more search results, given a continuation token.
@@ -821,7 +919,7 @@ sub yt_search_next_page {
                    "context" => {
                               "client" => {
                                   "browserName"      => "Firefox",
-                                  "browserVersion"   => "82.0",
+                                  "browserVersion"   => "83.0",
                                   "clientFormFactor" => "LARGE_FORM_FACTOR",
                                   "clientName"       => "MWEB",
                                   "clientVersion"    => "2.20201030.01.00",
@@ -833,14 +931,14 @@ sub yt_search_next_page {
                                                        "graftUrl" => "https://m.youtube.com/results?search_query=youtube"
                                                       },
                                   "osName"             => "Android",
-                                  "osVersion"          => "10",
+                                  "osVersion"          => "11",
                                   "platform"           => "TABLET",
                                   "playerType"         => "UNIPLAYER",
                                   "screenDensityFloat" => 1,
                                   "screenHeightPoints" => 420,
                                   "screenPixelDensity" => 1,
                                   "screenWidthPoints"  => 1442,
-                                  "userAgent" => "Mozilla/5.0 (Android 10; Tablet; rv:82.0) Gecko/82.0 Firefox/82.0,gzip(gfe)",
+                                  "userAgent" => "Mozilla/5.0 (Android 11; Tablet; rv:83.0) Gecko/83.0 Firefox/83.0,gzip(gfe)",
                                   "userInterfaceTheme" => "USER_INTERFACE_THEME_LIGHT",
                                   "utcOffsetMinutes"   => 0,
                               },
