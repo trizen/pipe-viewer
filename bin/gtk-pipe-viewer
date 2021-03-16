@@ -2433,7 +2433,7 @@ sub get_pixbuf_thumbnail_from_content {
 
     require Digest::MD5;
 
-    my $md5 = Digest::MD5::md5_hex($thumbnail);
+    my $md5 = Digest::MD5::md5_hex($thumbnail // return $default_thumb);
     my $key = "$md5 $xsize $ysize";
 
     state %cache;
