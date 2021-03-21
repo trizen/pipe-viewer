@@ -115,7 +115,7 @@ To make the change permanent, set in the configuration file:
     api_host => "invidious.snopyta.org",
 ```
 
-By default, `pipe-viewer` picks a random invidious instance from [instances.invidio.us](https://instances.invidio.us/) on-demand.
+By default, `pipe-viewer` picks a random invidious instance from [api.invidious.io](https://api.invidious.io/) on-demand.
 
 ### SUPPORT AND DOCUMENTATION
 
