@@ -3963,7 +3963,7 @@ sub print_videos {
             }
 
             # :p=i, :playlist=i, :up=i
-            elsif ($opt =~ /^(?:p|playlists?|up)${digit_or_equal_re}(.*)/) {
+            elsif ($opt =~ /^(?:p|l|playlists?|up)${digit_or_equal_re}(.*)/) {
                 if (my @nums = get_valid_numbers($#{$videos}, $1)) {
                     foreach my $id (@nums) {
                         my $request = $yv_obj->playlists($yv_utils->get_channel_id($videos->[$id]));
