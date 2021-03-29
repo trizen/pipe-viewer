@@ -1301,16 +1301,6 @@ sub next_page {
     return $res;
 }
 
-sub previous_page {
-    my ($self, $url) = @_;
-
-    $url =~ s{[?&]page=\K(\d+)}{($1 > 2) ? ($1-1) : 1}e;
-
-    my $res = $self->_get_results($url);
-    $res->{url} = $url;
-    return $res;
-}
-
 # SUBROUTINE FACTORY
 {
     no strict 'refs';

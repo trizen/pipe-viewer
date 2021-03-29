@@ -299,13 +299,12 @@ ACTIONS
 
 my $control_options = <<'CONTROL';
 # Control
-:n(ext)           : get the next page of results
-:b(ack)           : get the previous page of results
+:n(ext)           : display the next page of results
+:r(eturn)         : return to the previous page of results
 CONTROL
 
 my $other_options = <<'OTHER';
 # Others
-:r(eturn)         : return to previous page of results
 :refresh          : refresh the current list of results
 :dv=i             : display the data structure of result i
 -argv -argv2=v    : apply some arguments (e.g.: -u=google)
@@ -889,7 +888,6 @@ sub tricks {
  > ":r", ":return" will return to the previous page of results.
    For example, if you search for playlists, then select a playlist
    of videos, inserting ":r" will return back to the playlist results.
-   Also, for the previous page, you can insert ':b', but ':r' is faster!
 
  > "6" (quoted) will search for videos with the keyword '6'.
 
@@ -1020,8 +1018,8 @@ A STDIN option can begin with ':', ';' or '='.
 Command: <ENTER>, :n, :next
 Results: get the next page of results.
 
-Command: :b, :back (:r, :return)
-Results: get the previous page of results.
+Command: :r, :return
+Results: return to the previous page of results.
 
 Command: :i4..6, :i7-9, :i20-4, :i2, :i=4, :info=4
 Results: show extra information for the selected videos.
@@ -2240,10 +2238,6 @@ sub general_options {
             my $request = $yv_obj->next_page($url);
             $callback->($request);
         }
-    }
-    elsif ($option =~ /^(?:b|back|p|prev|previous)\z/ and defined $url) {
-        my $request = $yv_obj->previous_page($url);
-        $callback->($request);
     }
     elsif ($option =~ /^(?:R|refresh)\z/ and defined $url) {
         @{$results} = @{$yv_obj->_get_results($url)->{results}};
@@ -3812,7 +3806,7 @@ sub print_videos {
               ) {
                 if ($opt{play_backwards}) {
                     if (defined($url)) {
-                        __SUB__->($yv_obj->previous_page($url), auto => 1);
+                        return;
                     }
                     else {
                         $opt{play_backwards} = 0;
@@ -3890,23 +3884,13 @@ sub print_videos {
                 }
             }
 
-            # :back, :previous
-            elsif ($opt =~ /^(?:b|back|p|prev|previous)\z/) {
-                if (defined($url)) {
-                    __SUB__->($yv_obj->previous_page($url), @keywords ? (auto => 1) : ());
-                }
-                else {
-                    warn_first_page();
-                }
-            }
-
             # :refresh
             elsif ($opt =~ /^(?:R|refresh)\z/) {
                 @{$videos} = @{$yv_obj->_get_results($url)->{results}};
                 $results->{has_extra_info} = 0;
             }
 
-            # :return
+            # :r, :return
             elsif ($opt =~ /^(?:r|return)\z/) {
                 return;
             }
