@@ -1447,6 +1447,7 @@ sub parse_arguments {
         'update-config!' => sub { dump_configuration($config_file) },
 
         # Resolutions
+        '144p'    => sub { $opt{resolution} = 144 },
         '240p|2'  => sub { $opt{resolution} = 240 },
         '360p|3'  => sub { $opt{resolution} = 360 },
         '480p|4'  => sub { $opt{resolution} = 480 },

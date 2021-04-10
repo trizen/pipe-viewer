@@ -1549,6 +1549,7 @@ When the specified resolution is not found, the best available resolution is use
                                                           <item translatable="yes">480p</item>
                                                           <item translatable="yes">360p</item>
                                                           <item translatable="yes">240p</item>
+                                                          <item translatable="yes">144p</item>
                                                         </items>
                                                         <signal name="changed" handler="combobox_resolution_changed" swapped="no"/>
                                                       </object>
