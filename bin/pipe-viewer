@@ -2619,7 +2619,7 @@ sub print_channels {
             }
 
             # :p=i, :playlist=i
-            elsif ($opt =~ /^(?:p|playlists?|up)${digit_or_equal_re}(.*)/) {
+            elsif ($opt =~ /^(?:p|l|playlists?|up)${digit_or_equal_re}(.*)/) {
                 if (my @nums = get_valid_numbers($#{$channels}, $1)) {
 
                     foreach my $id (@nums) {

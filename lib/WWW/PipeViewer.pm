@@ -323,9 +323,6 @@ sub set_lwp_useragent {
 
         ## Netscape HTTP Cookies
 
-        # Chrome extension:
-        #   https://chrome.google.com/webstore/detail/cookiestxt/njabckikapfpffapmjgojcnbfjonfjfg
-
         # Firefox extension:
         #   https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/
 
@@ -341,6 +338,17 @@ sub set_lwp_useragent {
                                                   );
 
         $cookies->load;
+        $agent->cookie_jar($cookies);
+    }
+    else {
+
+        require HTTP::Cookies;
+
+        my $cookies = HTTP::Cookies->new();
+
+        # Consent cookie
+        $cookies->set_cookie(0, "CONSENT", "YES+DE.en+V9+BX", "/", ".youtube.com", undef, 0, 1, 2982922601, 0, {},);
+
         $agent->cookie_jar($cookies);
     }
 
