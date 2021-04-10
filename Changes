@@ -5,6 +5,11 @@
 
 [CHANGELOG]
 
+Version 0.0.9
+
+- Workaround for EU consent YouTube cookie.
+- gtk3: added the "144p" resolution entry.
+
 Version 0.0.8
 
 - Added the `prefer_invidious` config-option (disabled by default).
