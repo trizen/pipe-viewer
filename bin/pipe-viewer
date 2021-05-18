@@ -2958,6 +2958,9 @@ sub print_local_subscription_videos {
 
     print "\n" if @channels;
 
+    require Time::Piece;
+    my $time = Time::Piece->new();
+
     my @items;
     foreach my $i (0 .. $#channels) {
 
@@ -2983,6 +2986,10 @@ sub print_local_subscription_videos {
 
         $subscriptions{$id} = 1;
         $subscriptions{lc($id)} = 1;
+
+        foreach my $video (@$videos) {
+            $video->{timestamp} = $time;
+        }
 
         push @items, @$videos;
     }

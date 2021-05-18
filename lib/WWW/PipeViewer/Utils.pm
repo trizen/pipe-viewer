@@ -814,14 +814,14 @@ sub get_publication_time {
     require Time::Seconds;
 
     if ($self->get_time($info) eq 'LIVE') {
-        return scalar Time::Piece->new();
+        my $time = $info->{timestamp} // Time::Piece->new();
+        return $time;
     }
 
     if (defined($info->{publishedText})) {
 
         my $age = $info->{publishedText};
-
-        my $t = Time::Piece->new();
+        my $t   = $info->{timestamp} // Time::Piece->new();
 
         if ($age =~ /^(\d+) sec/) {
             $t -= $1;
