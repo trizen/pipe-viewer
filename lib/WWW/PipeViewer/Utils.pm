@@ -133,6 +133,8 @@ Return string "04 May 2010" from "2010-05-04T00:25:55.000Z"
 sub format_date {
     my ($self, $date) = @_;
 
+    $date // return undef;
+
     # 2010-05-04T00:25:55.000Z
     # to: 04 May 2010
 
@@ -157,6 +159,8 @@ Return the (approximated) age for a given date of the form "2010-05-04T00:25:55.
 
 sub date_to_age {
     my ($self, $date) = @_;
+
+    $date // return undef;
 
     $date =~ m{^
         (?<year>\d{4})
@@ -537,6 +541,97 @@ sub get_description {
     ($desc =~ /\S/) ? $desc : 'No description available...';
 }
 
+sub read_lines_from_file {
+    my ($self, $file, $mode) = @_;
+
+    $mode //= '<';
+
+    open(my $fh, $mode, $file) or return;
+    chomp(my @lines = <$fh>);
+    close $fh;
+
+    my %seen;
+
+    # Keep the most recent ones
+    @lines = reverse(@lines);
+    @lines = grep { !$seen{$_}++ } @lines;
+
+    return @lines;
+}
+
+sub read_channels_from_file {
+    my ($self, $file, $mode) = @_;
+
+    $mode //= '<:utf8';
+
+    sort { CORE::fc($a->[1]) cmp CORE::fc($b->[1]) }
+      map { [split(/ /, $_, 2)] } $self->read_lines_from_file($file, $mode);
+}
+
+sub get_local_playlist_filenames {
+    my ($self, $dir) = @_;
+    require Encode;
+    grep { -f $_ } sort { CORE::fc($a) cmp CORE::fc($b) } map { Encode::decode_utf8($_) } glob("$dir/*.dat");
+}
+
+sub make_local_playlist_filename {
+    my ($self, $title, $playlistID) = @_;
+    my $basename = $title . ' -- ' . $playlistID . '.txt';
+    $basename = $self->normalize_filename($basename);
+    return $basename;
+}
+
+sub local_playlist_snippet {
+    my ($self, $id) = @_;
+
+    require File::Basename;
+    my $title = File::Basename::basename($id);
+
+    $title =~ s/\.dat\z//;
+    $title =~ s/ -- PL[-\w]+\z//;
+    $title =~ s/_/ /g;
+    $title = ucfirst($title);
+
+    require Storable;
+    my $entries = eval { Storable::retrieve($id) } // [];
+
+    if (ref($entries) ne 'ARRAY') {
+        $entries = [];
+    }
+
+    my $video_count = 0;
+    my $video_id    = undef;
+
+    if (@$entries) {
+        $video_id    = $self->get_video_id($entries->[0]);
+        $video_count = scalar(@$entries);
+    }
+
+    scalar {
+            author            => "local",
+            authorId          => "local",
+            description       => $title,
+            playlistId        => $id,
+            playlistThumbnail => (defined($video_id) ? "https://i.ytimg.com/vi/$video_id/mqdefault.jpg" : undef),
+            title             => $title,
+            type              => "playlist",
+            videoCount        => $video_count,
+           };
+}
+
+sub local_channel_snippet {
+    my ($self, $id, $title) = @_;
+
+    scalar {
+            author      => $title,
+            authorId    => $id,
+            type        => "channel",
+            description => "<local channel>",
+            subCount    => undef,
+            videoCount  => undef,
+           };
+}
+
 =head2 get_title($info)
 
 Get title.
@@ -710,6 +805,56 @@ sub get_publication_date {
     }
 
     defined($time) ? Encode::decode_utf8($time->strftime("%d %B %Y")) : undef;
+}
+
+sub get_publication_time {
+    my ($self, $info) = @_;
+
+    require Time::Piece;
+    require Time::Seconds;
+
+    if ($self->get_time($info) eq 'LIVE') {
+        return scalar Time::Piece->new();
+    }
+
+    if (defined($info->{publishedText})) {
+
+        my $age = $info->{publishedText};
+
+        my $t = Time::Piece->new();
+
+        if ($age =~ /^(\d+) sec/) {
+            $t -= $1;
+        }
+
+        if ($age =~ /^(\d+) min/) {
+            $t -= $1 * Time::Seconds::ONE_MINUTE();
+        }
+
+        if ($age =~ /^(\d+) hour/) {
+            $t -= $1 * Time::Seconds::ONE_HOUR();
+        }
+
+        if ($age =~ /^(\d+) day/) {
+            $t -= $1 * Time::Seconds::ONE_DAY();
+        }
+
+        if ($age =~ /^(\d+) week/) {
+            $t -= $1 * Time::Seconds::ONE_WEEK();
+        }
+
+        if ($age =~ /^(\d+) month/) {
+            $t -= $1 * Time::Seconds::ONE_MONTH();
+        }
+
+        if ($age =~ /^(\d+) year/) {
+            $t -= $1 * Time::Seconds::ONE_YEAR();
+        }
+
+        return $t;
+    }
+
+    return $self->get_publication_date($info);    # should not happen
 }
 
 sub get_publication_age {

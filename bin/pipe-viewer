@@ -49,6 +49,8 @@ use if ($DEVEL = -w __FILE__), lib => qw(../lib);    # devel mode
 use WWW::PipeViewer v0.0.9;
 use WWW::PipeViewer::RegularExpressions;
 
+require Storable;
+
 use File::Spec::Functions qw(
   catdir
   catfile
@@ -73,7 +75,7 @@ my %opt;
 my $term_width = 80;
 
 # Keep track of watched videos by their ID
-my %watched_videos;
+my %WATCHED_VIDEOS;
 
 # Unchangeable data goes here
 my %constant = (win32 => ($^O eq 'MSWin32' ? 1 : 0));    # doh
@@ -102,18 +104,38 @@ else {
     $xdg_config_home = catdir($home_dir, '.config');
 }
 
-# Configuration dir/file
+# Configuration dirs
 my $config_dir          = catdir($xdg_config_home, $execname);
-my $config_file         = catfile($config_dir, "$execname.conf");
-my $authentication_file = catfile($config_dir, 'reg.dat');
-my $history_file        = catfile($config_dir, 'cli-history.txt');
-my $watched_file        = catfile($config_dir, 'watched.txt');
-my $api_file            = catfile($config_dir, 'api.json');
+my $local_playlists_dir = catdir($config_dir,      'playlists');
 
-if (not -d $config_dir) {
-    require File::Path;
-    File::Path::make_path($config_dir)
-      or warn "[!] Can't create dir '$config_dir': $!";
+# Configuration files
+my $config_file              = catfile($config_dir, "$execname.conf");
+my $subscribed_channels_file = catfile($config_dir, 'subscribed_channels.txt');
+my $authentication_file      = catfile($config_dir, 'reg.dat');
+my $history_file             = catfile($config_dir, 'cli-history.txt');
+my $watched_file             = catfile($config_dir, 'watched.txt');
+
+# Special local playlists
+my $watch_history_data_file       = catfile($local_playlists_dir, 'watched_videos.dat');
+my $liked_videos_data_file        = catfile($local_playlists_dir, 'liked_videos.dat');
+my $disliked_videos_data_file     = catfile($local_playlists_dir, 'disliked_videos.dat');
+my $favorite_videos_data_file     = catfile($local_playlists_dir, 'favorite_videos.dat');
+my $subscription_videos_data_file = catfile($local_playlists_dir, "subscriptions.dat");
+
+# Create the config and playlist dirs
+foreach my $dir ($config_dir, $local_playlists_dir) {
+    if (not -d $dir) {
+        require File::Path;
+        File::Path::make_path($dir)
+          or warn "[!] Can't create dir <<$dir>>: $!";
+    }
+}
+
+# Create the special playlist files
+foreach my $file ($watch_history_data_file, $liked_videos_data_file, $disliked_videos_data_file, $favorite_videos_data_file,) {
+    if (not -s $file) {
+        Storable::store([], $file);
+    }
 }
 
 sub which_command {
@@ -179,8 +201,8 @@ my %CONFIG = (
     order => undef,
     date  => undef,
 
-    comments_order      => 'top',          # valid values: top, new
-    subscriptions_order => 'relevance',    # valid values: alphabetical, relevance, unread
+    comments_order      => 'top',     # valid values: top, new
+    subscriptions_limit => 10_000,    # maximum number of subscription videos stored
 
     region => undef,
 
@@ -198,31 +220,32 @@ my %CONFIG = (
     api_host => "auto",
 
     # Misc options
-    autoplay_mode      => 0,
-    http_proxy         => undef,
-    cookie_file        => undef,
-    user_agent         => undef,
-    timeout            => undef,
-    env_proxy          => 1,
-    confirm            => 0,
-    debug              => 0,
-    page               => 1,
-    colors             => $constant{win32} ^ 1,
-    skip_if_exists     => 1,
-    prefer_mp4         => 0,
-    prefer_av1         => 0,
-    ignore_av1         => 0,
-    prefer_invidious   => 0,
-    fat32safe          => $constant{win32},
-    fullscreen         => 0,
-    show_video_info    => 1,
-    interactive        => 1,
-    get_term_width     => $constant{win32} ^ 1,
-    download_with_wget => undef,                  # auto-defined
-    thousand_separator => q{,},
-    downloads_dir      => curdir(),
-    download_and_play  => 0,
-    remove_played_file => 0,
+    autoplay_mode            => 0,
+    http_proxy               => undef,
+    cookie_file              => undef,
+    user_agent               => undef,
+    timeout                  => undef,
+    env_proxy                => 1,
+    confirm                  => 0,
+    debug                    => 0,
+    page                     => 1,
+    colors                   => $constant{win32} ^ 1,
+    skip_if_exists           => 1,
+    prefer_mp4               => 0,
+    prefer_av1               => 0,
+    ignore_av1               => 0,
+    prefer_invidious         => 0,
+    fat32safe                => $constant{win32},
+    fullscreen               => 0,
+    show_video_info          => 1,
+    interactive              => 1,
+    get_term_width           => $constant{win32} ^ 1,
+    download_with_wget       => undef,                       # auto-defined
+    thousand_separator       => q{,},
+    downloads_dir            => curdir(),
+    download_and_play        => 0,
+    subscribed_channels_file => $subscribed_channels_file,
+    remove_played_file       => 0,
 
     # Conversion options
     convert_cmd         => 'ffmpeg -i *IN* *OUT*',
@@ -230,13 +253,13 @@ my %CONFIG = (
     keep_original_video => 0,
 
     # Search history
-    history       => undef,                       # auto-defined
+    history       => undef,           # auto-defined
     history_limit => 100_000,
     history_file  => $history_file,
 
     # Watch history
-    remember_watched => 0,
-    watched_file     => $watched_file,
+    watch_history => 1,
+    watched_file  => $watched_file,
 
     # Options for watched videos
     highlight_watched => 1,
@@ -346,6 +369,10 @@ my $channels_help = <<"CHANNELS_HELP" . $general_help;
 <number>           : latest uploads from channel
 :pv=i :popular=i   : popular uploads from channel
 :p=i  :playlists=i : playlists from channel
+
+# Save and remove channels
+:s=i  :subscribe=i : subscribe to the channel
+:r=i  :remove=i    : unsubscribe from the channel
 CHANNELS_HELP
 
 my $comments_help = <<"COMMENTS_HELP" . $general_help;
@@ -366,9 +393,7 @@ $action_options
 :r(elated)=i      : display related videos
 :u(ploads)=i      : display author's latest uploads
 :pv=i :popular=i  : display author's popular uploads
-:A(ctivity)=i     : display author's recent activity
 :p(laylists)=i    : display author's playlists
-:ps=i :s2p=i,i    : save videos to a post-selected playlist
 :subscribe=i      : subscribe to author's channel
 :(dis)like=i      : like or dislike a video
 :fav(orite)=i     : favorite a video
@@ -560,11 +585,11 @@ sub load_config {
 
 load_config($config_file);
 
-if ($opt{remember_watched}) {
+if ($opt{watch_history}) {
     if (-f $opt{watched_file}) {
         if (open my $fh, '<', $opt{watched_file}) {
             chomp(my @ids = <$fh>);
-            @watched_videos{@ids} = ();
+            @WATCHED_VIDEOS{@ids} = ();
             close $fh;
         }
         else {
@@ -667,18 +692,16 @@ usage: $execname [options] ([url] | [keywords])
    -id --videoids=s,s   : play YouTube videos by their IDs
    -rv --related=s      : show related videos for a video ID or URL
    -sv --search-videos  : search for YouTube videos (default mode)
+   -wv --watched-videos : list the most recent watched videos
+   -ls --local-subs     : display subscription videos from local channels
 
  * Playlists
-   -up --playlists=s  : list playlists created by a specific channel or user
-   -sp --search-pl    : search for playlists of videos
-       --pid=s        : list a playlist of videos by playlist ID
-       --pp=s,s       : play the videos from the given playlist IDs
-       --ps=s         : add video by ID or URL to a post-selected playlist
-                        or in a given playlist ID specified with `--pid`
-       --position=i   : position in the playlist where to add the video
-
-* Activities
-   -ua --activities:s : show activity events for a given channel
+   -up --playlists=s     : list playlists created by a specific channel or user
+   -lp --local-playlists : display the list of local playlists
+   -lp=s                 : display a local playlist by name
+   -sp --search-pl       : search for playlists of videos
+       --pid=s           : list a playlist of videos by playlist ID
+       --pp=s,s          : play the videos from the given playlist IDs
 
 * Trending
    --trending:s       : show trending videos in a given category
@@ -718,22 +741,19 @@ usage: $execname [options] ([url] | [keywords])
    --login              : will prompt for authentication (OAuth 2.0)
    --logout             : will delete the authentication key
 
- * [GET] Personal
-   -U  --uploads:s       : show the uploads from your channel *
-   -P  --playlists:s     : show the playlists from your channel *
-   -F  --favorites:s     : show the latest favorite videos *
-   -S  --subscriptions:s : show the subscribed channels *
-   -SV --subs-videos:s   : show the subscription videos (slow) *
-       --subs-order=s    : change the subscription order
-                           valid values: alphabetical, relevance, unread
-   -L  --likes           : show the videos that you liked on YouTube *
-       --dislikes        : show the videos that you disliked on YouTube *
+ * Display local
+   -P  --playlists       : show the playlists from your channel
+   -F  --favorites       : show the latest favorite videos
+   -S  --subscriptions   : show the subscribed channels
+   -SV --subs-videos     : show the subscription videos
+   -L  --likes           : show the videos that you liked
+   -D  --dislikes        : show the videos that you disliked
 
-* [POST] Personal
-   --subscribe=s        : subscribe to a given channel ID or username *
-   --favorite=s         : favorite a video by URL or ID *
-   --like=s             : send a 'like' rating to a video URL or ID *
-   --dislike=s          : send a 'dislike' rating to a video URL or ID *
+* Save local
+   --subscribe=s        : subscribe to a given channel ID or username
+   --favorite=s         : favorite a video by URL or ID
+   --like=s             : send a 'like' rating to a video URL or ID
+   --dislike=s          : send a 'dislike' rating to a video URL or ID
 
 
 == Player Options ==
@@ -838,7 +858,6 @@ Help options:
        --debug:1..3     : see behind the scenes
 
 NOTES:
-    *    -> requires authentication
     !    -> the argument can be negated with '--no-'
     =i   -> requires an integer argument
     =s   -> requires an argument
@@ -1110,11 +1129,11 @@ sub apply_configuration {
                              qw(
                              videoCaption videoDefinition
                              videoDimension videoDuration
-                             videoLicense
+                             videoLicense maxResults
                              api_host date order
                              channelId region debug
                              http_proxy page comments_order
-                             subscriptions_order user_agent
+                             user_agent
                              cookie_file timeout ytdl ytdl_cmd
                              prefer_mp4 prefer_av1 prefer_invidious
                              )
@@ -1160,10 +1179,6 @@ sub apply_configuration {
         }
     }
 
-    if (defined $opt->{more_results}) {
-        $yv_obj->set_maxResults(delete($opt->{more_results}) ? 50 : $CONFIG{maxResults});
-    }
-
     if (delete $opt->{authenticate}) {
         authenticate();
     }
@@ -1195,7 +1210,9 @@ sub apply_configuration {
 
     # ... SUBROUTINE CALLS ... #
     if (defined $opt->{subscribe}) {
-        subscribe(split(/[,\s]+/, delete $opt->{subscribe}));
+        foreach my $channel_id (split(/[,\s]+/, delete $opt->{subscribe})) {
+            save_channel_to_file($channel_id);
+        }
     }
 
     if (defined $opt->{favorite_video}) {
@@ -1228,6 +1245,14 @@ sub apply_configuration {
         get_and_play_playlists(split(/[,\s]+/, delete $opt->{play_playlists}));
     }
 
+    if (defined $opt->{local_channels}) {
+        print_local_channels(delete $opt->{local_channels});
+    }
+
+    if (defined $opt->{local_playlist}) {
+        print_local_playlist(delete $opt->{local_playlist});
+    }
+
     if (defined $opt->{playlist_id}) {
         my $playlistID = get_valid_playlist_id(delete($opt->{playlist_id})) // return;
         get_and_print_videos_from_playlist($playlistID);
@@ -1249,6 +1274,14 @@ sub apply_configuration {
         print_categories($yv_obj->video_categories);
     }
 
+    if (delete $opt->{watched_videos}) {
+        print_watched_videos();
+    }
+
+    if (delete $opt->{local_subscriptions}) {
+        print_local_subscription_videos();
+    }
+
     if (defined $opt->{uploads}) {
         my $str = delete $opt->{uploads};
 
@@ -1263,14 +1296,17 @@ sub apply_configuration {
             }
         }
         else {
-            print_videos($yv_obj->uploads);
+            warn_invalid("username or channel ID", $str);
         }
     }
 
     if (defined $opt->{popular_videos}) {
         my $str = delete $opt->{popular_videos};
 
-        if (my $id = extract_channel_id($str)) {
+        if ($str eq '') {
+            print_videos($yv_obj->trending_videos_from_category('popular'));
+        }
+        elsif (my $id = extract_channel_id($str)) {
 
             if (not $yv_utils->is_channelID($id)) {
                 $id = $yv_obj->channel_id_from_username($id) // do {
@@ -1298,42 +1334,6 @@ sub apply_configuration {
         print_videos($yv_obj->trending_videos_from_category($cat_id));
     }
 
-    if (defined $opt->{subscriptions}) {
-        my $str = delete $opt->{subscriptions};
-
-        if ($str) {
-            if (my $id = extract_channel_id($str)) {
-                $yv_utils->is_channelID($id)
-                  ? print_channels($yv_obj->subscriptions($id))
-                  : print_channels($yv_obj->subscriptions_from_username($id));
-            }
-            else {
-                warn_invalid("username or channel ID", $str);
-            }
-        }
-        else {
-            print_channels($yv_obj->subscriptions);
-        }
-    }
-
-    if (defined $opt->{subscription_videos}) {
-        my $str = delete $opt->{subscription_videos};
-
-        if ($str) {
-            if (my $id = extract_channel_id($str)) {
-                $yv_utils->is_channelID($id)
-                  ? print_videos($yv_obj->subscription_videos($id))
-                  : print_videos($yv_obj->subscription_videos_from_username($id));
-            }
-            else {
-                warn_invalid("username or channel ID", $str);
-            }
-        }
-        else {
-            print_videos($yv_obj->subscription_videos);
-        }
-    }
-
     if (defined $opt->{related_videos}) {
         get_and_print_related_videos(split(/[,\s]+/, delete($opt->{related_videos})));
     }
@@ -1353,7 +1353,7 @@ sub apply_configuration {
             }
         }
         else {
-            print_playlists($yv_obj->my_playlists);
+            print_local_playlist();
         }
     }
 
@@ -1371,49 +1371,16 @@ sub apply_configuration {
             }
         }
         else {
-            print_videos($yv_obj->favorites);
+            print_favorite_videos();
         }
     }
 
-    if (defined $opt->{likes}) {
-        my $str = delete($opt->{likes});
-
-        if ($str) {
-            if (my $id = extract_channel_id($str)) {
-                $yv_utils->is_channelID($id)
-                  ? print_videos($yv_obj->likes($id))
-                  : print_videos($yv_obj->likes_from_username($id));
-            }
-            else {
-                warn_invalid("username or channel ID", $str);
-            }
-        }
-        else {
-            print_videos($yv_obj->my_likes);
-        }
+    if (defined delete $opt->{likes}) {
+        print_liked_videos();
     }
 
-    if (defined $opt->{dislikes}) {
-        delete $opt->{dislikes};
-        print_videos($yv_obj->my_dislikes);
-    }
-
-    if (defined $opt->{activities}) {
-        my $str = delete $opt->{activities};
-
-        if ($str) {
-            if (my $id = extract_channel_id($str)) {
-                $yv_utils->is_channelID($id)
-                  ? print_videos($yv_obj->activities($id))
-                  : print_videos($yv_obj->activities_from_username($id));
-            }
-            else {
-                warn_invalid("username or channel ID", $str);
-            }
-        }
-        else {
-            print_videos($yv_obj->my_activities);
-        }
+    if (defined delete $opt->{dislikes}) {
+        print_disliked_videos();
     }
 
     if (defined $opt->{get_comments}) {
@@ -1469,19 +1436,24 @@ sub parse_arguments {
         'c|categories'                => \$opt{categories},
         'video-ids|videoids|id|ids=s' => \$opt{play_video_ids},
 
+        'lc|fc|local-channels|subscriptions|S:s' => \$opt{local_channels},
+        'lp|local-playlists:s'                   => \$opt{local_playlist},
+        'wv|watched-videos'                      => \$opt{watched_videos},
+        'ls|local-subs|subs-videos|SV'           => \$opt{local_subscriptions},
+
+        #'save-video|save=s' => \$opt{save_video},
+        #'save-channel=s'    => \$opt{save_channel},
+        #'save-playlist=s'   => \$opt{save_playlist},
+
         'search-videos|search|sv!'     => \$opt{search_videos},
         'search-channels|channels|sc!' => \$opt{search_channels},
         'search-playlists|sp|p!'       => \$opt{search_playlists},
 
-        'subscriptions|S:s'                 => \$opt{subscriptions},
-        'subs-videos|SV:s'                  => \$opt{subscription_videos},
-        'subs-order=s'                      => \$opt{subscriptions_order},
-        'uploads|U|user|user-videos|uv|u:s' => \$opt{uploads},
+        'uploads|U|user|user-videos|uv|u=s' => \$opt{uploads},
         'favorites|F|user-favorites|uf:s'   => \$opt{favorites},
         'playlists|P|user-playlists|up:s'   => \$opt{playlists},
-        'activities|activity|ua:s'          => \$opt{activities},
-        'likes|L|user-likes|ul:s'           => \$opt{likes},
-        'dislikes'                          => \$opt{dislikes},
+        'likes|L|user-likes'                => \$opt{likes},
+        'dislikes|D'                        => \$opt{dislikes},
         'subscribe=s'                       => \$opt{subscribe},
 
         'trending|trends:s' => \$opt{trending},
@@ -1494,7 +1466,7 @@ sub parse_arguments {
         'logout'             => \$opt{logout},
 
         'related-videos|rv=s'         => \$opt{related_videos},
-        'popular-videos|popular|pv=s' => \$opt{popular_videos},
+        'popular-videos|popular|pv:s' => \$opt{popular_videos},
 
         'cookie-file|cookies=s'          => \$opt{cookie_file},
         'user-agent|agent=s'             => \$opt{user_agent},
@@ -1591,7 +1563,6 @@ sub parse_arguments {
         'skip-watched!'                     => \$opt{skip_watched},
         'results=i'                         => \$opt{maxResults},
         'shuffle|s!'                        => \$opt{shuffle},
-        'more|m!'                           => \$opt{more_results},
         'pos|position=i'                    => \$opt{position},
         'ps|playlist-save=s'                => \$opt{playlist_save},
 
@@ -1980,19 +1951,12 @@ sub authenticated {
 }
 
 sub favorite_videos {
-    my (@videoIDs) = @_;
-    return if not authenticated();
+    my (@videos) = @_;
 
-    foreach my $id (@videoIDs) {
-        my $videoID = get_valid_video_id($id) // next;
-
-        if ($yv_obj->favorite_video($videoID)) {
-            printf("\n:: Video %s has been successfully favorited.\n", sprintf($CONFIG{youtube_video_url}, $videoID));
-        }
-        else {
-            warn_cant_do('favorite', $videoID);
-        }
+    foreach my $video_data (@videos) {
+        prepend_video_data_to_file($video_data, $favorite_videos_data_file);
     }
+
     return 1;
 }
 
@@ -2017,6 +1981,7 @@ sub save_to_playlist {
     return if not authenticated();
 
     foreach my $id (@videoIDs) {
+
         my $videoID = get_valid_video_id($id) // next;
         my $pos     = $opt{position};                    # position in the playlist
 
@@ -2045,16 +2010,11 @@ sub save_to_playlist {
 
 sub rate_videos {
     my $rating = shift;
-    return if not authenticated();
 
-    foreach my $id (@_) {
-        my $videoID = get_valid_video_id($id) // next;
-        if ($yv_obj->send_rating_to_video($videoID, $rating)) {
-            printf("\n:: Video %s has been successfully %sd.\n", sprintf($CONFIG{youtube_video_url}, $videoID), $rating);
-        }
-        else {
-            warn_cant_do($rating, $videoID);
-        }
+    my $file = ($rating eq 'like') ? $liked_videos_data_file : $disliked_videos_data_file;
+
+    foreach my $video_data (@_) {
+        prepend_video_data_to_file($video_data, $file);
     }
 
     return 1;
@@ -2143,33 +2103,6 @@ sub get_and_print_videos_from_playlist {
         warn_invalid('playlistID', $playlistID);
         return;
     }
-    return 1;
-}
-
-sub subscribe {
-    my (@ids) = @_;
-
-    return if not authenticated();
-
-    foreach my $channel (@ids) {
-
-        my $id = extract_channel_id($channel) // do {
-            warn_invalid("channel ID or username", $channel);
-            next;
-        };
-
-        my $ok =
-            $yv_utils->is_channelID($id)
-          ? $yv_obj->subscribe_channel($id)
-          : $yv_obj->subscribe_channel_from_username($id);
-
-        if ($ok) {
-            print ":: Successfully subscribed to channel: $id\n";
-        }
-        else {
-            warn colored("\n[!] Unable to subscribe to channel: $id", 'bold red') . "\n";
-        }
-    }
 
     return 1;
 }
@@ -2231,7 +2164,7 @@ sub general_options {
     if ($option =~ /^(?:q|quit|exit)\z/) {
         main_quit(0);
     }
-    elsif ($option =~ /^(?:n|next)\z/ and defined $url) {
+    elsif ($option =~ /^(?:n|next)\z/ and (defined($url) or ref($token) eq 'CODE')) {
         if ($has_token) {
             if (defined $token) {
                 my $request = $yv_obj->next_page($url, $token);
@@ -2246,7 +2179,7 @@ sub general_options {
             $callback->($request);
         }
     }
-    elsif ($option =~ /^(?:R|refresh)\z/ and defined $url) {
+    elsif ($option =~ /^(?:R|refresh)\z/ and defined($url)) {
         @{$results} = @{$yv_obj->_get_results($url)->{results}};
     }
     elsif ($option eq 'login') {
@@ -2625,7 +2558,7 @@ sub print_channels {
                 }
             }
 
-            # :p=i, :playlist=i
+            # :p=i, :playlist=i, :up=i
             elsif ($opt =~ /^(?:p|l|playlists?|up)${digit_or_equal_re}(.*)/) {
                 if (my @nums = get_valid_numbers($#{$channels}, $1)) {
 
@@ -2641,6 +2574,30 @@ sub print_channels {
                             warn_no_results('playlist');
                         }
                     }
+                }
+                else {
+                    warn_no_thing_selected('channel');
+                }
+            }
+
+            # :s=i, :save=i, :subscribe=i
+            elsif ($opt =~ /^(?:s|save|sub(?:scribe)?)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$channels}, $1)) {
+                    foreach my $id (@nums) {
+                        my $channel_id    = $yv_utils->get_channel_id($channels->[$id]);
+                        my $channel_title = $yv_utils->get_channel_title($channels->[$id]);
+                        save_channel_to_file($channel_id, $channel_title);
+                    }
+                }
+                else {
+                    warn_no_thing_selected('channel');
+                }
+            }
+
+            # :r=i, :rm=i, :remove=i, :unsubscribe=i
+            elsif ($opt =~ /^(?:r|rm|remove|unsub(?:scribe)?)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$channels}, $1)) {
+                    remove_saved_channels(map { $yv_utils->get_channel_id($channels->[$_]) } @nums);
                 }
                 else {
                     warn_no_thing_selected('channel');
@@ -2783,6 +2740,325 @@ sub print_comments {
     }
 
     __SUB__->(@_);
+}
+
+sub save_channel_to_file {
+    my ($channel_id, $channel_title) = @_;
+
+    $channel_id // return;
+
+    if ($channel_id = extract_channel_id($channel_id)) {
+        if (not $yv_utils->is_channelID($channel_id)) {
+            $channel_id = $yv_obj->channel_id_from_username($channel_id) // do {
+                warn_invalid("username or channel ID", $channel_id);
+                undef;
+            };
+        }
+    }
+
+    $channel_id // return;
+    $channel_title //= $yv_obj->channel_title_from_id($channel_id) // $channel_id;
+
+    if (not defined($channel_title)) {
+        warn "[!] Could not determine the channel name...\n";
+        return;
+    }
+
+    say "\n:: Saving channel <<$channel_title>> (id: $channel_id) to file...";
+
+    open(my $fh, '>>:utf8', $opt{subscribed_channels_file}) or do {
+        warn "[!] Can't open file <<$opt{subscribed_channels_file}>> for appending: $!\n";
+        return;
+    };
+
+    say $fh "$channel_id $channel_title";
+    close $fh;
+
+    say ":: Done.";
+    return 1;
+}
+
+sub update_channel_file {
+    my (%channels) = @_;
+
+    open(my $fh, '>:utf8', $opt{subscribed_channels_file}) or do {
+        warn "[!] Can't open file <<$opt{subscribed_channels_file}>> for writing: $!\n";
+        return;
+    };
+
+    foreach my $key (sort { CORE::fc($channels{$a}) cmp CORE::fc($channels{$b}) } keys %channels) {
+        say $fh "$key $channels{$key}";
+    }
+
+    close $fh;
+}
+
+sub remove_saved_channels {
+    my (@channel_ids) = @_;
+
+    open(my $fh, '<:utf8', $opt{subscribed_channels_file}) or do {
+        warn "[!] Can't open file <<$opt{subscribed_channels_file}>> for reading: $!\n";
+        return;
+    };
+
+    my %channels;
+
+    while (defined(my $line = <$fh>)) {
+        if ($line =~ /^([a-zA-Z0-9_-]+) (.+)/) {
+            my ($channel_id, $channel_title) = ($1, $2);
+
+            if ($yv_utils->is_channelID($channel_id)) {
+                $channels{$channel_id} = $channel_title;
+            }
+            else {
+                warn "[!] Invalid channel ID: $channel_id\n";
+            }
+        }
+    }
+
+    close $fh;
+
+    my $removed = 0;
+
+    foreach my $channel_id (@channel_ids) {
+        if (exists $channels{$channel_id}) {
+            say ":: Removing: $channel_id";
+            delete $channels{$channel_id};
+            ++$removed;
+        }
+        else {
+            say ":: $channel_id is not a saved channel...";
+        }
+    }
+
+    if ($removed > 0) {
+        update_channel_file(%channels);
+    }
+}
+
+sub get_results_from_list {
+    my ($results, %args) = @_;
+
+    $args{page} //= $yv_obj->get_page;
+
+    if (ref($results) ne 'ARRAY') {
+        return;
+    }
+
+    my @results = @$results;
+
+    my $maxResults   = $yv_obj->get_maxResults;
+    my $totalResults = scalar(@results);
+
+    if ($args{page} >= 1 and scalar(@results) >= $maxResults) {
+
+        @results = grep { defined } @results[($args{page} - 1) * $maxResults .. $args{page} * $maxResults - 1];
+
+        if (!@results) {
+            warn_last_page() if ($args{page} == 1 + sprintf('%0.f', 0.5 + $totalResults / $maxResults));
+            return __SUB__->($results, %args, page => $args{page} - 1) if ($args{page} > 1);
+        }
+    }
+
+    my %results;
+    my @entries;
+
+    foreach my $entry (@results) {
+        if (defined($args{callback})) {
+            push @entries, $args{callback}($entry);
+        }
+        else {
+            push @entries, $entry;
+        }
+    }
+
+#<<<
+    $results{entries}         = \@entries;
+    #$results{pageInfo}      = {resultsPerPage => scalar(@entries), totalResults => $totalResults};
+    #$results{fromPage}      = sub { get_results_from_list($results, %args, page => $_[0]) };
+    $results{continuation} = sub { get_results_from_list($results, %args, page => ($args{page} + 1)) };
+    #$results{prevPageToken} = sub { get_results_from_list($results, %args, page => (($args{page} > 1) ? ($args{page} - 1) : do { warn_first_page(); 1 })) };
+#>>>
+
+    scalar {results => \%results, url => undef};
+}
+
+sub print_local_playlist {
+    my ($name) = @_;
+
+    $name //= '';
+
+    require File::Basename;
+
+    my @playlist_files = $yv_utils->get_local_playlist_filenames($local_playlists_dir);
+    my $regex          = qr/\Q$name\E/i;
+
+    if ($name eq '') {
+        my $results = get_results_from_list(
+            \@playlist_files,
+            callback => sub {
+                my ($id) = @_;
+                $yv_utils->local_playlist_snippet($id);
+            }
+        );
+        return print_playlists($results);
+    }
+
+    foreach my $file (@playlist_files) {
+        if (File::Basename::basename($file) =~ $regex or $file eq $name) {
+            return print_videos_from_data_file($file);
+        }
+    }
+
+    warn_no_thing_selected('playlist');
+    return 0;
+}
+
+sub print_videos_from_data_file {
+    my ($file) = @_;
+    my $videos = eval { Storable::retrieve($file) } // [];
+    print_videos(get_results_from_list($videos));
+}
+
+sub print_watched_videos {
+    print_videos_from_data_file($watch_history_data_file);
+}
+
+sub print_liked_videos {
+    print_videos_from_data_file($liked_videos_data_file);
+}
+
+sub print_disliked_videos {
+    print_videos_from_data_file($disliked_videos_data_file);
+}
+
+sub print_favorite_videos {
+    print_videos_from_data_file($favorite_videos_data_file);
+}
+
+sub print_subscription_videos {
+    print_videos_from_data_file($subscription_videos_data_file);
+}
+
+sub print_local_subscription_videos {
+
+    # Reuse the subscription file if it's less than 10 minutes old
+    if (-f $subscription_videos_data_file and (-M _) < (1 / 6) / 24 and (-M _) < ((-M $opt{subscribed_channels_file}) // 0)) {
+        return print_subscription_videos();
+    }
+
+    my @channels = $yv_utils->read_channels_from_file($opt{subscribed_channels_file});
+
+    if (not @channels) {
+        warn "\n[!] No subscribed channels...\n";
+        return;
+    }
+
+    my %subscriptions;
+
+    print "\n" if @channels;
+
+    my @items;
+    foreach my $i (0 .. $#channels) {
+
+        local $| = 1;
+        printf("[%d/%d] Retrieving info for $channels[$i][1]...\r", $i + 1, $#channels + 1);
+
+        my $id      = $channels[$i][0]      // next;
+        my $uploads = $yv_obj->uploads($id) // next;
+
+        my $videos = $uploads->{results} // [];
+
+        if (ref($videos) eq 'HASH' and exists $videos->{videos}) {
+            $videos = $videos->{videos};
+        }
+
+        if (ref($videos) eq 'HASH' and exists $videos->{entries}) {
+            $videos = $videos->{entries};
+        }
+
+        if (ref($videos) ne 'ARRAY') {
+            next;
+        }
+
+        $subscriptions{$id} = 1;
+        $subscriptions{lc($id)} = 1;
+
+        push @items, @$videos;
+    }
+
+    print "\n" if @items;
+
+    my $subscriptions_data = [];
+
+    if (-f $subscription_videos_data_file) {
+        $subscriptions_data = eval { Storable::retrieve($subscription_videos_data_file) } // [];
+    }
+
+    push @$subscriptions_data, @items;
+
+    # Remove duplicates
+    @$subscriptions_data = do {
+        my %seen;
+        grep { !$seen{$yv_utils->get_video_id($_)}++ } @$subscriptions_data;
+    };
+
+    # Remove videos from unsubscribed channels
+    @$subscriptions_data = grep {
+             exists($subscriptions{$yv_utils->get_channel_id($_)})
+          or exists($subscriptions{lc($yv_utils->get_channel_title($_) // '')})
+    } @$subscriptions_data;
+
+    # Order videos by newest first
+    @$subscriptions_data =
+      map  { $_->[0] }
+      sort { $b->[1] <=> $a->[1] }
+      map  { [$_, $yv_utils->get_publication_time($_)] } @$subscriptions_data;
+
+    # Remove results from the end when the list becomes too large
+    my $subscriptions_limit = $opt{subscriptions_limit} // 1e4;
+    if ($subscriptions_limit > 0 and scalar(@$subscriptions_data) > $subscriptions_limit) {
+        $#$subscriptions_data = $subscriptions_limit;
+    }
+
+    if (@$subscriptions_data) {
+        Storable::store($subscriptions_data, $subscription_videos_data_file);
+    }
+
+    print_videos(get_results_from_list($subscriptions_data));
+}
+
+sub print_local_channels {
+    my ($name) = @_;
+
+    $name //= '';
+
+    my @users = $yv_utils->read_channels_from_file($opt{subscribed_channels_file});
+    my $regex = qr/\Q$name\E/i;
+
+    if ($name eq '') {
+        my $results = get_results_from_list(
+            \@users,
+            callback => sub {
+                my ($entry) = @_;
+                my ($id, $name) = @$entry;
+                $yv_utils->local_channel_snippet($id, $name);
+            }
+        );
+
+        return print_channels($results);
+    }
+
+    foreach my $user (@users) {
+        my ($channel_id, $channel_name) = @$user;
+
+        if ($channel_id eq $name or $channel_name =~ $regex) {
+            return print_videos($yv_obj->uploads($channel_id));
+        }
+    }
+
+    warn_no_thing_selected('channel');
+    return 0;
 }
 
 sub print_categories {
@@ -2959,7 +3235,12 @@ sub print_playlists {
                 return $id;
             }
 
-            get_and_print_videos_from_playlist($id);
+            if ($id =~ m{^/}) {    # local playlist
+                print_local_playlist($id);
+            }
+            else {
+                get_and_print_videos_from_playlist($id);
+            }
         }
         else {
             push @for_search, $key;
@@ -3313,17 +3594,45 @@ sub download_video {
     return 1;
 }
 
-sub save_watched_video {
-    my ($video_id) = @_;
+sub prepend_video_data_to_file {
+    my ($video_data, $file) = @_;
 
-    if ($opt{remember_watched} and not exists($watched_videos{$video_id})) {
-        $watched_videos{$video_id} = 1;
-        open my $fh, '>>', $opt{watched_file} or return;
-        say {$fh} $video_id;
-        close $fh;
+    my $videos = eval { Storable::retrieve($file) } // [];
+
+    if (ref($video_data) ne 'HASH') {
+        my $videoID = get_valid_video_id($video_data) // return;
+        $video_data = $yv_obj->video_details($videoID);
     }
 
-    $watched_videos{$video_id} = 1;
+    get_valid_video_id($yv_utils->get_video_id($video_data)) // return;
+
+    unshift(@$videos, $video_data);
+
+    my %seen;
+    @$videos = grep { !$seen{$yv_utils->get_video_id($_)}++ } @$videos;
+
+    Storable::store($videos, $file);
+    return 1;
+}
+
+sub save_watched_video {
+    my ($video_id, $video_data) = @_;
+
+    if ($opt{watch_history}) {
+
+        if (not exists($WATCHED_VIDEOS{$video_id})) {
+
+            $WATCHED_VIDEOS{$video_id} = 1;
+
+            open my $fh, '>>', $opt{watched_file} or return;
+            say {$fh} $video_id;
+            close $fh;
+        }
+
+        prepend_video_data_to_file($video_data, $watch_history_data_file);
+    }
+
+    $WATCHED_VIDEOS{$video_id} = 1;
     return 1;
 }
 
@@ -3405,7 +3714,7 @@ sub play_videos {
         }
 
         # Ignore already watched videos
-        if (exists($watched_videos{$video_id}) and $opt{skip_watched}) {
+        if (exists($WATCHED_VIDEOS{$video_id}) and $opt{skip_watched}) {
             say ":: Already watched video (ID: $video_id)... Skipping...";
             next;
         }
@@ -3490,7 +3799,7 @@ sub play_videos {
             }
         }
 
-        save_watched_video($video_id);
+        save_watched_video($video_id, $video);
         press_enter_to_continue() if $opt{confirm};
     }
 
@@ -3792,7 +4101,7 @@ sub print_videos {
     if ($opt{highlight_watched}) {
         foreach my $i (0 .. $#{$videos}) {
             my $video = $videos->[$i];
-            if (exists($watched_videos{$yv_utils->get_video_id($video)})) {
+            if (exists($WATCHED_VIDEOS{$yv_utils->get_video_id($video)})) {
                 $formatted[$i] = colored(colorstrip($formatted[$i]), $opt{highlight_color});
             }
         }
@@ -3822,7 +4131,7 @@ sub print_videos {
                     }
                 }
                 else {
-                    if (defined($url)) {
+                    if (defined($url) or ref($token) eq 'CODE') {
                         __SUB__->($yv_obj->next_page($url, $token), auto => 1);
                     }
                     else {
@@ -3877,7 +4186,7 @@ sub print_videos {
                 press_enter_to_continue();
             }
             elsif ($opt =~ /^(?:n|next)\z/) {
-                if (defined($url)) {
+                if (defined($url) or ref($token) eq 'CODE') {
                     my $request = $yv_obj->next_page($url, $token);
                     __SUB__->($request, @keywords ? (auto => 1) : ());
                 }
@@ -3921,6 +4230,20 @@ sub print_videos {
                 }
             }
 
+            # :sc=i, :save-channel=i, :subscribe=i
+            elsif ($opt =~ /^(?:sc|save-channel|sub(?:scribe)?|S)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    foreach my $id (@nums) {
+                        my $channel_id    = $yv_utils->get_channel_id($videos->[$id]);
+                        my $channel_title = $yv_utils->get_channel_title($videos->[$id]);
+                        save_channel_to_file($channel_id, $channel_title);
+                    }
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+
             # :popular=i, :pv=i
             elsif ($opt =~ /^(?:pv|popular)${digit_or_equal_re}(.*)/) {
                 if (my @nums = get_valid_numbers($#{$videos}, $1)) {
@@ -3934,35 +4257,6 @@ sub print_videos {
                             warn_no_results('popular video');
                         }
                     }
-                }
-                else {
-                    warn_no_thing_selected('video');
-                }
-            }
-
-            # :activity (FIXME)
-            elsif ($opt =~ /^(?:A|[Aa]ctivity)${digit_or_equal_re}(.*)/) {
-                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
-                    foreach my $id (@nums) {
-                        my $channel_id = $yv_utils->get_channel_id($videos->[$id]);
-                        my $request    = $yv_obj->activities($channel_id);
-                        if ($yv_utils->has_entries($request)) {
-                            __SUB__->($request);
-                        }
-                        else {
-                            warn_no_results('activity');
-                        }
-                    }
-                }
-                else {
-                    warn_no_thing_selected('activity');
-                }
-            }
-
-            # # :ps (FIXME)
-            elsif ($opt =~ /^(?:ps|s2p)${digit_or_equal_re}(.*)/) {
-                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
-                    select_and_save_to_playlist(map { $yv_utils->get_video_id($videos->[$_]) } @nums);
                 }
                 else {
                     warn_no_thing_selected('video');
@@ -3987,11 +4281,11 @@ sub print_videos {
                 }
             }
 
-            # :like=i, :dislike=i (FIXME)
+            # :like=i, :dislike=i
             elsif ($opt =~ /^((?:dis)?like)${digit_or_equal_re}(.*)/) {
                 my $rating = $1;
                 if (my @nums = get_valid_numbers($#{$videos}, $2)) {
-                    rate_videos($rating, map { $yv_utils->get_video_id($videos->[$_]) } @nums);
+                    rate_videos($rating, map { $videos->[$_] } @nums);
                 }
                 else {
                     warn_no_thing_selected('video');
@@ -3999,15 +4293,7 @@ sub print_videos {
             }
             elsif ($opt =~ /^(?:fav|favorite|F)${digit_or_equal_re}(.*)/) {
                 if (my @nums = get_valid_numbers($#{$videos}, $1)) {
-                    favorite_videos(map { $yv_utils->get_video_id($videos->[$_]) } @nums);
-                }
-                else {
-                    warn_no_thing_selected('video');
-                }
-            }
-            elsif ($opt =~ /^(?:subscribe|S)${digit_or_equal_re}(.*)/) {
-                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
-                    subscribe(map { $yv_utils->get_channel_id($videos->[$_]) } @nums);
+                    favorite_videos(map { $videos->[$_] } @nums);
                 }
                 else {
                     warn_no_thing_selected('video');
@@ -4451,7 +4737,7 @@ Prefer invidious instances over parsing the YouTube website directly.
 
 ISO 3166 country code (default: "US").
 
-=head2 remember_watched
+=head2 watch_history
 
 Set to C<1> to remember and highlight watched videos across multiple sessions.
 
@@ -4487,9 +4773,9 @@ Enable or disable support for split-videos. Split-videos are videos that do not 
 
 List of SRT languages in the order of preference.
 
-=head2 subscriptions_order
+=head2 subscriptions_limit
 
-Order of subscriptions. Currently, not implemented.
+Maximum number of subscription videos to store in the local database. Set to C<0> for no limit.
 
 =head2 thousand_separator
 
@@ -4552,7 +4838,7 @@ When set to C<"creative_commons">, retrieve only videos under the I<Creative Com
 
 =head2 watched_file
 
-File where to save the video IDs of watched/downloaded videos when C<remember_watched> is set to a true value.
+File where to save the video IDs of watched/downloaded videos when C<watch_history> is set to a true value.
 
 =head2 wget_cmd
 

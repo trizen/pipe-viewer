@@ -101,7 +101,7 @@ my %valid_options = (
     api_path         => {valid => q[], default => '/api/v1/'},
     video_info_url   => {valid => q[], default => 'https://www.youtube.com/get_video_info'},
     oauth_url        => {valid => q[], default => 'https://accounts.google.com/o/oauth2/'},
-    video_info_args  => {valid => q[], default => '?video_id=%s&el=detailpage&ps=default&eurl=&gl=US&hl=en'},
+    video_info_args  => {valid => q[], default => '?video_id=%s&el=detailpage&eurl=&gl=US&hl=en'},
     www_content_type => {valid => q[], default => 'application/x-www-form-urlencoded'},
     m_youtube_url    => {valid => q[], default => 'https://m.youtube.com'},
 
@@ -347,7 +347,7 @@ sub set_lwp_useragent {
         my $cookies = HTTP::Cookies->new();
 
         # Consent cookie
-        $cookies->set_cookie(0, "CONSENT", "YES+DE.en+V9+BX", "/", ".youtube.com", undef, 0, 1, 2982922601, 0, {},);
+        $cookies->set_cookie(0, "CONSENT", "YES+DE.en+V9+BX", "/", ".youtube.com", undef, 0, 1, int(rand(2**32)), 0, {});
 
         $agent->cookie_jar($cookies);
     }
@@ -1097,8 +1097,9 @@ sub _get_video_info {
     my ($self, $videoID) = @_;
 
     my $url     = $self->get_video_info_url() . sprintf($self->get_video_info_args(), $videoID);
-    my $content = $self->lwp_get($url, simple => 1) // return;
-    my %info    = $self->parse_query_string($content);
+    my $content = $self->lwp_get($url, simple => 1) // do { sleep 1; $self->lwp_get($url, simple => 1) }
+      // return;
+    my %info = $self->parse_query_string($content);
 
     return %info;
 }
@@ -1255,6 +1256,10 @@ sub post_as_json {
 
 sub next_page_with_token {
     my ($self, $url, $token) = @_;
+
+    if (ref($token) eq 'CODE') {
+        return $token->();
+    }
 
     if ($token =~ /^yt(search|browse):(\w+):(.*)/) {
         if ($1 eq 'browse') {
