@@ -2995,7 +2995,7 @@ sub print_local_subscription_videos {
         $subscriptions_data = eval { Storable::retrieve($subscription_videos_data_file) } // [];
     }
 
-    push @$subscriptions_data, @items;
+    unshift(@$subscriptions_data, @items);
 
     # Remove duplicates
     @$subscriptions_data = do {
