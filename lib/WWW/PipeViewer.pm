@@ -8,6 +8,7 @@ use Memoize;
 
 memoize('_get_video_info');
 memoize('_ytdl_is_available');
+memoize('_info_from_ytdl');
 memoize('_extract_from_ytdl');
 memoize('_extract_from_invidious');
 
@@ -347,7 +348,9 @@ sub set_lwp_useragent {
         my $cookies = HTTP::Cookies->new();
 
         # Consent cookie
-        $cookies->set_cookie(0, "CONSENT", "YES+DE.en+V9+BX", "/", ".youtube.com", undef, 0, 1, int(rand(2**32)), 0, {});
+        $cookies->set_cookie(0, "CONSENT", "YES+cb-m.20210516-15-p0.en+FX+687",
+                             "/", ".youtube.com", undef, 0, 1, '21' . join('', map { int(rand(10)) } 1 .. 8),
+                             0, {});
 
         $agent->cookie_jar($cookies);
     }
@@ -808,7 +811,7 @@ sub _ytdl_is_available {
     ($self->proxy_stdout($self->get_ytdl_cmd(), '--version') // '') =~ /\d/;
 }
 
-sub _extract_from_ytdl {
+sub _info_from_ytdl {
     my ($self, $videoID) = @_;
 
     $self->_ytdl_is_available() || return;
@@ -822,9 +825,18 @@ sub _extract_from_ytdl {
     }
 
     my $json = $self->proxy_stdout(@ytdl_cmd, quotemeta("https://www.youtube.com/watch?v=" . $videoID));
-    my $ref  = $self->parse_json_string($json);
+    my $ref  = $self->parse_json_string($json // return);
+
+    return $ref;
+}
+
+sub _extract_from_ytdl {
+    my ($self, $videoID) = @_;
+
+    my $ref = $self->_info_from_ytdl($videoID) // return;
 
     my @formats;
+
     if (ref($ref) eq 'HASH' and exists($ref->{formats}) and ref($ref->{formats}) eq 'ARRAY') {
         foreach my $format (@{$ref->{formats}}) {
             if (exists($format->{format_id}) and exists($format->{url})) {
@@ -1097,9 +1109,8 @@ sub _get_video_info {
     my ($self, $videoID) = @_;
 
     my $url     = $self->get_video_info_url() . sprintf($self->get_video_info_args(), $videoID);
-    my $content = $self->lwp_get($url, simple => 1) // do { sleep 1; $self->lwp_get($url, simple => 1) }
-      // return;
-    my %info = $self->parse_query_string($content);
+    my $content = $self->lwp_get($url, simple => 1) // return;
+    my %info    = $self->parse_query_string($content);
 
     return %info;
 }

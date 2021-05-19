@@ -162,6 +162,58 @@ sub _invidious_video_details {
     return;
 }
 
+sub _ytdl_video_details {
+    my ($self, $id) = @_;
+    $self->_info_from_ytdl($id);
+}
+
+sub _fallback_video_details {
+    my ($self, $id, $fields) = @_;
+
+    my $info = $self->_ytdl_video_details($id);
+
+    if (defined($info) and ref($info) eq 'HASH') {
+        return scalar {
+
+            title   => $info->{fulltitle} // $info->{title},
+            videoId => $id,
+
+            videoThumbnails => [
+                map {
+                    scalar {
+                            quality => 'medium',
+                            url     => $_->{url},
+                            width   => $_->{width},
+                            height  => $_->{height},
+                           }
+                } @{$info->{thumbnails}}
+            ],
+
+            liveNow       => ($info->{is_live} ? 1 : 0),
+            description   => $info->{description},
+            lengthSeconds => $info->{duration},
+
+            likeCount    => $info->{like_count},
+            dislikeCount => $info->{dislike_count},
+
+            category    => eval { $info->{categories}[0] } // $info->{category},
+            publishDate => $info->{upload_date},
+
+            keywords  => $info->{tags},
+            viewCount => $info->{view_count},
+
+            author   => $info->{channel},
+            authorId => $info->{channel_id} // $info->{uploader_id},
+            rating   => $info->{average_rating},
+        };
+    }
+    else {
+        #$info = $self->_invidious_video_details($id, $fields);     # too slow
+    }
+
+    return {};
+}
+
 sub video_details {
     my ($self, $id, $fields) = @_;
 
@@ -170,7 +222,7 @@ sub video_details {
     }
 
     my %video_info = $self->_get_video_info($id);
-    my $video = $self->parse_json_string($video_info{player_response} // return $self->_invidious_video_details($id, $fields));
+    my $video = $self->parse_json_string($video_info{player_response} // return $self->_fallback_video_details($id, $fields));
 
     my $videoDetails = {};
     my $microformat  = {};
@@ -179,7 +231,7 @@ sub video_details {
         $videoDetails = $video->{videoDetails};
     }
     else {
-        return $self->_invidious_video_details($id, $fields);
+        return $self->_fallback_video_details($id, $fields);
     }
 
     if (exists $video->{microformat}) {

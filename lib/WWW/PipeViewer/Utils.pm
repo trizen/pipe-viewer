@@ -96,6 +96,9 @@ Returns time from seconds.
 
 sub format_time {
     my ($self, $sec) = @_;
+
+    $sec //= 0;
+
     $sec >= 3600
       ? join q{:}, map { sprintf '%02d', $_ } $sec / 3600 % 24, $sec / 60 % 60, $sec % 60
       : join q{:}, map { sprintf '%02d', $_ } $sec / 60 % 60, $sec % 60;
@@ -801,7 +804,12 @@ sub get_publication_date {
         $time = eval { Time::Piece->new($info->{published}) };
     }
     elsif (defined($info->{publishDate})) {
-        $time = eval { Time::Piece->strptime($info->{publishDate}, '%Y-%m-%d') };
+        if ($info->{publishDate} =~ /^[0-9]+\z/) {    # time given as "%yyyy%mm%dd" (from youtube-dl)
+            $time = eval { Time::Piece->strptime($info->{publishDate}, '%Y%m%d') };
+        }
+        else {
+            $time = eval { Time::Piece->strptime($info->{publishDate}, '%Y-%m-%d') };
+        }
     }
 
     defined($time) ? Encode::decode_utf8($time->strftime("%d %B %Y")) : undef;
