@@ -2580,8 +2580,8 @@ sub print_channels {
                 }
             }
 
-            # :s=i, :save=i, :subscribe=i
-            elsif ($opt =~ /^(?:s|save|sub(?:scribe)?)${digit_or_equal_re}(.*)/) {
+            # :s=i, :subscribe=i
+            elsif ($opt =~ /^(?:s|sub(?:scribe)?)${digit_or_equal_re}(.*)/) {
                 if (my @nums = get_valid_numbers($#{$channels}, $1)) {
                     foreach my $id (@nums) {
                         my $channel_id    = $yv_utils->get_channel_id($channels->[$id]);
@@ -4237,8 +4237,8 @@ sub print_videos {
                 }
             }
 
-            # :sc=i, :save-channel=i, :subscribe=i
-            elsif ($opt =~ /^(?:sc|save-channel|sub(?:scribe)?|S)${digit_or_equal_re}(.*)/) {
+            # :s=i, :subscribe=i
+            elsif ($opt =~ /^(?:s|sub(?:scribe)?)${digit_or_equal_re}(.*)/) {
                 if (my @nums = get_valid_numbers($#{$videos}, $1)) {
                     foreach my $id (@nums) {
                         my $channel_id    = $yv_utils->get_channel_id($videos->[$id]);
