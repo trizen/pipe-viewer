@@ -415,6 +415,10 @@ sub lwp_get {
         $url = 'https:' . $url;
     }
 
+    if ($url =~ m{^/vi/}) {
+        $url = 'https://i.ytimg.com' . $url;
+    }
+
     my %lwp_header = ($opt{simple} ? () : $self->_auth_lwp_header);
     my $response   = $self->{lwp}->get($url, %lwp_header);
 
