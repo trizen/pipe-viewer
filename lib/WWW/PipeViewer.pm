@@ -461,14 +461,14 @@ sub lwp_get {
     $opt{depth} ||= 0;
 
     # Try again on 500+ HTTP errors
-    if (    $opt{depth} < 3
+    if (    $opt{depth} < 2
         and $response->code() >= 500
         and $response->status_line() =~ /(?:Temporary|Server) Error|Timeout|Service Unavailable/i) {
         return $self->lwp_get($url, %opt, depth => $opt{depth} + 1);
     }
 
     # Too many errors. Pick another invidious instance.
-    if ($url !~ m{\bm\.youtube\.com/}) {
+    if ($url !~ m{\byoutube\.com\b/}) {
         $self->pick_and_set_random_instance();
     }
 
