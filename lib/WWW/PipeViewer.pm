@@ -102,7 +102,7 @@ my %valid_options = (
     api_path         => {valid => q[], default => '/api/v1/'},
     video_info_url   => {valid => q[], default => 'https://www.youtube.com/get_video_info'},
     oauth_url        => {valid => q[], default => 'https://accounts.google.com/o/oauth2/'},
-    video_info_args  => {valid => q[], default => '?video_id=%s&el=detailpage&eurl=&gl=US&hl=en'},
+    video_info_args  => {valid => q[], default => '?video_id=%s&el=detailpage&ps=default&eurl=&gl=US&hl=en&html5=1'},
     www_content_type => {valid => q[], default => 'application/x-www-form-urlencoded'},
     m_youtube_url    => {valid => q[], default => 'https://m.youtube.com'},
 
@@ -461,7 +461,7 @@ sub lwp_get {
     $opt{depth} ||= 0;
 
     # Try again on 500+ HTTP errors
-    if (    $opt{depth} < 2
+    if (    $opt{depth} < 1
         and $response->code() >= 500
         and $response->status_line() =~ /(?:Temporary|Server) Error|Timeout|Service Unavailable/i) {
         return $self->lwp_get($url, %opt, depth => $opt{depth} + 1);
