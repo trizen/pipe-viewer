@@ -73,6 +73,16 @@ Author: Trizen https://github.com/trizen
     <property name="can-focus">False</property>
     <property name="stock">gtk-missing-image</property>
   </object>
+  <object class="GtkImage" id="image10">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <property name="stock">gtk-missing-image</property>
+  </object>
+  <object class="GtkImage" id="image11">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <property name="stock">gtk-index</property>
+  </object>
   <object class="GtkImage" id="image14">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
@@ -155,7 +165,7 @@ Author: Trizen https://github.com/trizen
   <object class="GtkImage" id="image7">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
-    <property name="stock">gtk-refresh</property>
+    <property name="stock">gtk-index</property>
   </object>
   <object class="GtkImage" id="image76">
     <property name="visible">True</property>
@@ -171,6 +181,11 @@ Author: Trizen https://github.com/trizen
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="icon-name">mail-reply-all</property>
+  </object>
+  <object class="GtkImage" id="image9">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <property name="stock">gtk-index</property>
   </object>
   <object class="GtkListStore" id="liststore1">
     <columns>
@@ -285,6 +300,29 @@ Author: Trizen https://github.com/trizen
                       </object>
                     </child>
                     <child>
+                      <object class="GtkImageMenuItem" id="watched_videos">
+                        <property name="label" translatable="yes">Watched videos</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="tooltip-text" translatable="yes">Display the list of watched videos</property>
+                        <property name="image">image9</property>
+                        <property name="use-stock">False</property>
+                        <signal name="activate" handler="display_watched_videos" swapped="no"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkImageMenuItem" id="subscription_videos">
+                        <property name="label" translatable="yes">Subscription videos</property>
+                        <property name="use-action-appearance">True</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="tooltip-text" translatable="yes">Display local subscription videos</property>
+                        <property name="image">image10</property>
+                        <property name="use-stock">False</property>
+                        <signal name="activate" handler="display_subscription_videos" swapped="no"/>
+                      </object>
+                    </child>
+                    <child>
                       <object class="GtkImageMenuItem" id="cli_version">
                         <property name="label" translatable="yes">CLI Pipe Viewer</property>
                         <property name="visible">True</property>
@@ -298,23 +336,11 @@ Author: Trizen https://github.com/trizen
                     <child>
                       <object class="GtkImageMenuItem" id="menuitem3">
                         <property name="label" translatable="yes">Login to YouTube</property>
-                        <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="tooltip-text" translatable="yes">Login to YouTube using OAuth 2.0 authentication.</property>
                         <property name="image">image6</property>
                         <property name="use-stock">False</property>
                         <signal name="activate" handler="show_login_to_youtube_window" swapped="no"/>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkImageMenuItem" id="warnings_console">
-                        <property name="label" translatable="yes">Warnings log</property>
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="tooltip-text" translatable="yes">Show the warnings window</property>
-                        <property name="image">image76</property>
-                        <property name="use-stock">False</property>
-                        <signal name="activate" handler="show_warnings_window" swapped="no"/>
                       </object>
                     </child>
                     <child>
@@ -426,6 +452,17 @@ Author: Trizen https://github.com/trizen
                         <property name="image">image79</property>
                         <property name="use-stock">False</property>
                         <signal name="activate" handler="donate" swapped="no"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkImageMenuItem" id="warnings_console">
+                        <property name="label" translatable="yes">Warnings</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="tooltip-text" translatable="yes">Show the warnings window</property>
+                        <property name="image">image76</property>
+                        <property name="use-stock">False</property>
+                        <signal name="activate" handler="show_warnings_window" swapped="no"/>
                       </object>
                     </child>
                     <child>
@@ -629,7 +666,7 @@ Author: Trizen https://github.com/trizen
                                                 </child>
                                                 <child>
                                                   <object class="GtkButton" id="button22">
-                                                    <property name="label" translatable="yes">Favorited videos</property>
+                                                    <property name="label" translatable="yes">Favorites</property>
                                                     <property name="visible">True</property>
                                                     <property name="can-focus">True</property>
                                                     <property name="receives-default">True</property>
@@ -1384,7 +1421,7 @@ Unless the author name is valid, this field is ignored.</property>
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">True</property>
                                                             <property name="receives-default">False</property>
-                                                            <property name="tooltip-text" translatable="yes">Show thumbnails for videos in search results.</property>
+                                                            <property name="tooltip-text" translatable="yes">Show thumbnails for results.</property>
                                                             <property name="draw-indicator">True</property>
                                                             <signal name="toggled" handler="thumbs_checkbutton_toggled" swapped="no"/>
                                                             </object>
@@ -1432,8 +1469,7 @@ Unless the author name is valid, this field is ignored.</property>
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">True</property>
                                                             <property name="receives-default">False</property>
-                                                            <property name="tooltip-text" translatable="yes">Support for videos in DASH format.
-When disabled, streams in DASH format will be ignored if there exists an alternative.</property>
+                                                            <property name="tooltip-text" translatable="yes">Include or exclude streams in DASH format.</property>
                                                             <property name="draw-indicator">True</property>
                                                             <signal name="toggled" handler="toggled_dash_support" swapped="no"/>
                                                             </object>
@@ -1449,6 +1485,7 @@ When disabled, streams in DASH format will be ignored if there exists an alterna
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">True</property>
                                                             <property name="receives-default">False</property>
+                                                            <property name="tooltip-text" translatable="yes">Clear the search list after each new search.</property>
                                                             <property name="draw-indicator">True</property>
                                                             <signal name="toggled" handler="toggled_clear_search_list" swapped="no"/>
                                                             </object>
@@ -1918,6 +1955,7 @@ When the specified resolution is not found, the best available resolution is use
                                 </child>
                                 <child>
                                   <object class="GtkScrolledWindow" id="scrolledwindow7">
+                                    <property name="visible">True</property>
                                     <property name="can-focus">True</property>
                                     <child>
                                       <object class="GtkViewport" id="viewport4">
@@ -1933,7 +1971,7 @@ When the specified resolution is not found, the best available resolution is use
                                                 <property name="visible">True</property>
                                                 <property name="can-focus">True</property>
                                                 <property name="model">liststore6</property>
-                                                <signal name="row-activated" handler="list_tops" swapped="no"/>
+                                                <signal name="row-activated" handler="list_local_playlist" swapped="no"/>
                                                 <child internal-child="selection">
                                                   <object class="GtkTreeSelection"/>
                                                 </child>
@@ -1950,7 +1988,7 @@ When the specified resolution is not found, the best available resolution is use
                                                 </child>
                                                 <child>
                                                   <object class="GtkTreeViewColumn" id="treeviewcolumn5">
-                                                    <property name="title" translatable="yes">Top</property>
+                                                    <property name="title" translatable="yes">Playlist</property>
                                                     <child>
                                                       <object class="GtkCellRendererText" id="cellrenderertext3"/>
                                                       <attributes>
@@ -1968,101 +2006,16 @@ When the specified resolution is not found, the best available resolution is use
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkExpander" id="expander1">
+                                              <object class="GtkCheckButton" id="reverse_playlist">
+                                                <property name="label" translatable="yes">Reverse playlist entries</property>
                                                 <property name="visible">True</property>
                                                 <property name="can-focus">True</property>
-                                                <child>
-                                                  <object class="GtkBox" id="vbox19">
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">False</property>
-                                                    <property name="orientation">vertical</property>
-                                                    <child>
-                                                      <object class="GtkFrame" id="frame22">
-                                                        <property name="visible">True</property>
-                                                        <property name="can-focus">False</property>
-                                                        <property name="label-xalign">0</property>
-                                                        <property name="shadow-type">none</property>
-                                                        <child>
-                                                          <object class="GtkAlignment" id="alignment21">
-                                                            <property name="visible">True</property>
-                                                            <property name="can-focus">False</property>
-                                                            <property name="left-padding">12</property>
-                                                            <child>
-                                                            <object class="GtkEntry" id="region_entry">
-                                                            <property name="visible">True</property>
-                                                            <property name="can-focus">True</property>
-                                                            <property name="invisible-char">•</property>
-                                                            <property name="primary-icon-activatable">False</property>
-                                                            <property name="secondary-icon-activatable">False</property>
-                                                            </object>
-                                                            </child>
-                                                          </object>
-                                                        </child>
-                                                        <child type="label">
-                                                          <object class="GtkLabel" id="label28">
-                                                            <property name="visible">True</property>
-                                                            <property name="can-focus">False</property>
-                                                            <property name="label" translatable="yes">&lt;b&gt;Region ID&lt;/b&gt;</property>
-                                                            <property name="use-markup">True</property>
-                                                          </object>
-                                                        </child>
-                                                      </object>
-                                                      <packing>
-                                                        <property name="expand">True</property>
-                                                        <property name="fill">True</property>
-                                                        <property name="position">0</property>
-                                                      </packing>
-                                                    </child>
-                                                    <child>
-                                                      <object class="GtkFrame" id="frame23">
-                                                        <property name="visible">True</property>
-                                                        <property name="can-focus">False</property>
-                                                        <property name="label-xalign">0</property>
-                                                        <property name="shadow-type">none</property>
-                                                        <child>
-                                                          <object class="GtkAlignment" id="alignment22">
-                                                            <property name="visible">True</property>
-                                                            <property name="can-focus">False</property>
-                                                            <property name="left-padding">12</property>
-                                                            <child>
-                                                            <object class="GtkEntry" id="category_entry">
-                                                            <property name="visible">True</property>
-                                                            <property name="can-focus">True</property>
-                                                            <property name="invisible-char">•</property>
-                                                            <property name="primary-icon-activatable">False</property>
-                                                            <property name="secondary-icon-activatable">False</property>
-                                                            </object>
-                                                            </child>
-                                                          </object>
-                                                        </child>
-                                                        <child type="label">
-                                                          <object class="GtkLabel" id="label29">
-                                                            <property name="visible">True</property>
-                                                            <property name="can-focus">False</property>
-                                                            <property name="label" translatable="yes">&lt;b&gt;Category ID:&lt;/b&gt;</property>
-                                                            <property name="use-markup">True</property>
-                                                          </object>
-                                                        </child>
-                                                      </object>
-                                                      <packing>
-                                                        <property name="expand">True</property>
-                                                        <property name="fill">True</property>
-                                                        <property name="position">1</property>
-                                                      </packing>
-                                                    </child>
-                                                  </object>
-                                                </child>
-                                                <child type="label">
-                                                  <object class="GtkLabel" id="label27">
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">False</property>
-                                                    <property name="label" translatable="yes">Options</property>
-                                                  </object>
-                                                </child>
+                                                <property name="receives-default">False</property>
+                                                <property name="draw-indicator">True</property>
                                               </object>
                                               <packing>
                                                 <property name="expand">False</property>
-                                                <property name="fill">False</property>
+                                                <property name="fill">True</property>
                                                 <property name="position">1</property>
                                               </packing>
                                             </child>
@@ -2079,7 +2032,7 @@ When the specified resolution is not found, the best available resolution is use
                                   <object class="GtkLabel" id="label15">
                                     <property name="visible">True</property>
                                     <property name="can-focus">False</property>
-                                    <property name="label" translatable="yes">Tops</property>
+                                    <property name="label" translatable="yes">Playlists</property>
                                   </object>
                                   <packing>
                                     <property name="position">4</property>
@@ -3391,9 +3344,10 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
     <property name="border-width">5</property>
     <property name="title" translatable="yes">Warnings log</property>
     <property name="window-position">center-on-parent</property>
-    <property name="default-width">320</property>
-    <property name="default-height">260</property>
+    <property name="default-width">400</property>
+    <property name="default-height">300</property>
     <property name="type-hint">dialog</property>
+    <property name="transient-for">__MAIN__</property>
     <signal name="delete-event" handler="hide_warnings_window" swapped="no"/>
     <signal name="destroy" handler="hide_warnings_window" swapped="no"/>
     <child internal-child="vbox">

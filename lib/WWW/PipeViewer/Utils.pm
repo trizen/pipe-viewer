@@ -823,6 +823,11 @@ sub get_publication_time {
 
     if ($self->get_time($info) eq 'LIVE') {
         my $time = $info->{timestamp} // Time::Piece->new();
+
+        if (ref($time) eq 'ARRAY') {
+            $time = bless($time, "Time::Piece");
+        }
+
         return $time;
     }
 
@@ -830,6 +835,10 @@ sub get_publication_time {
 
         my $age = $info->{publishedText};
         my $t   = $info->{timestamp} // Time::Piece->new();
+
+        if (ref($t) eq 'ARRAY') {
+            $t = bless($t, "Time::Piece");
+        }
 
         if ($age =~ /^(\d+) sec/) {
             $t -= $1;

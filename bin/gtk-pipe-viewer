@@ -46,6 +46,7 @@ use File::Spec::Functions qw(
   file_name_is_absolute
 );
 
+require Storable;
 binmode(STDOUT, ':utf8');
 
 my $appname = 'GTK+ Pipe Viewer';
@@ -82,26 +83,46 @@ else {
     $xdg_config_home = catdir($home_dir, '.config');
 }
 
-# Configuration dir/file
+# Configuration dirs
 my $config_dir          = catdir($xdg_config_home, 'pipe-viewer');
-my $config_file         = catfile($config_dir, "gtk-pipe-viewer.conf");
-my $youtube_users_file  = catfile($config_dir, 'users.txt');
-my $history_file        = catfile($config_dir, 'gtk-history.txt');
-my $session_file        = catfile($config_dir, 'session.dat');
-my $authentication_file = catfile($config_dir, 'reg.dat');
-my $api_file            = catfile($config_dir, 'api.json');
+my $local_playlists_dir = catdir($config_dir,      'playlists');
+
+# Config files
+my $config_file              = catfile($config_dir, "gtk-pipe-viewer.conf");
+my $youtube_users_file       = catfile($config_dir, 'users.txt');
+my $subscribed_channels_file = catfile($config_dir, 'subscribed_channels.txt');
+my $history_file             = catfile($config_dir, 'gtk-history.txt');
+my $session_file             = catfile($config_dir, 'session.dat');
+my $watched_file             = catfile($config_dir, 'watched.txt');
+
+# Special local playlists
+my $watch_history_data_file       = catfile($local_playlists_dir, 'watched_videos.dat');
+my $liked_videos_data_file        = catfile($local_playlists_dir, 'liked_videos.dat');
+my $disliked_videos_data_file     = catfile($local_playlists_dir, 'disliked_videos.dat');
+my $favorite_videos_data_file     = catfile($local_playlists_dir, 'favorite_videos.dat');
+my $subscription_videos_data_file = catfile($local_playlists_dir, "subscriptions.dat");
 
 # Create the configuration directory
-foreach my $dir ($config_dir) {
+foreach my $dir ($config_dir, $local_playlists_dir) {
     if (not -d $dir) {
         require File::Path;
         File::Path::make_path($dir)
-          or warn "[!] Can't create the configuration directory `$dir': $!";
+          or warn "[!] Can't create dir <<$dir>>: $!";
+    }
+}
+
+# Create the special playlist files
+foreach my $file ($watch_history_data_file, $liked_videos_data_file, $disliked_videos_data_file, $favorite_videos_data_file,) {
+    if (not -s $file) {
+        Storable::store([], $file);
     }
 }
 
 # Video queue for the enqueue feature
 my @VIDEO_QUEUE;
+
+# Keep track of watched videos
+my %WATCHED_VIDEOS;
 
 sub which_command {
     my ($cmd) = @_;
@@ -208,7 +229,7 @@ my %CONFIG = (
     srt_languages => ['en', 'es'],
     get_captions  => 1,
     auto_captions => 0,
-    cache_dir     => undef,
+    cache_dir     => undef,          # will be defined later
 
     # Others
     env_proxy   => 1,
@@ -230,14 +251,23 @@ my %CONFIG = (
     tooltips        => 1,
     tooltip_max_len => 512,    # max length of description in tooltips
 
-    thousand_separator     => q{,},
-    downloads_dir          => curdir(),
-    web_browser            => undef,                 # defaults to $ENV{WEBBROWSER} or xdg-open
-    terminal               => undef,                 # autodetect it later
-    terminal_exec          => q{-e '%s'},
-    pipe_viewer            => undef,
-    pipe_viewer_args       => [],
-    youtube_users_file     => $youtube_users_file,
+    thousand_separator => q{,},
+    downloads_dir      => curdir(),
+    web_browser        => undef,        # defaults to $ENV{WEBBROWSER} or xdg-open
+    terminal           => undef,        # autodetect it later
+    terminal_exec      => q{-e '%s'},
+    pipe_viewer        => undef,
+    pipe_viewer_args   => [],
+
+    # Watch history
+    watch_history => 1,
+    watched_file  => $watched_file,
+
+    # Subscribed channels
+    subscribed_channels_file => $subscribed_channels_file,
+    subscriptions_limit      => 10_000,                      # maximum number of subscription videos stored
+    youtube_users_file       => $youtube_users_file,
+
     history                => 1,
     history_limit          => 100_000,
     history_file           => $history_file,
@@ -355,7 +385,6 @@ my %objects = (
     'clear_list_checkbutton' => \my $clear_list_checkbutton,
     'dash_checkbutton'       => \my $dash_checkbutton,
     'audio_only_checkbutton' => \my $audio_only_checkbutton,
-    'gif_spinner'            => \my $gif_spinner,
     'hbox2'                  => \my $hbox2,
     'feeds_title'            => \my $feeds_title,
     'channel_name_save'      => \my $save_channel_name_entry,
@@ -424,11 +453,10 @@ local $SIG{__DIE__} = sub {
 
 #---------------------- LOAD IMAGES ----------------------#
 my $app_icon_pixbuf       = 'Gtk3::Gdk::Pixbuf'->new_from_file(catfile($icons_path, "gtk-pipe-viewer.png"));
-my $user_icon_pixbuf      = 'Gtk3::Gdk::Pixbuf'->new_from_file_at_size(catfile($icons_path, "user.png"), 16, 16);
-my $feed_icon_pixbuf      = 'Gtk3::Gdk::Pixbuf'->new_from_file_at_size(catfile($icons_path, "feed.png"), 16, 16);
-my $feed_icon_gray_pixbuf = 'Gtk3::Gdk::Pixbuf'->new_from_file_at_size(catfile($icons_path, "feed_gray.png"), 16, 16);
+my $user_icon_pixbuf      = 'Gtk3::Gdk::Pixbuf'->new_from_file_at_size(catfile($icons_path, "user.png"),          16,  16);
+my $feed_icon_pixbuf      = 'Gtk3::Gdk::Pixbuf'->new_from_file_at_size(catfile($icons_path, "feed.png"),          16,  16);
+my $feed_icon_gray_pixbuf = 'Gtk3::Gdk::Pixbuf'->new_from_file_at_size(catfile($icons_path, "feed_gray.png"),     16,  16);
 my $default_thumb         = 'Gtk3::Gdk::Pixbuf'->new_from_file_at_size(catfile($icons_path, "default_thumb.jpg"), 160, 90);
-my $animation             = 'Gtk3::Gdk::PixbufAnimation'->new_from_file(catfile($icons_path, "spinner.gif"));
 
 # Setting application title and icon
 $mainw->set_title("$appname $version");
@@ -460,6 +488,7 @@ if (not defined $CONFIG{cache_dir}) {
     $CONFIG{cache_dir} = catdir($cache_dir, 'pipe-viewer');
 }
 
+# Create the cache directory (if needed)
 foreach my $path ($CONFIG{cache_dir}) {
     next if -d $path;
     require File::Path;
@@ -1054,9 +1083,10 @@ sub menu_popup {
     # Video menu
     if ($type eq 'video') {
 
-        my $video_id = $liststore->get($iter, 3);
+        my $video_id   = $liststore->get($iter, 3);
+        my $video_data = $yv_obj->parse_json_string($liststore->get($iter, 8));
 
-        # Comments
+        # Youtube comments
         {
             my $item = 'Gtk3::ImageMenuItem'->new("YouTube comments");
             $item->set_image('Gtk3::Image'->new_from_icon_name("edit-copy", q{menu}));
@@ -1102,11 +1132,11 @@ sub menu_popup {
             # Favorite
             {
                 my $item = 'Gtk3::ImageMenuItem'->new("Favorite");
-                $item->set_property(tooltip_text => "Save the video to favorites");
+                $item->set_property(tooltip_text => "Save the video in the playlist of favorite videos");
                 $item->signal_connect(
                     activate => sub {
-                        $yv_obj->favorite_video($video_id)
-                          or warn "Failed to favorite the video <$video_id>: $!";
+                        say(":: Favorite video: ", $yv_utils->get_title($video_data)) if $yv_obj->get_debug;
+                        prepend_video_data_to_file($video_data, $favorite_videos_data_file);
                     }
                 );
                 $item->set_image('Gtk3::Image'->new_from_icon_name("starred-symbolic", q{menu}));
@@ -1134,11 +1164,11 @@ sub menu_popup {
             # Like
             {
                 my $item = 'Gtk3::ImageMenuItem'->new("Like");
-                $item->set_property(tooltip_text => "Send a positive rating");
+                $item->set_property(tooltip_text => "Save video in the playlist of liked videos");
                 $item->signal_connect(
                     activate => sub {
-                        $yv_obj->send_rating_to_video($video_id, 'like')
-                          or warn "Failed to send a positive rating to <$video_id>: $!";
+                        say(":: Liking video: ", $yv_utils->get_title($video_data)) if $yv_obj->get_debug;
+                        prepend_video_data_to_file($video_data, $liked_videos_data_file);
                     }
                 );
                 $item->set_image('Gtk3::Image'->new_from_icon_name("go-up-symbolic", q{menu}));
@@ -1149,11 +1179,11 @@ sub menu_popup {
             # Disike
             {
                 my $item = 'Gtk3::ImageMenuItem'->new("Dislike");
-                $item->set_property(tooltip_text => "Send a negative rating");
+                $item->set_property(tooltip_text => "Save video in the playlist of disliked videos");
                 $item->signal_connect(
                     activate => sub {
-                        $yv_obj->send_rating_to_video($video_id, 'dislike')
-                          or warn "Failed to send a negative rating to <$video_id>: $!";
+                        say(":: Disliking video: ", $yv_utils->get_title($video_data)) if $yv_obj->get_debug;
+                        prepend_video_data_to_file($video_data, $disliked_videos_data_file);
                     }
                 );
                 $item->set_image('Gtk3::Image'->new_from_icon_name("go-down-symbolic", q{menu}));
@@ -1196,7 +1226,7 @@ sub menu_popup {
 
         my $playlist_id = $liststore->get($iter, 3);
 
-        # More details
+        # Playlist videos
         {
             my $item = 'Gtk3::ImageMenuItem'->new("Videos");
             $item->set_property(tooltip_text => "Display the videos from this playlist");
@@ -1294,8 +1324,18 @@ sub menu_popup {
             $author->append($item);
         }
 
-        my $info         = $yv_obj->parse_json_string($liststore->get($iter, 8));
-        my $channel_name = $yv_utils->get_channel_title($info);
+        my $channel_data = $yv_obj->parse_json_string($liststore->get($iter, 8));
+        my $channel_name = $yv_utils->get_channel_title($channel_data);
+
+        # Subscribe to channel
+        {
+            my $item = 'Gtk3::ImageMenuItem'->new("Subscribe");
+            $item->signal_connect(activate => sub { save_channel_by_id($channel_id, $channel_name, subscribe => 1) });
+            $item->set_property(tooltip_text => "Subscribe to this channel");
+            $item->set_image('Gtk3::Image'->new_from_pixbuf($feed_icon_gray_pixbuf));
+            $item->show;
+            $author->append($item);
+        }
 
         # Save channel in the user-list
         {
@@ -1385,7 +1425,6 @@ sub menu_popup {
             $item->show;
             $menu->append($item);
         }
-
     }
 
     $menu->popup(undef, undef, undef, undef, $event->button, $event->time);
@@ -1451,7 +1490,7 @@ $accel->connect(ord('d'), ['control-mask'], ['visible'], \&show_details_window);
 #$accel->connect(ord('c'), ['control-mask'], ['visible'], \&show_comments_window);
 $accel->connect(ord('s'), ['control-mask'], ['visible'], \&add_user_to_favorites);
 $accel->connect(ord('r'), ['control-mask'], ['visible'], \&show_related_videos);
-$accel->connect(ord('g'), ['control-mask'], ['visible'], \&show_user_favorited_videos);
+$accel->connect(ord('g'), ['control-mask'], ['visible'], \&show_user_favorite_videos);
 $accel->connect(ord('m'), ['control-mask'], ['visible'], \&show_videos_from_selected_author);
 $accel->connect(ord('k'), ['control-mask'], ['visible'], \&show_playlists_from_selected_author);
 $accel->connect(ord('w'), ['control-mask'], ['visible'], \&show_warnings_window);
@@ -1852,41 +1891,45 @@ sub add_top_row {
                         );
 }
 
-sub set_youtube_tops {
+my $playlists_liststore = $gui->get_object('liststore6');
+my $playlists_treeview  = $gui->get_object('treeview4');
+
+sub add_local_playlist_row {
+    my ($playlist_name, $playlist_file) = @_;
+
+    my $iter = $playlists_liststore->append;
+
+    $playlists_liststore->set(
+                              $iter,
+                              0 => encode_entities($playlist_name),
+                              1 => $feed_icon_gray_pixbuf,
+                              2 => $playlist_name,
+                              3 => $playlist_file,
+                             );
+}
+
+sub set_local_playlists {
     my ($top_time, $main_label) = @_;
 
-    ...;    # Unimplemented!
+    my @playlist_files = reverse $yv_utils->get_local_playlist_filenames($local_playlists_dir);
 
-    #my $iter = $tops_liststore->append;
-    #$tops_liststore->set($iter, 0, "<big><b>\t$main_label</b></big>");
-    #add_top_row($name, $type);
+    foreach my $file (@playlist_files) {
+        my $snippet = $yv_utils->local_playlist_snippet($file);
+        add_local_playlist_row($yv_utils->get_title($snippet), $file);
+    }
 }
+
+set_local_playlists();
 
 {
     my %channels;
+    my %subscribed_channels;
     my %removed_channels;
 
     # ------------ Usernames list window ------------ #
     sub set_usernames {
         if (-e $CONFIG{youtube_users_file}) {
-            if (open my $fh, '<:utf8', $CONFIG{youtube_users_file}) {
-                while (defined(my $entry = <$fh>)) {
-
-                    $entry = unpack('A*', $entry);
-                    my ($channel, $label) = split(' ', $entry, 2);
-
-                    if (defined($channel) and $channel =~ /$valid_channel_id_re/) {
-                        $channel = $+{channel_id};
-                        if (defined($label) and $label =~ /\S/) {
-                            $channels{$channel} = $label;
-                        }
-                        else {
-                            $channels{$channel} = undef;
-                        }
-                    }
-                }
-                close $fh;
-            }
+            %channels = (%channels, (map { @$_ } $yv_utils->read_channels_from_file($CONFIG{youtube_users_file})));
         }
         else {
             # Default channels
@@ -1917,27 +1960,33 @@ sub set_youtube_tops {
                         );
         }
 
+        if (-e $CONFIG{subscribed_channels_file}) {
+            %subscribed_channels =
+              (%subscribed_channels, (map { @$_ } $yv_utils->read_channels_from_file($CONFIG{subscribed_channels_file})));
+        }
+
+        $users_liststore->clear;    # clear the list
+
         foreach my $channel (sort { CORE::fc($channels{$a} // $a) cmp CORE::fc($channels{$b} // $b) } keys %channels) {
             my $iter = $users_liststore->append;
 
-            if (defined $channels{$channel}) {
-                $users_liststore->set(
-                                      $iter,
-                                      0 => $channel,
-                                      1 => $channels{$channel},
-                                      2 => 'channel',
-                                     );
-            }
-            else {
-                $users_liststore->set(
-                                      $iter,
-                                      0 => $channel,
-                                      1 => $channel,
-                                      2 => 'username',
-                                     );
-            }
+            $channels{$channel} // next;
 
-            $users_liststore->set($iter, [3], [$user_icon_pixbuf]);
+            $users_liststore->set(
+                                  $iter,
+                                  0 => $channel,
+                                  1 => $channels{$channel},
+                                  2 => 'channel',
+                                 );
+
+            $users_liststore->set(
+                                  $iter,
+                                  [3],
+                                  [exists($subscribed_channels{$channel})
+                                   ? $feed_icon_pixbuf
+                                   : $user_icon_pixbuf
+                                  ]
+                                 );
         }
     }
 
@@ -1975,7 +2024,7 @@ sub set_youtube_tops {
     }
 
     sub save_channel_by_id {
-        my ($channel_id, $channel_name) = @_;
+        my ($channel_id, $channel_name, %args) = @_;
 
         # Validate the channel ID
         if (not defined($channel_id) or not $channel_id =~ /$valid_channel_id_re/) {
@@ -1984,6 +2033,13 @@ sub set_youtube_tops {
 
         if ($channel_id =~ /$valid_channel_id_re/) {
             $channel_id = $+{channel_id};
+        }
+
+        if ($args{subscribe} and not exists($subscribed_channels{$channel_id})) {
+            say ":: Subscribed channel: $channel_name" if $yv_obj->get_debug;
+            $subscribed_channels{$channel_id} = $channel_name;
+            write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
+            set_usernames();
         }
 
         # Channel ID already exists in the list
@@ -2032,27 +2088,37 @@ sub set_youtube_tops {
         $users_liststore->remove($iter);
     }
 
+    sub write_channels_to_file {
+        my ($channels, $file) = @_;
+
+        open(my $fh, '>:utf8', $file) or return;
+
+        foreach my $channel (
+                             sort { CORE::fc($channels->{$a} // $a) cmp CORE::fc($channels->{$b} // $b) }
+                             keys %$channels
+          ) {
+            if (defined($channels->{$channel})) {
+                say $fh "$channel $channels->{$channel}";
+            }
+            else {
+                say $fh "$channel $channel";
+            }
+        }
+
+        close $fh;
+    }
+
     sub save_usernames_to_file {
 
         set_usernames();    # update %channels
 
         foreach my $id (keys %removed_channels) {
             delete $channels{$id};
+            delete $subscribed_channels{$id};
         }
 
-        open(my $fh, '>:utf8', $CONFIG{youtube_users_file}) or return;
-        foreach my $channel (
-                             sort { ($channels{$a} // $a) cmp($channels{$b} // $b) }
-                             keys %channels
-          ) {
-            if (defined($channels{$channel})) {
-                say $fh "$channel $channels{$channel}";
-            }
-            else {
-                say $fh $channel;
-            }
-        }
-        close $fh;
+        write_channels_to_file(\%channels,            $CONFIG{youtube_users_file});
+        write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
     }
 
     # Get playlists from username
@@ -2083,18 +2149,6 @@ sub set_youtube_tops {
 }
 
 # ----- My panel settings ----- #
-sub log_out {
-    change_subscription_page(0);
-
-    unlink $authentication_file
-      or warn "Can't unlink: `$authentication_file' -> $!";
-
-    $yv_obj->set_access_token();
-    $yv_obj->set_refresh_token();
-
-    $statusbar->push(1, "Not logged in.");
-    return 1;
-}
 
 sub change_subscription_page {
     my ($value) = @_;
@@ -2337,12 +2391,24 @@ sub get_code {
 
             my $type = $liststore->get($iter, 7);
 
-            $type eq 'playlist'                                 ? list_playlist($code)
-              : ($type eq 'channel' || $type eq 'subscription') ? uploads('channel', $code)
-              : $type eq 'next_page' && $code ne ''             ? do {
+            if ($type eq 'playlist') {
+                list_playlist($code);
+            }
+            elsif ($type eq 'channel' or $type eq 'subscription') {
+                uploads('channel', $code);
+            }
+            elsif ($type eq 'next_page' and $code ne '') {
 
+                my $results;
                 my $next_page_token = $liststore->get($iter, 5);
-                my $results         = $yv_obj->next_page($code, $next_page_token);
+
+                if ($next_page_token =~ /^json (.*)/s) {
+                    my $data = $yv_obj->parse_json_string($1);
+                    $results = get_results_from_list(%$data);
+                }
+                else {
+                    $results = $yv_obj->next_page($code, $next_page_token);
+                }
 
                 if ($yv_utils->has_entries($results)) {
                     my $label = '<big><b>' . ('=' x 20) . '</b></big>';
@@ -2354,13 +2420,12 @@ sub get_code {
                 }
 
                 display_results($results);
-              }
-              : $type eq 'video' ? (
-                                    $CONFIG{audio_only}
-                                    ? execute_cli_pipe_viewer("--id=$code")
-                                    : play_video($yv_obj->parse_json_string($liststore->get($iter, 8)))
-                                   )
-              : ();
+            }
+            elsif ($type eq 'video') {
+                $CONFIG{audio_only}
+                  ? execute_cli_pipe_viewer("--id=$code")
+                  : play_video($yv_obj->parse_json_string($liststore->get($iter, 8)));
+            }
 
             return 0;
         },
@@ -2374,16 +2439,21 @@ sub make_row_description {
 }
 
 sub append_next_page {
-    my ($url, $continuation) = @_;
+    my ($url, $token) = @_;
 
-    $url // return;
+    if (ref($token) ne 'CODE') {
+        $url // return;
+    }
+
+    $token // return;    # no next page is available
+
     my $iter = $liststore->append;
 
     $liststore->set(
                     $iter,
                     0 => "<big><b>LOAD MORE</b></big>",
                     3 => $url,
-                    5 => $continuation,
+                    5 => $token,
                     7 => 'next_page',
                    );
 
@@ -2513,6 +2583,178 @@ sub get_pixbuf_thumbnail_from_entry {
     return $pixbuf;
 }
 
+sub get_results_from_list {
+    my (%args) = @_;
+
+    $args{entries} //= [];
+    $args{page}    //= $yv_obj->get_page;
+
+    my @results = @{$args{entries}};
+
+    my $maxResults   = $yv_obj->get_maxResults;
+    my $totalResults = scalar(@results);
+
+    if ($args{page} >= 1 and scalar(@results) >= $maxResults) {
+        @results = grep { defined } @results[($args{page} - 1) * $maxResults .. $args{page} * $maxResults - 1];
+    }
+
+    my %results;
+    my @entries;
+
+    foreach my $entry (@results) {
+        if (defined($args{callback})) {
+            push @entries, $args{callback}($entry);
+        }
+        else {
+            push @entries, $entry;
+        }
+    }
+
+    $results{entries} = \@entries;
+
+    #$results{pageInfo} = {resultsPerPage => scalar(@entries), totalResults => $totalResults};
+
+    if ($args{page} * $maxResults < $totalResults) {
+        $results{continuation} = 'json '
+          . $yv_obj->make_json_string(
+                                      {
+                                       %args, page => $args{page} + 1,
+                                      }
+                                     );
+    }
+
+    scalar {results => \%results, url => 'file'};
+}
+
+sub videos_from_data_file {
+    my ($file, %args) = @_;
+
+    my $videos = eval { Storable::retrieve($file) } // [];
+
+    if ($args{reverse}) {
+        $videos = [reverse @$videos];
+    }
+
+    foreach my $entry (@$videos) {
+        if (ref($entry->{timestamp} // '') eq 'Time::Piece') {
+            $entry->{timestamp} = [@{$entry->{timestamp}}];
+        }
+    }
+
+    get_results_from_list(entries => $videos);
+}
+
+sub get_subscription_video_results {
+
+    # Reuse the subscription file if it's less than 10 minutes old
+    if (-f $subscription_videos_data_file and (-M _) < (1 / 6) / 24 and (-M _) < (-M $CONFIG{subscribed_channels_file})) {
+        return videos_from_data_file($subscription_videos_data_file);
+    }
+
+    my @channels = $yv_utils->read_channels_from_file($CONFIG{subscribed_channels_file});
+
+    if (not @channels) {
+        warn "\n[!] No subscribed channels...\n";
+        return get_results_from_list(entries => []);
+    }
+
+    my %subscriptions;
+
+    require Time::Piece;
+    my $time = Time::Piece->new();
+
+    my @items;
+    foreach my $i (0 .. $#channels) {
+
+        local $| = 1;
+        printf("[%d/%d] Retrieving info for $channels[$i][1]...\n", $i + 1, $#channels + 1);
+
+        my $id      = $channels[$i][0]      // next;
+        my $uploads = $yv_obj->uploads($id) // next;
+
+        my $videos = $uploads->{results} // [];
+
+        if (ref($videos) eq 'HASH' and exists $videos->{videos}) {
+            $videos = $videos->{videos};
+        }
+
+        if (ref($videos) eq 'HASH' and exists $videos->{entries}) {
+            $videos = $videos->{entries};
+        }
+
+        if (ref($videos) ne 'ARRAY') {
+            next;
+        }
+
+        $subscriptions{$id} = 1;
+        $subscriptions{lc($id)} = 1;
+
+        foreach my $video (@$videos) {
+            $video->{timestamp} = [@$time];
+        }
+
+        push @items, @$videos;
+    }
+
+    my $subscriptions_data = [];
+
+    if (-f $subscription_videos_data_file) {
+        $subscriptions_data = eval { Storable::retrieve($subscription_videos_data_file) } // [];
+    }
+
+    unshift(@$subscriptions_data, @items);
+
+    # Remove duplicates
+    @$subscriptions_data = do {
+        my %seen;
+        grep { !$seen{$yv_utils->get_video_id($_)}++ } @$subscriptions_data;
+    };
+
+    # Remove videos from unsubscribed channels
+    @$subscriptions_data = grep {
+             exists($subscriptions{$yv_utils->get_channel_id($_)})
+          or exists($subscriptions{lc($yv_utils->get_channel_title($_) // '')})
+    } @$subscriptions_data;
+
+    # Order videos by newest first
+    @$subscriptions_data =
+      map  { $_->[0] }
+      sort { $b->[1] <=> $a->[1] }
+      map  { [$_, $yv_utils->get_publication_time($_)] } @$subscriptions_data;
+
+    # Remove results from the end when the list becomes too large
+    my $subscriptions_limit = $CONFIG{subscriptions_limit} // 1e4;
+    if ($subscriptions_limit > 0 and scalar(@$subscriptions_data) > $subscriptions_limit) {
+        $#$subscriptions_data = $subscriptions_limit;
+    }
+
+    foreach my $entry (@$subscriptions_data) {
+        if (ref($entry->{timestamp} // '') eq 'Time::Piece') {
+            $entry->{timestamp} = [@{$entry->{timestamp}}];
+        }
+    }
+
+    if (@$subscriptions_data) {
+        Storable::store($subscriptions_data, $subscription_videos_data_file);
+    }
+
+    get_results_from_list(entries => $subscriptions_data);
+}
+
+sub get_watched_video_results {
+    videos_from_data_file($watch_history_data_file);
+}
+
+sub display_watched_videos {
+    $liststore->clear if $CONFIG{clear_search_list};
+    display_results(get_watched_video_results());
+}
+
+sub display_subscription_videos {
+    $liststore->clear if $CONFIG{clear_search_list};
+    display_results(get_subscription_video_results());
+}
+
 sub display_results {
     my ($results, $from_history) = @_;
 
@@ -2520,9 +2762,6 @@ sub display_results {
 
     #my $info  = $results->{results} // {};
     my $items = $results->{results} // [];
-
-    #use Data::Dump qw(pp);
-    #pp $items;
 
     if (ref($items) eq 'HASH') {
 
@@ -3131,6 +3370,49 @@ sub get_player_command {
     $has_video ? $cmd : join(' ', $cmd, quotemeta($streaming->{streaming}{url}));
 }
 
+sub prepend_video_data_to_file {
+    my ($video_data, $file) = @_;
+
+    my $videos = eval { Storable::retrieve($file) } // [];
+
+    if (ref($video_data) ne 'HASH') {
+        return;
+    }
+
+    $yv_utils->get_video_id($video_data) // return;
+
+    unshift(@$videos, $video_data);
+
+    my %seen;
+    @$videos = grep { !$seen{$yv_utils->get_video_id($_)}++ } @$videos;
+
+    Storable::store($videos, $file);
+    return 1;
+}
+
+sub save_watched_video {
+    my ($video_id, $video_data) = @_;
+
+    if ($CONFIG{watch_history}) {
+
+        say ":: Saving video <<$video_id>> to watch history..." if ($yv_obj->get_debug);
+
+        if (not exists($WATCHED_VIDEOS{$video_id})) {
+
+            $WATCHED_VIDEOS{$video_id} = 1;
+
+            open my $fh, '>>', $CONFIG{watched_file} or return;
+            say {$fh} $video_id;
+            close $fh;
+        }
+
+        prepend_video_data_to_file($video_data, $watch_history_data_file);
+    }
+
+    $WATCHED_VIDEOS{$video_id} = 1;
+    return 1;
+}
+
 sub play_video {
     my ($video) = @_;
 
@@ -3159,7 +3441,13 @@ sub play_video {
     }
 
     my $code = execute_external_program($command);
-    warn "[!] Can't play this video -- player exited with code: $code\n" if $code != 0;
+
+    if ($code == 0) {
+        save_watched_video($video_id, $video);
+    }
+    else {
+        warn "[!] Can't play this video -- player exited with code: $code\n";
+    }
 
     return 1;
 }
@@ -3181,31 +3469,16 @@ sub list_category {
     }
 }
 
-sub list_tops {
-    my $iter = $tops_treeview->get_selection->get_selected;
+sub list_local_playlist {
+    my $iter = $playlists_treeview->get_selection->get_selected;
 
-    my %top_opts;
-    $top_opts{feed_id} = $tops_liststore->get($iter, 2) // return;
-    my $top_type = $tops_liststore->get($iter, 3);
-
-    if ($top_type ne q{}) {
-        $top_opts{time_id} = $top_type;
-    }
-
-    if (length(my $region = $gui->get_object('region_entry')->get_text)) {
-        $top_opts{region_id} = $region;
-    }
-
-    if (length(my $category = $gui->get_object('category_entry')->get_text)) {
-        $top_opts{cat_id} = $category;
-    }
+    my $reverse_playlist = $gui->get_object('reverse_playlist')->get_active;
+    my $playlist_file    = $playlists_liststore->get($iter, 3);
 
     $liststore->clear if $CONFIG{clear_search_list};
-    display_results(
-                      $top_type eq 'movies'
-                    ? $yv_obj->get_movies($top_opts{feed_id})
-                    : $yv_obj->get_video_tops(%top_opts)
-                   );
+
+    my $results = videos_from_data_file($playlist_file, reverse => $reverse_playlist);
+    display_results($results);
 }
 
 sub clear_text {
@@ -3382,7 +3655,7 @@ sub comments_row_activated {
     return 1;
 }
 
-sub show_user_favorited_videos {
+sub show_user_favorite_videos {
     my $username = get_channel_id_for_selected_video() // return;
     favorites('channel', $username);
 }
@@ -3540,7 +3813,6 @@ sub save_session {
     $ResultsHistory{current} = $#left + 1;
     $ResultsHistory{results} = [@left, $curr_result, @right];
 
-    require Storable;
     Storable::store(
                     {
                      keyword => $search_entry->get_text,
@@ -3763,7 +4035,6 @@ $notebook->set_current_page($CONFIG{default_notebook_page});
 
 if ($CONFIG{remember_session} and -f $session_file) {
 
-    require Storable;
     my $session = eval { Storable::retrieve($session_file) };
 
     if (ref($session) eq 'HASH') {

@@ -198,13 +198,12 @@ my %CONFIG = (
     videoCaption    => undef,
     videoDuration   => undef,
 
-    order => undef,
-    date  => undef,
-
-    comments_order      => 'top',     # valid values: top, new
-    subscriptions_limit => 10_000,    # maximum number of subscription videos stored
-
+    order  => undef,
+    date   => undef,
     region => undef,
+
+    # Comments order
+    comments_order => 'top',    # valid values: top, new
 
     # URI options
     youtube_video_url => 'https://www.youtube.com/watch?v=%s',
@@ -220,32 +219,31 @@ my %CONFIG = (
     api_host => "auto",
 
     # Misc options
-    autoplay_mode            => 0,
-    http_proxy               => undef,
-    cookie_file              => undef,
-    user_agent               => undef,
-    timeout                  => undef,
-    env_proxy                => 1,
-    confirm                  => 0,
-    debug                    => 0,
-    page                     => 1,
-    colors                   => $constant{win32} ^ 1,
-    skip_if_exists           => 1,
-    prefer_mp4               => 0,
-    prefer_av1               => 0,
-    ignore_av1               => 0,
-    prefer_invidious         => 0,
-    fat32safe                => $constant{win32},
-    fullscreen               => 0,
-    show_video_info          => 1,
-    interactive              => 1,
-    get_term_width           => $constant{win32} ^ 1,
-    download_with_wget       => undef,                       # auto-defined
-    thousand_separator       => q{,},
-    downloads_dir            => curdir(),
-    download_and_play        => 0,
-    subscribed_channels_file => $subscribed_channels_file,
-    remove_played_file       => 0,
+    autoplay_mode      => 0,
+    http_proxy         => undef,
+    cookie_file        => undef,
+    user_agent         => undef,
+    timeout            => undef,
+    env_proxy          => 1,
+    confirm            => 0,
+    debug              => 0,
+    page               => 1,
+    colors             => $constant{win32} ^ 1,
+    skip_if_exists     => 1,
+    prefer_mp4         => 0,
+    prefer_av1         => 0,
+    ignore_av1         => 0,
+    prefer_invidious   => 0,
+    fat32safe          => $constant{win32},
+    fullscreen         => 0,
+    show_video_info    => 1,
+    interactive        => 1,
+    get_term_width     => $constant{win32} ^ 1,
+    download_with_wget => undef,                  # auto-defined
+    thousand_separator => q{,},
+    downloads_dir      => curdir(),
+    download_and_play  => 0,
+    remove_played_file => 0,
 
     # Conversion options
     convert_cmd         => 'ffmpeg -i *IN* *OUT*',
@@ -253,13 +251,17 @@ my %CONFIG = (
     keep_original_video => 0,
 
     # Search history
-    history       => undef,           # auto-defined
+    history       => undef,                       # auto-defined
     history_limit => 100_000,
     history_file  => $history_file,
 
     # Watch history
     watch_history => 1,
     watched_file  => $watched_file,
+
+    # Subscribed channels
+    subscribed_channels_file => $subscribed_channels_file,
+    subscriptions_limit      => 10_000,                      # maximum number of subscription videos stored
 
     # Options for watched videos
     highlight_watched => 1,
@@ -268,7 +270,7 @@ my %CONFIG = (
 
     # youtube-dl support
     ytdl     => 1,
-    ytdl_cmd => undef,    # auto-defined
+    ytdl_cmd => undef,                                       # auto-defined
 
     # Custom layout
     custom_layout_format => [{width => 3,     align => "right", color => "bold",      text => "*NO*.",},
@@ -2890,7 +2892,7 @@ sub print_local_playlist {
 
     require File::Basename;
 
-    my @playlist_files = $yv_utils->get_local_playlist_filenames($local_playlists_dir);
+    my @playlist_files = reverse $yv_utils->get_local_playlist_filenames($local_playlists_dir);
     my $regex          = qr/\Q$name\E/i;
 
     if ($name eq '') {
@@ -2988,7 +2990,7 @@ sub print_local_subscription_videos {
         $subscriptions{lc($id)} = 1;
 
         foreach my $video (@$videos) {
-            $video->{timestamp} = $time;
+            $video->{timestamp} = [@$time];
         }
 
         push @items, @$videos;
