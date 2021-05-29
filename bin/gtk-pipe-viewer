@@ -52,6 +52,12 @@ binmode(STDOUT, ':utf8');
 my $appname = 'GTK+ Pipe Viewer';
 my $version = $WWW::PipeViewer::VERSION;
 
+# Saved and subscribed channels
+my %channels;
+my %subscribed_channels;
+my %removed_channels;
+my %unsubbed_channels;
+
 # Share directory
 my $share_dir =
   ($DEVEL and -d "../share")
@@ -1433,10 +1439,69 @@ sub menu_popup {
 
 sub users_menu_popup {
     my ($treeview, $event) = @_;
+
     if ($event->button != 3) {
         return 0;
     }
-    my $menu = $gui->get_object('user_option_menu');
+
+    # Hardcoded menu
+    #my $menu = $gui->get_object('user_option_menu');
+
+    # Dynamic menu
+    my $path = ($treeview->get_path_at_pos($event->x, $event->y))[0] // return 0;
+
+    my $selection = $treeview->get_selection;
+    $selection->select_path($path);
+
+    my $iter = $selection->get_selected() // return 0;
+
+    my $channel_id   = $users_liststore->get($iter, 0);
+    my $channel_name = $users_liststore->get($iter, 1);
+
+    # Create the main right-click menu
+    my $menu = 'Gtk3::Menu'->new;
+
+    # Videos from channel
+    {
+        my $item = 'Gtk3::ImageMenuItem'->new("Videos");
+        $item->set_image('Gtk3::Image'->new_from_icon_name("applications-multimedia", q{menu}));
+        $item->set_property(tooltip_text => "List the latest videos from this channel");
+        $item->signal_connect(activate => \&videos_from_selected_username);
+        $item->show;
+        $menu->append($item);
+    }
+
+    # Playlists from channel
+    {
+        my $item = 'Gtk3::ImageMenuItem'->new("Playlists");
+        $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-documents", q{menu}));
+        $item->set_property(tooltip_text => "List the playlists created by this channel");
+        $item->signal_connect(activate => \&playlists_from_selected_username);
+        $item->show;
+        $menu->append($item);
+    }
+
+    # Subscribe / unsubscribe from channel
+    {
+        my $item = 'Gtk3::ImageMenuItem'->new($subscribed_channels{$channel_id} ? "Unsubscribe" : "Subscribe");
+        $subscribed_channels{$channel_id}
+          ? $item->set_image('Gtk3::Image'->new_from_pixbuf($feed_icon_gray_pixbuf))
+          : $item->set_image('Gtk3::Image'->new_from_pixbuf($feed_icon_pixbuf));
+        $item->signal_connect(activate => \&subscribe_toggle_selected_username);
+        $item->show;
+        $menu->append($item);
+    }
+
+    # Remove the channel
+    {
+        my $item = 'Gtk3::ImageMenuItem'->new("Remove");
+        $item->set_image('Gtk3::Image'->new_from_icon_name("gtk-remove", q{menu}));
+        $item->set_property(tooltip_text => "Remove the channel from this list");
+        $item->signal_connect(activate => \&remove_selected_username);
+        $item->show;
+        $menu->append($item);
+    }
+
     $menu->popup(undef, undef, undef, undef, $event->button, $event->time);
     return 0;
 }
@@ -1921,231 +1986,265 @@ sub set_local_playlists {
 
 set_local_playlists();
 
-{
-    my %channels;
-    my %subscribed_channels;
-    my %removed_channels;
-
-    # ------------ Usernames list window ------------ #
-    sub set_usernames {
-        if (-e $CONFIG{youtube_users_file}) {
-            %channels = (%channels, (map { @$_ } $yv_utils->read_channels_from_file($CONFIG{youtube_users_file})));
-        }
-        else {
-            # Default channels
-            %channels = (
-                         'UC1_uAIS3r8Vu6JjXWvastJg' => 'Mathologer',
-                         'UCSju5G2aFaWMqn-_0YBtq5A' => 'Stand-Up Maths',
-                         'UC-WICcSW1k3HsScuXxDrp0w' => 'Curry On!',
-                         'UCShHFwKyhcDo3g7hr4f1R8A' => 'World Science Festival',
-                         'UCYO_jab_esuFRV4b17AJtAw' => '3Blue1Brown',
-                         'UCWnPjmqvljcafA0z2U1fwKQ' => 'Confreaks',
-                         'UC_QIfHvN9auy2CoOdSfMWDw' => 'Strange Loop',
-                         'UCseUQK4kC3x2x543nHtGpzw' => 'Brian Will',
-                         'UC9-y-6csu5WGm29I7JiwpnA' => 'Computerphile',
-                         'UCoxcjq-8xIDTYp3uz647V5A' => 'Numberphile',
-                         'UCvBqzzvUBLCs8Y7Axb-jZew' => 'Sixty Symbols',
-                         'UC6107grRI4m0o2-emgoDnAA' => 'SmarterEveryDay',
-                         'UCF6F8LdCSWlRwQm_hfA2bcQ' => 'Coding Math',
-                         'UC1znqKFL3jeR0eoA0pHpzvw' => 'SpaceRip',
-                         'UCvjgXvBlbQiydffZU7m1_aw' => 'The Coding Train',
-                         'UC0wbcfzV-bHhABbWGXKHwdg' => 'Utah Open Source',
-                         'UCotwjyJnb-4KW7bmsOoLfkg' => 'Art of the Problem',
-                         'UC7y4qaRSb5w2O8cCHOsKZDw' => 'YAPC NA',
-                         'UCGHZpIpAWJQ-Jy_CeCdXhMA' => 'Cool Worlds',
-                         'UCmG6gHgD8JaEZVxuHWJijGQ' => 'UConn Mathematics',
-                         'UC81mayGa63QaJE1SjKIYp0w' => 'metaRising',
-                         'UCSHZKyawb77ixDdsGog4iWA' => 'Lex Fridman',
-                         'UCBa659QWEk1AI4Tg--mrJ2A' => 'Tom Scott',
-                        );
-        }
-
-        if (-e $CONFIG{subscribed_channels_file}) {
-            %subscribed_channels =
-              (%subscribed_channels, (map { @$_ } $yv_utils->read_channels_from_file($CONFIG{subscribed_channels_file})));
-        }
-
-        $users_liststore->clear;    # clear the list
-
-        foreach my $channel (sort { CORE::fc($channels{$a} // $a) cmp CORE::fc($channels{$b} // $b) } keys %channels) {
-            my $iter = $users_liststore->append;
-
-            $channels{$channel} // next;
-
-            $users_liststore->set(
-                                  $iter,
-                                  0 => $channel,
-                                  1 => $channels{$channel},
-                                  2 => 'channel',
-                                 );
-
-            $users_liststore->set(
-                                  $iter,
-                                  [3],
-                                  [exists($subscribed_channels{$channel})
-                                   ? $feed_icon_pixbuf
-                                   : $user_icon_pixbuf
-                                  ]
-                                 );
-        }
+# ------------ Usernames list window ------------ #
+sub set_usernames {
+    if (-e $CONFIG{youtube_users_file}) {
+        %channels = (
+                     %channels,
+                     (
+                      map    { @$_ }
+                        grep { not exists $removed_channels{$_->[0]} }
+                        $yv_utils->read_channels_from_file($CONFIG{youtube_users_file})
+                     )
+                    );
+    }
+    else {
+        # Default channels
+        %channels = (
+                     'UC1_uAIS3r8Vu6JjXWvastJg' => 'Mathologer',
+                     'UCSju5G2aFaWMqn-_0YBtq5A' => 'Stand-Up Maths',
+                     'UC-WICcSW1k3HsScuXxDrp0w' => 'Curry On!',
+                     'UCShHFwKyhcDo3g7hr4f1R8A' => 'World Science Festival',
+                     'UCYO_jab_esuFRV4b17AJtAw' => '3Blue1Brown',
+                     'UCWnPjmqvljcafA0z2U1fwKQ' => 'Confreaks',
+                     'UC_QIfHvN9auy2CoOdSfMWDw' => 'Strange Loop',
+                     'UCseUQK4kC3x2x543nHtGpzw' => 'Brian Will',
+                     'UC9-y-6csu5WGm29I7JiwpnA' => 'Computerphile',
+                     'UCoxcjq-8xIDTYp3uz647V5A' => 'Numberphile',
+                     'UCvBqzzvUBLCs8Y7Axb-jZew' => 'Sixty Symbols',
+                     'UC6107grRI4m0o2-emgoDnAA' => 'SmarterEveryDay',
+                     'UCF6F8LdCSWlRwQm_hfA2bcQ' => 'Coding Math',
+                     'UC1znqKFL3jeR0eoA0pHpzvw' => 'SpaceRip',
+                     'UCvjgXvBlbQiydffZU7m1_aw' => 'The Coding Train',
+                     'UC0wbcfzV-bHhABbWGXKHwdg' => 'Utah Open Source',
+                     'UCotwjyJnb-4KW7bmsOoLfkg' => 'Art of the Problem',
+                     'UC7y4qaRSb5w2O8cCHOsKZDw' => 'YAPC NA',
+                     'UCGHZpIpAWJQ-Jy_CeCdXhMA' => 'Cool Worlds',
+                     'UCmG6gHgD8JaEZVxuHWJijGQ' => 'UConn Mathematics',
+                     'UC81mayGa63QaJE1SjKIYp0w' => 'metaRising',
+                     'UCSHZKyawb77ixDdsGog4iWA' => 'Lex Fridman',
+                     'UCBa659QWEk1AI4Tg--mrJ2A' => 'Tom Scott',
+                    );
     }
 
-    sub save_channel {
-        my $channel_name = $save_channel_name_entry->get_text;
-        my $channel_id   = $save_channel_id_entry->get_text;
-
-        # Validate the channel id
-        if (defined($channel_id) and $channel_id =~ /$valid_channel_id_re/) {
-
-            $channel_id = $+{channel_id};
-
-            # Get the channel name when empty
-            if (not defined($channel_name) or not $channel_name =~ /\S/) {
-                $channel_name = $yv_obj->channel_title_from_id($channel_id) // die "Invalid channel ID: <<$channel_id>>";
-            }
-        }
-        elsif (defined($channel_name) and $channel_name =~ /$valid_channel_id_re/) {
-
-            $channel_name = $+{channel_id};
-            $channel_id   = $yv_obj->channel_id_from_username($channel_name);
-
-            if (not defined $channel_id) {
-                die "Can't get channel ID from username: <<$channel_name>>";
-            }
-        }
-        elsif (defined($channel_id) and $channel_id =~ /\S/) {
-            die "Invalid channel ID: <<$channel_id>>";
-        }
-        else {
-            return;
-        }
-
-        save_channel_by_id($channel_id, $channel_name);
+    if (-e $CONFIG{subscribed_channels_file}) {
+        %subscribed_channels = (
+                                %subscribed_channels,
+                                (
+                                 map    { @$_ }
+                                   grep { not exists $unsubbed_channels{$_->[0]} }
+                                   grep { not exists $removed_channels{$_->[0]} }
+                                   $yv_utils->read_channels_from_file($CONFIG{subscribed_channels_file})
+                                )
+                               );
     }
 
-    sub save_channel_by_id {
-        my ($channel_id, $channel_name, %args) = @_;
+    $users_liststore->clear;    # clear the list
 
-        # Validate the channel ID
-        if (not defined($channel_id) or not $channel_id =~ /$valid_channel_id_re/) {
-            return;
-        }
-
-        if ($channel_id =~ /$valid_channel_id_re/) {
-            $channel_id = $+{channel_id};
-        }
-
-        if ($args{subscribe} and not exists($subscribed_channels{$channel_id})) {
-            say ":: Subscribed channel: $channel_name" if $yv_obj->get_debug;
-            $subscribed_channels{$channel_id} = $channel_name;
-            write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
-            set_usernames();
-        }
-
-        # Channel ID already exists in the list
-        if (exists($channels{$channel_id})) {
-            return;
-        }
-
-        # Get the channel name
-        if (not defined($channel_name) or not $channel_name =~ /\S/) {
-            $channel_name = $yv_obj->channel_title_from_id($channel_id) // $channel_id;
-        }
-
-        # Store it internally
-        $channels{$channel_id} = $channel_name;
-
-        # Append it to the list
+    foreach my $channel (sort { CORE::fc($channels{$a} // $a) cmp CORE::fc($channels{$b} // $b) } keys %channels) {
         my $iter = $users_liststore->append;
+
+        $channels{$channel} // next;
 
         $users_liststore->set(
                               $iter,
-                              0 => $channel_id,
-                              1 => $channel_name,
+                              0 => $channel,
+                              1 => $channels{$channel},
                               2 => 'channel',
-                              3 => $user_icon_pixbuf,
+                              3 => (
+                                    exists($subscribed_channels{$channel})
+                                    ? $feed_icon_pixbuf
+                                    : $user_icon_pixbuf
+                                   ),
                              );
     }
+}
 
-    sub add_user_to_favorites {
-        my $selection = $treeview->get_selection() // return;
-        my $iter      = $selection->get_selected() // return;
+sub save_channel {
+    my $channel_name = $save_channel_name_entry->get_text;
+    my $channel_id   = $save_channel_id_entry->get_text;
 
-        my $info = $yv_obj->parse_json_string($liststore->get($iter, 8));
+    # Validate the channel id
+    if (defined($channel_id) and $channel_id =~ /$valid_channel_id_re/) {
 
-        my $channel_id   = $liststore->get($iter, 6);
-        my $channel_name = $yv_utils->get_channel_title($info);
+        $channel_id = $+{channel_id};
 
-        save_channel_by_id($channel_id, $channel_name);
-    }
-
-    sub remove_selected_user {
-        my $selection  = $users_treeview->get_selection // return;
-        my $iter       = $selection->get_selected       // return;
-        my $channel_id = $users_liststore->get($iter, 0);
-        delete $channels{$channel_id};
-        $removed_channels{$channel_id} = 1;
-        $users_liststore->remove($iter);
-    }
-
-    sub write_channels_to_file {
-        my ($channels, $file) = @_;
-
-        open(my $fh, '>:utf8', $file) or return;
-
-        foreach my $channel (
-                             sort { CORE::fc($channels->{$a} // $a) cmp CORE::fc($channels->{$b} // $b) }
-                             keys %$channels
-          ) {
-            if (defined($channels->{$channel})) {
-                say $fh "$channel $channels->{$channel}";
-            }
-            else {
-                say $fh "$channel $channel";
-            }
+        # Get the channel name when empty
+        if (not defined($channel_name) or not $channel_name =~ /\S/) {
+            $channel_name = $yv_obj->channel_title_from_id($channel_id) // die "Invalid channel ID: <<$channel_id>>";
         }
+    }
+    elsif (defined($channel_name) and $channel_name =~ /$valid_channel_id_re/) {
 
-        close $fh;
+        $channel_name = $+{channel_id};
+        $channel_id   = $yv_obj->channel_id_from_username($channel_name);
+
+        if (not defined $channel_id) {
+            die "Can't get channel ID from username: <<$channel_name>>";
+        }
+    }
+    elsif (defined($channel_id) and $channel_id =~ /\S/) {
+        die "Invalid channel ID: <<$channel_id>>";
+    }
+    else {
+        return;
     }
 
-    sub save_usernames_to_file {
+    save_channel_by_id($channel_id, $channel_name);
+}
 
-        set_usernames();    # update %channels
+sub save_channel_by_id {
+    my ($channel_id, $channel_name, %args) = @_;
 
-        foreach my $id (keys %removed_channels) {
-            delete $channels{$id};
-            delete $subscribed_channels{$id};
-        }
+    # Validate the channel ID
+    if (not defined($channel_id) or not $channel_id =~ /$valid_channel_id_re/) {
+        return;
+    }
 
-        write_channels_to_file(\%channels,            $CONFIG{youtube_users_file});
+    if ($channel_id =~ /$valid_channel_id_re/) {
+        $channel_id = $+{channel_id};
+    }
+
+    if ($args{subscribe} and not exists($subscribed_channels{$channel_id})) {
+        say ":: Subscribed channel: $channel_name" if $yv_obj->get_debug;
+        $subscribed_channels{$channel_id} = $channel_name;
         write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
+        set_usernames();
     }
 
-    # Get playlists from username
-    sub playlists_from_selected_username {
-        my $selection = $users_treeview->get_selection() // return;
-        my $iter      = $selection->get_selected()       // return;
-
-        my $type    = $users_liststore->get($iter, 2);
-        my $channel = $users_liststore->get($iter, 0);
-
-        playlists($type, $channel);
+    # Channel ID already exists in the list
+    if (exists($channels{$channel_id})) {
+        return;
     }
 
-    sub videos_from_selected_username {
-        my $selection = $users_treeview->get_selection() // return;
-        my $iter      = $selection->get_selected()       // return;
-
-        my $type    = $users_liststore->get($iter, 2);
-        my $channel = $users_liststore->get($iter, 0);
-
-        uploads($type, $channel);
+    # Get the channel name
+    if (not defined($channel_name) or not $channel_name =~ /\S/) {
+        $channel_name = $yv_obj->channel_title_from_id($channel_id) // $channel_id;
     }
 
-    sub videos_from_saved_channel {
-        hide_users_list_window();
-        videos_from_selected_username();
+    # Store it internally
+    $channels{$channel_id} = $channel_name;
+
+    # Append it to the list
+    my $iter = $users_liststore->append;
+
+    $users_liststore->set(
+                          $iter,
+                          0 => $channel_id,
+                          1 => $channel_name,
+                          2 => 'channel',
+                          3 => $user_icon_pixbuf,
+                         );
+}
+
+sub add_user_to_favorites {
+    my $selection = $treeview->get_selection() // return;
+    my $iter      = $selection->get_selected() // return;
+
+    my $info = $yv_obj->parse_json_string($liststore->get($iter, 8));
+
+    my $channel_id   = $liststore->get($iter, 6);
+    my $channel_name = $yv_utils->get_channel_title($info);
+
+    save_channel_by_id($channel_id, $channel_name);
+}
+
+sub subscribe_toggle_selected_username {
+
+    my $selection = $users_treeview->get_selection // return;
+    my $iter      = $selection->get_selected       // return;
+
+    my $channel_id   = $users_liststore->get($iter, 0);
+    my $channel_name = $users_liststore->get($iter, 1);
+
+    if (exists $subscribed_channels{$channel_id}) {
+        $unsubbed_channels{$channel_id} = 1;
+        delete $subscribed_channels{$channel_id};
+        $users_liststore->set($iter, [3], [$user_icon_pixbuf]);
     }
+    else {
+        $subscribed_channels{$channel_id} = $channel_name;
+        delete $unsubbed_channels{$channel_id};
+        $users_liststore->set($iter, [3], [$feed_icon_pixbuf]);
+    }
+
+    write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
+}
+
+sub remove_selected_username {
+
+    my $selection  = $users_treeview->get_selection // return;
+    my $iter       = $selection->get_selected       // return;
+    my $channel_id = $users_liststore->get($iter, 0);
+
+    delete $channels{$channel_id};
+    delete $subscribed_channels{$channel_id};
+
+    $removed_channels{$channel_id} = 1;
+    $users_liststore->remove($iter);
+}
+
+sub write_channels_to_file {
+    my ($channels, $file) = @_;
+
+    open(my $fh, '>:utf8', $file) or return;
+
+    foreach my $channel (
+                         sort { CORE::fc($channels->{$a} // $a) cmp CORE::fc($channels->{$b} // $b) }
+                         keys %$channels
+      ) {
+        if (defined($channels->{$channel})) {
+            say $fh "$channel $channels->{$channel}";
+        }
+        else {
+            say $fh "$channel $channel";
+        }
+    }
+
+    close $fh;
+}
+
+sub save_usernames_to_file {
+
+    set_usernames();    # update %channels
+
+    foreach my $id (keys %removed_channels) {
+        delete $channels{$id};
+        delete $subscribed_channels{$id};
+    }
+
+    foreach my $id (keys %unsubbed_channels) {
+        delete $subscribed_channels{$id};
+    }
+
+    write_channels_to_file(\%channels,            $CONFIG{youtube_users_file});
+    write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
+}
+
+# Get playlists from username
+sub playlists_from_selected_username {
+    my $selection = $users_treeview->get_selection() // return;
+    my $iter      = $selection->get_selected()       // return;
+
+    my $type    = $users_liststore->get($iter, 2);
+    my $channel = $users_liststore->get($iter, 0);
+
+    playlists($type, $channel);
+}
+
+sub videos_from_selected_username {
+    my $selection = $users_treeview->get_selection() // return;
+    my $iter      = $selection->get_selected()       // return;
+
+    my $type    = $users_liststore->get($iter, 2);
+    my $channel = $users_liststore->get($iter, 0);
+
+    uploads($type, $channel);
+}
+
+sub videos_from_saved_channel {
+    hide_users_list_window();
+    videos_from_selected_username();
 }
 
 # ----- My panel settings ----- #

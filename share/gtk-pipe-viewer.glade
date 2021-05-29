@@ -101,6 +101,7 @@ Author: Trizen https://github.com/trizen
         <property name="label" translatable="yes">Videos</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
+        <property name="tooltip-text" translatable="yes">List latest YouTube videos on this channel</property>
         <property name="image">image17</property>
         <property name="use-stock">False</property>
         <signal name="activate" handler="videos_from_selected_username" swapped="no"/>
@@ -111,9 +112,21 @@ Author: Trizen https://github.com/trizen
         <property name="label" translatable="yes">Playlists</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
+        <property name="tooltip-text" translatable="yes">List YouTube playlists created by this channel</property>
         <property name="image">image14</property>
         <property name="use-stock">False</property>
         <signal name="activate" handler="playlists_from_selected_username" swapped="no"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="subunsubchannel">
+        <property name="label" translatable="yes">(Un)subscribe</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="tooltip-text" translatable="yes">Subscribe / unsubscribe from this channel</property>
+        <property name="image">icon_from_pixbuf</property>
+        <property name="use-stock">False</property>
+        <signal name="activate" handler="subscribe_toggle_selected_username" swapped="no"/>
       </object>
     </child>
     <child>
@@ -121,10 +134,10 @@ Author: Trizen https://github.com/trizen
         <property name="label">gtk-remove</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
-        <property name="tooltip-text" translatable="yes">Remove the selected user from list...</property>
+        <property name="tooltip-text" translatable="yes">Remove the selected channel from the list</property>
         <property name="use-underline">True</property>
         <property name="use-stock">True</property>
-        <signal name="activate" handler="remove_selected_user" swapped="no"/>
+        <signal name="activate" handler="remove_selected_username" swapped="no"/>
       </object>
     </child>
   </object>
