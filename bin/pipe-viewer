@@ -4028,10 +4028,7 @@ sub print_videos {
     }
 
     if (ref($videos) ne 'ARRAY') {
-
-        my $current_instance = $yv_obj->get_api_host();
-
-        say "\n:: Probably $current_instance is down. Try:";
+        say "\n:: Probably the selected invidious instance is down. Try:";
         say "\n\t$0 --api=auto\n";
         say "See also: https://github.com/trizen/pipe-viewer#invidious-instances";
         return;

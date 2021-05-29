@@ -420,42 +420,30 @@ sub lwp_get {
     }
 
     my %lwp_header = ($opt{simple} ? () : $self->_auth_lwp_header);
-    my $response   = $self->{lwp}->get($url, %lwp_header);
+
+    my $response = do {
+        my $r;
+
+        if ($url =~ m{^https?://[^/]+\.onion\b}) {    # onion URL
+
+            if (not defined($self->get_http_proxy)) {    # no proxy defined
+                if ($self->get_env_proxy and (defined($ENV{HTTP_PROXY}) or defined($ENV{HTTPS_PROXY}))) {
+                    ## ok -- LWP::UserAgent will use proxy defined in ENV
+                }
+                else {
+                    say ":: Setting proxy for onion websites..." if $self->get_debug;
+                    $self->{lwp}->proxy(['http', 'https'], 'socks://localhost:9050');
+                    $r = $self->{lwp}->get($url, %lwp_header);
+                    $self->{lwp}->proxy(['http', 'https'], undef);
+                }
+            }
+        }
+
+        $r // $self->{lwp}->get($url, %lwp_header);
+    };
 
     if ($response->is_success) {
         return $response->decoded_content;
-    }
-
-    if ($response->status_line() =~ /^401 / and defined($self->get_refresh_token)) {
-        if (defined(my $refresh_token = $self->oauth_refresh_token())) {
-            if (defined $refresh_token->{access_token}) {
-
-                $self->set_access_token($refresh_token->{access_token});
-
-                # Don't be tempted to use recursion here, because bad things will happen!
-                $response = $self->{lwp}->get($url, $self->_auth_lwp_header);
-
-                if ($response->is_success) {
-                    $self->save_authentication_tokens();
-                    return $response->decoded_content;
-                }
-                elsif ($response->status_line() =~ /^401 /) {
-                    $self->set_refresh_token();    # refresh token was invalid
-                    $self->set_access_token();     # access token is also broken
-                    warn "[!] Can't refresh the access token! Logging out...\n";
-                }
-            }
-            else {
-                warn "[!] Can't get the access_token! Logging out...\n";
-                $self->set_refresh_token();
-                $self->set_access_token();
-            }
-        }
-        else {
-            warn "[!] Invalid refresh_token! Logging out...\n";
-            $self->set_refresh_token();
-            $self->set_access_token();
-        }
     }
 
     $opt{depth} ||= 0;

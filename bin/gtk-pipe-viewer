@@ -2882,10 +2882,7 @@ sub display_results {
     }
 
     if (ref($items) ne 'ARRAY') {
-
-        my $current_instance = $yv_obj->get_api_host();
-
-        die "Probably $current_instance is down.\n"
+        die "Probably the selected invidious instance is down.\n"
           . "\nTry changing the `api_host` in configuration file:\n\n"
           . qq{\tapi_host => "auto",\n}
           . qq{\nSee also: https://github.com/trizen/pipe-viewer#invidious-instances\n};
