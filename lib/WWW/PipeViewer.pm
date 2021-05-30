@@ -424,7 +424,7 @@ sub lwp_get {
     my $response = do {
         my $r;
 
-        if ($url =~ m{^https?://[^/]+\.onion\b}) {    # onion URL
+        if ($url =~ m{^https?://[^/]+\.onion/}) {    # onion URL
 
             if (not defined($self->get_http_proxy)) {    # no proxy defined
                 if ($self->get_env_proxy and (defined($ENV{HTTP_PROXY}) or defined($ENV{HTTPS_PROXY}))) {
@@ -675,8 +675,14 @@ sub get_api_url {
 
     $host =~ s{/+\z}{};    # remove trailing '/'
 
-    if ($host =~ m{^[-\w]+(?>\.[-\w]+)+\z}) {    # no protocol specified
-        $host = 'https://' . $host;              # default to HTTPS
+    if ($host !~ m{^\w+://}) {    # no protocol specified
+        my $protocol = 'https://';    # default to HTTPS
+
+        if ($host =~ m{^[^/]+\.onion\z}) {    # onion URL
+            $protocol = 'http://';            # default to HTTP
+        }
+
+        $host = $protocol . $host;
     }
 
     # Pick a random instance when `--instance=auto` or `--instance=invidio.us`.
