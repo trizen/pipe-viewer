@@ -110,6 +110,7 @@ my $local_playlists_dir = catdir($config_dir,      'playlists');
 
 # Configuration files
 my $config_file              = catfile($config_dir, "$execname.conf");
+my $youtube_users_file       = catfile($config_dir, 'users.txt');
 my $subscribed_channels_file = catfile($config_dir, 'subscribed_channels.txt');
 my $authentication_file      = catfile($config_dir, 'reg.dat');
 my $history_file             = catfile($config_dir, 'cli-history.txt');
@@ -262,6 +263,7 @@ my %CONFIG = (
     # Subscribed channels
     subscribed_channels_file => $subscribed_channels_file,
     subscriptions_limit      => 10_000,                      # maximum number of subscription videos stored
+    youtube_users_file       => $youtube_users_file,
 
     # Options for watched videos
     highlight_watched => 1,
@@ -373,8 +375,10 @@ my $channels_help = <<"CHANNELS_HELP" . $general_help;
 :p=i  :playlists=i : playlists from channel
 
 # Save and remove channels
+      :save=i      : save channel
 :s=i  :subscribe=i : subscribe to the channel
-:r=i  :remove=i    : unsubscribe from the channel
+      :unsub=i     : unsubscribe from the channel
+:r=i  :remove=i    : remove the channel
 CHANNELS_HELP
 
 my $comments_help = <<"COMMENTS_HELP" . $general_help;
@@ -744,18 +748,19 @@ usage: $execname [options] ([url] | [keywords])
    --logout             : will delete the authentication key
 
  * Display local
-   -P  --playlists       : show the playlists from your channel
-   -F  --favorites       : show the latest favorite videos
+   -P  --playlists       : show the local playlists
+   -F  --favorites       : show the local favorite videos
+   -lc --saved-channels  : show the saved channels
    -S  --subscriptions   : show the subscribed channels
-   -SV --subs-videos     : show the subscription videos
    -L  --likes           : show the videos that you liked
    -D  --dislikes        : show the videos that you disliked
 
 * Save local
+   --save=s             : save a given channel ID or username in -lc
    --subscribe=s        : subscribe to a given channel ID or username
    --favorite=s         : favorite a video by URL or ID
-   --like=s             : send a 'like' rating to a video URL or ID
-   --dislike=s          : send a 'dislike' rating to a video URL or ID
+   --like=s             : like a video by URL or ID (see: -L)
+   --dislike=s          : dislike a video by URL or ID (see: -D)
 
 
 == Player Options ==
@@ -1213,7 +1218,13 @@ sub apply_configuration {
     # ... SUBROUTINE CALLS ... #
     if (defined $opt->{subscribe}) {
         foreach my $channel_id (split(/[,\s]+/, delete $opt->{subscribe})) {
-            save_channel_to_file($channel_id);
+            subscribe_channel($channel_id);
+        }
+    }
+
+    if (defined $opt->{save_channel}) {
+        foreach my $channel_id (split(/[,\s]+/, delete $opt->{save_channel})) {
+            save_channel($channel_id);
         }
     }
 
@@ -1247,8 +1258,12 @@ sub apply_configuration {
         get_and_play_playlists(split(/[,\s]+/, delete $opt->{play_playlists}));
     }
 
-    if (defined $opt->{local_channels}) {
-        print_local_channels(delete $opt->{local_channels});
+    if (defined $opt->{saved_channels}) {
+        print_saved_channels(delete $opt->{saved_channels});
+    }
+
+    if (defined $opt->{subscribed_channels}) {
+        print_subscribed_channels(delete $opt->{subscribed_channels});
     }
 
     if (defined $opt->{local_playlist}) {
@@ -1438,13 +1453,15 @@ sub parse_arguments {
         'c|categories'                => \$opt{categories},
         'video-ids|videoids|id|ids=s' => \$opt{play_video_ids},
 
-        'lc|fc|local-channels|subscriptions|S:s' => \$opt{local_channels},
-        'lp|local-playlists:s'                   => \$opt{local_playlist},
-        'wv|watched-videos'                      => \$opt{watched_videos},
-        'ls|local-subs|subs-videos|SV'           => \$opt{local_subscriptions},
+        'lc|fc|local-channels|saved-channels:s' => \$opt{saved_channels},
+        'subscriptions|sub-channels|S:s'        => \$opt{subscribed_channels},
+        'lp|local-playlists:s'                  => \$opt{local_playlist},
+        'wv|watched-videos'                     => \$opt{watched_videos},
+        'ls|local-subs|sub-videos|SV'           => \$opt{local_subscriptions},
 
         #'save-video|save=s' => \$opt{save_video},
-        #'save-channel=s'    => \$opt{save_channel},
+        'save|save-channel=s' => \$opt{save_channel},
+
         #'save-playlist=s'   => \$opt{save_playlist},
 
         'search-videos|search|sv!'     => \$opt{search_videos},
@@ -2588,7 +2605,21 @@ sub print_channels {
                     foreach my $id (@nums) {
                         my $channel_id    = $yv_utils->get_channel_id($channels->[$id]);
                         my $channel_title = $yv_utils->get_channel_title($channels->[$id]);
-                        save_channel_to_file($channel_id, $channel_title);
+                        subscribe_channel($channel_id, $channel_title);
+                    }
+                }
+                else {
+                    warn_no_thing_selected('channel');
+                }
+            }
+
+            # :save=i
+            elsif ($opt =~ /^(?:save)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$channels}, $1)) {
+                    foreach my $id (@nums) {
+                        my $channel_id    = $yv_utils->get_channel_id($channels->[$id]);
+                        my $channel_title = $yv_utils->get_channel_title($channels->[$id]);
+                        save_channel($channel_id, $channel_title);
                     }
                 }
                 else {
@@ -2597,9 +2628,19 @@ sub print_channels {
             }
 
             # :r=i, :rm=i, :remove=i, :unsubscribe=i
-            elsif ($opt =~ /^(?:r|rm|remove|unsub(?:scribe)?)${digit_or_equal_re}(.*)/) {
+            elsif ($opt =~ /^(?:r|rm|remove)${digit_or_equal_re}(.*)/) {
                 if (my @nums = get_valid_numbers($#{$channels}, $1)) {
                     remove_saved_channels(map { $yv_utils->get_channel_id($channels->[$_]) } @nums);
+                }
+                else {
+                    warn_no_thing_selected('channel');
+                }
+            }
+
+            # :unsub=i
+            elsif ($opt =~ /^(?:unsub(?:scribe)?)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$channels}, $1)) {
+                    unsubscribe_from_channels(map { $yv_utils->get_channel_id($channels->[$_]) } @nums);
                 }
                 else {
                     warn_no_thing_selected('channel');
@@ -2744,8 +2785,8 @@ sub print_comments {
     __SUB__->(@_);
 }
 
-sub save_channel_to_file {
-    my ($channel_id, $channel_title) = @_;
+sub _add_channel_to_file {
+    my ($channel_id, $channel_title, $file) = @_;
 
     $channel_id // return;
 
@@ -2766,40 +2807,49 @@ sub save_channel_to_file {
         return;
     }
 
-    say "\n:: Saving channel <<$channel_title>> (id: $channel_id) to file...";
+    say ":: Saving channel <<$channel_title>> (id: $channel_id) to file..." if $yv_obj->get_debug;
 
-    open(my $fh, '>>:utf8', $opt{subscribed_channels_file}) or do {
-        warn "[!] Can't open file <<$opt{subscribed_channels_file}>> for appending: $!\n";
+    open(my $fh, '>>:utf8', $file) or do {
+        warn "[!] Can't open file <<$file>> for appending: $!\n";
         return;
     };
 
     say $fh "$channel_id $channel_title";
-    close $fh;
 
-    say ":: Done.";
-    return 1;
+    close $fh;
+}
+
+sub save_channel {
+    my ($channel_id, $channel_title) = @_;
+    _add_channel_to_file($channel_id, $channel_title, $opt{youtube_users_file});
+}
+
+sub subscribe_channel {
+    my ($channel_id, $channel_title) = @_;
+    _add_channel_to_file($channel_id, $channel_title, $opt{youtube_users_file});
+    _add_channel_to_file($channel_id, $channel_title, $opt{subscribed_channels_file});
 }
 
 sub update_channel_file {
-    my (%channels) = @_;
+    my ($channels, $file) = @_;
 
-    open(my $fh, '>:utf8', $opt{subscribed_channels_file}) or do {
-        warn "[!] Can't open file <<$opt{subscribed_channels_file}>> for writing: $!\n";
+    open(my $fh, '>:utf8', $file) or do {
+        warn "[!] Can't open file <<$file>> for writing: $!\n";
         return;
     };
 
-    foreach my $key (sort { CORE::fc($channels{$a}) cmp CORE::fc($channels{$b}) } keys %channels) {
-        say $fh "$key $channels{$key}";
+    foreach my $key (sort { CORE::fc($channels->{$a}) cmp CORE::fc($channels->{$b}) } keys %$channels) {
+        say $fh "$key $channels->{$key}";
     }
 
     close $fh;
 }
 
-sub remove_saved_channels {
-    my (@channel_ids) = @_;
+sub _remove_channels_from_file {
+    my ($channel_ids, $file) = @_;
 
-    open(my $fh, '<:utf8', $opt{subscribed_channels_file}) or do {
-        warn "[!] Can't open file <<$opt{subscribed_channels_file}>> for reading: $!\n";
+    open(my $fh, '<:utf8', $file) or do {
+        warn "[!] Can't open file <<$file>> for reading: $!\n";
         return;
     };
 
@@ -2822,20 +2872,31 @@ sub remove_saved_channels {
 
     my $removed = 0;
 
-    foreach my $channel_id (@channel_ids) {
+    foreach my $channel_id (@$channel_ids) {
         if (exists $channels{$channel_id}) {
-            say ":: Removing: $channel_id";
+            say ":: Removing: $channel_id" if $yv_obj->get_debug;
             delete $channels{$channel_id};
             ++$removed;
         }
         else {
-            say ":: $channel_id is not a saved channel...";
+            say ":: $channel_id is not a saved channel..." if $yv_obj->get_debug;
         }
     }
 
     if ($removed > 0) {
-        update_channel_file(%channels);
+        update_channel_file(\%channels, $file);
     }
+}
+
+sub remove_saved_channels {
+    my (@channel_ids) = @_;
+    _remove_channels_from_file(\@channel_ids, $opt{youtube_users_file});
+    _remove_channels_from_file(\@channel_ids, $opt{subscribed_channels_file});
+}
+
+sub unsubscribe_from_channels {
+    my (@channel_ids) = @_;
+    _remove_channels_from_file(\@channel_ids, $opt{subscribed_channels_file});
 }
 
 sub get_results_from_list {
@@ -3037,15 +3098,16 @@ sub print_local_subscription_videos {
     print_videos(get_results_from_list($subscriptions_data));
 }
 
-sub print_local_channels {
-    my ($name) = @_;
+sub _print_local_channel_from_file {
+    my ($name, $file) = @_;
 
     $name //= '';
 
-    my @users = $yv_utils->read_channels_from_file($opt{subscribed_channels_file});
+    my @users = $yv_utils->read_channels_from_file($file);
     my $regex = qr/\Q$name\E/i;
 
     if ($name eq '') {
+
         my $results = get_results_from_list(
             \@users,
             callback => sub {
@@ -3068,6 +3130,16 @@ sub print_local_channels {
 
     warn_no_thing_selected('channel');
     return 0;
+}
+
+sub print_saved_channels {
+    my ($name) = @_;
+    _print_local_channel_from_file($name, $opt{youtube_users_file});
+}
+
+sub print_subscribed_channels {
+    my ($name) = @_;
+    _print_local_channel_from_file($name, $opt{subscribed_channels_file});
 }
 
 sub print_categories {
@@ -4242,7 +4314,21 @@ sub print_videos {
                     foreach my $id (@nums) {
                         my $channel_id    = $yv_utils->get_channel_id($videos->[$id]);
                         my $channel_title = $yv_utils->get_channel_title($videos->[$id]);
-                        save_channel_to_file($channel_id, $channel_title);
+                        subscribe_channel($channel_id, $channel_title);
+                    }
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+
+            # :save=i
+            elsif ($opt =~ /^(?:save)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    foreach my $id (@nums) {
+                        my $channel_id    = $yv_utils->get_channel_id($videos->[$id]);
+                        my $channel_title = $yv_utils->get_channel_title($videos->[$id]);
+                        save_channel($channel_id, $channel_title);
                     }
                 }
                 else {
