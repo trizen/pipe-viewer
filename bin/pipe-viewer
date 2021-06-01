@@ -1172,13 +1172,6 @@ sub apply_configuration {
                 };
             }
 
-            if ($id eq 'mine') {
-                $id = $yv_obj->my_channel_id() // do {
-                    warn_invalid("username or channel ID", $id);
-                    undef;
-                };
-            }
-
             $yv_obj->set_channelId($id);
         }
         else {
@@ -1327,13 +1320,6 @@ sub apply_configuration {
 
             if (not $yv_utils->is_channelID($id)) {
                 $id = $yv_obj->channel_id_from_username($id) // do {
-                    warn_invalid("username or channel ID", $id);
-                    undef;
-                };
-            }
-
-            if ($id eq 'mine') {
-                $id = $yv_obj->my_channel_id() // do {
                     warn_invalid("username or channel ID", $id);
                     undef;
                 };

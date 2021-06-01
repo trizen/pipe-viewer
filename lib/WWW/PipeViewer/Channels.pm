@@ -105,50 +105,6 @@ For all functions, C<$channels->{results}{items}> contains:
     }
 }
 
-=head2 my_channel()
-
-Returns info about the channel of the current authenticated user.
-
-=cut
-
-sub my_channel {
-    my ($self) = @_;
-    $self->get_access_token() // return;
-    return $self->_get_results($self->_make_channels_url(part => 'snippet', mine => 'true'));
-}
-
-=head2 my_channel_id()
-
-Returns the channel ID of the current authenticated user.
-
-=cut
-
-sub my_channel_id {
-    my ($self) = @_;
-
-    state $cache = {};
-
-    if (exists $cache->{id}) {
-        return $cache->{id};
-    }
-
-    $cache->{id} = undef;
-    my $channel = $self->my_channel() // return;
-    $cache->{id} = $channel->{results}{items}[0]{id} // return;
-}
-
-=head2 channels_my_subscribers()
-
-Retrieve a list of channels that subscribed to the authenticated user's channel.
-
-=cut
-
-sub channels_my_subscribers {
-    my ($self) = @_;
-    $self->get_access_token() // return;
-    return $self->_get_results($self->_make_channels_url(mySubscribers => 'true'));
-}
-
 =head2 channel_id_from_username($username)
 
 Return the channel ID for an username.
@@ -158,12 +114,25 @@ Return the channel ID for an username.
 sub channel_id_from_username {
     my ($self, $username) = @_;
 
+    state $cache = {};
+
+    if (exists $cache->{username}) {
+        return $cache->{username};
+    }
+
+    if (defined(my $id = $self->yt_channel_id($username))) {
+        if (ref($id) eq '' and $id =~ /\S/) {
+            $cache->{$username} = $id;
+            return $id;
+        }
+    }
+
     # A channel's username (if it doesn't include spaces) is also valid in place of ucid.
     if ($username =~ /\w/ and not $username =~ /\s/) {
         return $username;
     }
 
-    # TODO: resolve channel name to channel ID
+    # Unable to resolve channel name to channel ID (return as it is)
     return $username;
 }
 
@@ -176,11 +145,22 @@ Return the channel title for a given channel ID.
 sub channel_title_from_id {
     my ($self, $channel_id) = @_;
 
-    if ($channel_id eq 'mine') {
-        $channel_id = $self->my_channel_id();
+    $channel_id // return;
+
+    state $cache = {};
+
+    if (exists $cache->{channel_id}) {
+        return $cache->{channel_id};
     }
 
-    my $info = $self->channels_info($channel_id // return) // return;
+    if (defined(my $title = $self->yt_channel_title($channel_id))) {
+        if (ref($title) eq '' and $title =~ /\S/) {
+            $cache->{$channel_id} = $title;
+            return $title;
+        }
+    }
+
+    my $info = $self->channels_info($channel_id) // return;
 
     (    ref($info) eq 'HASH'
      and ref($info->{results}) eq 'HASH'

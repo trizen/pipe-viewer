@@ -482,10 +482,15 @@ sub _extract_sectionList_results {
     return @results;
 }
 
+sub _extract_channel_header {
+    my ($self, $data, %args) = @_;
+    eval { $data->{header}{c4TabbedHeaderRenderer} } // eval { $data->{metadata}{channelMetadataRenderer} };
+}
+
 sub _add_author_to_results {
     my ($self, $data, $results, %args) = @_;
 
-    my $header = eval { $data->{header}{c4TabbedHeaderRenderer} } // eval { $data->{metadata}{channelMetadataRenderer} };
+    my $header = $self->_extract_channel_header($data, %args);
 
     my $channel_id   = eval { $header->{channelId} } // eval { $header->{externalId} };
     my $channel_name = eval { $header->{title} };
@@ -778,6 +783,48 @@ sub yt_channel_uploads {
 
     my @results = $self->_extract_channel_uploads($hash, %args, type => 'video');
     $self->_prepare_results_for_return(\@results, %args, url => $url);
+}
+
+=head2 yt_channel_info($channel, %args)
+
+Channel info (such as title) for a given channel ID or username.
+
+=cut
+
+sub yt_channel_info {
+    my ($self, $channel, %args) = @_;
+    my ($url, $hash) = $self->_channel_data($channel, %args, type => '');
+    return $hash;
+}
+
+=head2 yt_channel_title($channel, %args)
+
+Exact the channel title (as a string) for a given channel ID or username.
+
+=cut
+
+sub yt_channel_title {
+    my ($self, $channel, %args) = @_;
+    my ($url, $hash) = $self->_channel_data($channel, %args, type => '');
+    $hash // return;
+    my $header = $self->_extract_channel_header($hash, %args) // return;
+    my $title  = eval { $header->{title} };
+    return $title;
+}
+
+=head2 yt_channel_id($username, %args)
+
+Exact the channel ID (as a string) for a given channel username.
+
+=cut
+
+sub yt_channel_id {
+    my ($self, $username, %args) = @_;
+    my ($url, $hash) = $self->_channel_data($username, %args, type => '');
+    $hash // return;
+    my $header = $self->_extract_channel_header($hash, %args) // return;
+    my $id     = eval { $header->{channelId} }                // eval { $header->{externalId} };
+    return $id;
 }
 
 =head2 yt_channel_playlists($channel, %args)
