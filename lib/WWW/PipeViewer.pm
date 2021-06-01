@@ -675,11 +675,12 @@ sub get_api_url {
 
     $host =~ s{/+\z}{};    # remove trailing '/'
 
-    if ($host !~ m{^\w+://}) {    # no protocol specified
-        my $protocol = 'https://';    # default to HTTPS
+    if ($host =~ /\w\.\w/ and $host !~ m{^\w+://}) {    # no protocol specified
 
-        if ($host =~ m{^[^/]+\.onion\z}) {    # onion URL
-            $protocol = 'http://';            # default to HTTP
+        my $protocol = 'https://';                      # default to HTTPS
+
+        if ($host =~ m{^[^/]+\.onion\z}) {              # onion URL
+            $protocol = 'http://';                      # default to HTTP
         }
 
         $host = $protocol . $host;
