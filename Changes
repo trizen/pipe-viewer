@@ -5,6 +5,13 @@
 
 [CHANGELOG]
 
+Version 0.1.0
+
+- CLI: added support for saving channel IDs (and listing them).
+- CLI/GUI: added support for subscription videos, playlists (like/favorite/dislike), watch history.
+- Auto-set proxy for .onion invidious instances (if not already set).
+- Bug-fixes and improvements.
+
 Version 0.0.9
 
 - Workaround for EU consent YouTube cookie.
