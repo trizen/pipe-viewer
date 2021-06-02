@@ -26,6 +26,7 @@ The project is in its early stages of development and some features are not impl
 
 * Arch Linux (AUR): https://aur.archlinux.org/packages/pipe-viewer-git/
 * Void Linux: `sudo xbps-install pipe-viewer`
+* Gentoo Linux (kske overlay): `eselect repository enable kske && emerge -av net-misc/pipe-viewer`
 
 
 ### VIDEO REVIEWS
