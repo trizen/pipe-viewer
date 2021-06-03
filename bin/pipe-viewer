@@ -4572,7 +4572,11 @@ main_quit(0);
 
 =head2 api_host
 
-Hostname of an invidious instance. When set to C<"auto">, a random invidious is selected everytime when the program is started.
+Hostname of an invidious instance. When set to C<"auto">, a random invidious is selected on-demand.
+
+List of public invidious instances:
+
+    https://api.invidious.io/
 
 =head2 auto_captions
 
@@ -4635,7 +4639,7 @@ If C<merge_into_mkv> and C<merge_with_captions> are both enabled, there is no ne
 An array of hash values specifying a custom layout for video results.
 
     align       # "left" or "right"
-    color       # any color supported by Term::ANSIColor
+    color       # any color name supported by Term::ANSIColor
     text        # the actual text
     width       # width allocated for the text
 
@@ -4717,7 +4721,7 @@ Try to disable this option if the videos are lagging or dropping frames.
 
 Highlight color used to highlight watched videos.
 
-Any color supported by L<Term::ANSIColor> can be used.
+Any color name supported by L<Term::ANSIColor> can be used.
 
 =head2 highlight_watched
 
@@ -4737,7 +4741,7 @@ File where to save the input history.
 
 Maximum number of entries in the history file.
 
-When the limit is reached, the first half of the history file will be deleted.
+When the limit is reached, the oldest half of the history file will be deleted.
 
 Set the value to C<-1> for no limit.
 
@@ -4771,7 +4775,7 @@ Currently, this is not implemented.
 
 =head2 merge_into_mkv
 
-During download, merge the audio+video files into an MKV container.
+When downloading split videos, merge the audio+video files into an MKV container.
 
 Requires C<ffmpeg>.
 
@@ -4851,6 +4855,10 @@ Enable or disable support for split-videos. Split-videos are videos that do not 
 
 List of SRT languages in the order of preference.
 
+=head2 subscribed_channels_file
+
+Absolute path to the file where to store subscribed channels (C<:sub=i>).
+
 =head2 subscriptions_limit
 
 Maximum number of subscription videos to store in the local database. Set to C<0> for no limit.
@@ -4894,7 +4902,7 @@ The keys for each player are:
 
 =head2 videoCaption
 
-When set to C<1> or C<"true">, retrieve only the videos that contain closed-captions in search results.
+When set to C<1> or C<"true">, retrieve only videos that contain closed-captions in search results.
 
 =head2 videoDefinition
 
@@ -4914,6 +4922,12 @@ Valid values: "any", "short", "long".
 
 When set to C<"creative_commons">, retrieve only videos under the I<Creative Commons> license in search results.
 
+=head2 watch_history
+
+Remember watched videos. Watched videos can be listed with:
+
+    pipe-viewer -wv
+
 =head2 watched_file
 
 File where to save the video IDs of watched/downloaded videos when C<watch_history> is set to a true value.
@@ -4921,6 +4935,10 @@ File where to save the video IDs of watched/downloaded videos when C<watch_histo
 =head2 wget_cmd
 
 Command for C<wget> when C<download_with_wget> is set to a true value.
+
+=head2 youtube_users_file
+
+Absolute path to the file where to store saved channels (C<:save=i>).
 
 =head2 youtube_video_url
 
