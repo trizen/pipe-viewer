@@ -246,13 +246,15 @@ my %CONFIG = (
     download_and_play  => 0,
     remove_played_file => 0,
 
+    ignored_projections => [],
+
     # Conversion options
     convert_cmd         => 'ffmpeg -i *IN* *OUT*',
     convert_to          => undef,
     keep_original_video => 0,
 
     # Search history
-    history       => undef,                       # auto-defined
+    history       => undef,           # auto-defined
     history_limit => 100_000,
     history_file  => $history_file,
 
@@ -3413,6 +3415,8 @@ sub get_streaming_url {
         split     => $split_videos,
         m4a_audio => ($opt{novideo}        ? 1 : $opt{m4a_audio}),
         dash      => ($opt{download_video} ? 0 : $opt{dash}),
+
+        ignored_projections => $opt{ignored_projections},
                                                                 );
 
     return {
@@ -4041,8 +4045,8 @@ sub print_video_info {
                                                      ['Channel'    => $yv_utils->get_channel_title($video)],
                                                      ['ChannelID'  => $yv_utils->get_channel_id($video)],
                                                      ['VideoID'    => $yv_utils->get_video_id($video)],
-                                                     ['Rating'     => $yv_utils->get_rating($video)],
                                                      ['Category'   => $yv_utils->get_category_name($video)],
+                                                     ['Rating'     => $yv_utils->get_rating($video)],
                                                      ['Definition' => $yv_utils->get_definition($video)],
                                                      ['Duration'   => $yv_utils->get_time($video)],
                                                      ['Likes'      => $yv_utils->set_thousands($yv_utils->get_likes($video))],
@@ -4758,6 +4762,14 @@ If authentication is required, use:
 =head2 ignore_av1
 
 Ignore videos in AV1 format.
+
+=head2 ignored_projections
+
+An array of video projects to ignore.
+
+For example, to prefer rectangular projections of 360° videos, use:
+
+    ignored_projections => ["mesh", "equirectangular"],
 
 =head2 interactive
 

@@ -265,6 +265,8 @@ my %CONFIG = (
     pipe_viewer        => undef,
     pipe_viewer_args   => [],
 
+    ignored_projections => [],
+
     # Watch history
     watch_history => 1,
     watched_file  => $watched_file,
@@ -3401,6 +3403,8 @@ sub get_streaming_url {
         split     => $CONFIG{split_videos},
         m4a_audio => $CONFIG{m4a_audio},
         dash      => $CONFIG{dash},
+
+        ignored_projections => $CONFIG{ignored_projections},
                                                                 );
 
     return {
