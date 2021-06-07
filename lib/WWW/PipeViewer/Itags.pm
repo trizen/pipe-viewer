@@ -198,9 +198,9 @@ sub _find_streaming_url {
             next;
         }
 
-        if ($resolution eq 'audio' and not $args{m4a_audio}) {
-            if ($itag->{format} eq 'm4a') {
-                next;    # skip m4a audio URLs
+        if ($resolution eq 'audio' and $args{prefer_m4a}) {
+            if ($itag->{format} ne 'm4a') {
+                next;    # skip non-m4a audio URLs
             }
         }
 

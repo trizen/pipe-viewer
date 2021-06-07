@@ -186,7 +186,6 @@ my %CONFIG = (
     ),
 
     split_videos => 1,
-    m4a_audio    => 1,
 
     # YouTube options
     dash            => 1,        # may load slow
@@ -232,6 +231,7 @@ my %CONFIG = (
     colors             => $constant{win32} ^ 1,
     skip_if_exists     => 1,
     prefer_mp4         => 0,
+    prefer_m4a         => 0,
     prefer_av1         => 0,
     ignore_av1         => 0,
     prefer_invidious   => 0,
@@ -812,8 +812,9 @@ usage: $execname [options] ([url] | [keywords])
        --skip-watched!   : don't play already watched videos
        --highlight!      : remember and highlight selected videos
        --confirm!        : show a confirmation message after each play
-       --prefer-mp4!     : prefer videos in MP4 format, instead of WEBM
-       --prefer-av1!     : prefer videos in AV1 format, instead of WEBM
+       --prefer-mp4!     : prefer videos in MP4 format, instead of VP9
+       --prefer-av1!     : prefer videos in AV1 format, instead of VP9
+       --prefer-m4a!     : prefer audios in AAC format, instead of OPUS
        --ignore-av1!     : ignore videos in AV1 format
 
  * Closed-captions
@@ -852,7 +853,6 @@ usage: $execname [options] ([url] | [keywords])
                           If authentication is required,
                           use 'proto://user:pass\@domain.tld:port/'
    --split-videos!      : include or exclude the itags for split videos
-   --m4a-audio!         : include or exclude the itags for M4A audio streams
    --dash!              : include or exclude segmented DASH streams
    --ytdl!              : use youtube-dl for videos with encrypted signatures
                           `--no-ytdl` will use invidious instances
@@ -1557,7 +1557,7 @@ sub parse_arguments {
         'api-host|instance=s' => \$opt{api_host},
 
         'convert-command|convert-cmd=s'     => \$opt{convert_cmd},
-        'm4a-audio|mp4-audio!'              => \$opt{m4a_audio},
+        'prefer-m4a!'                       => \$opt{prefer_m4a},
         'dash|dash-segmented!'              => \$opt{dash},
         'wget-dl|wget-download!'            => \$opt{download_with_wget},
         'filename|filename-format=s'        => \$opt{video_filename_format},
@@ -3412,9 +3412,9 @@ sub get_streaming_url {
         hfr        => $opt{hfr},
         ignore_av1 => $opt{ignore_av1},
 
-        split     => $split_videos,
-        m4a_audio => ($opt{novideo}        ? 1 : $opt{m4a_audio}),
-        dash      => ($opt{download_video} ? 0 : $opt{dash}),
+        split      => $split_videos,
+        prefer_m4a => $opt{prefer_m4a},
+        dash       => ($opt{download_video} ? 0 : $opt{dash}),
 
         ignored_projections => $opt{ignored_projections},
                                                                 );
@@ -4799,10 +4799,6 @@ Arguments for C<ffmpeg> how to merge the files.
 
 Include closed-captions inside the MKV container (if any).
 
-=head2 m4a_audio
-
-When set to C<0>, MP4/M4A (AAC) audio files will be ignored.
-
 =head2 order
 
 Search order for videos.
@@ -4822,6 +4818,12 @@ Prefer videos in AV1 format. (experimental)
 Prefer videos in MP4 (AVC) format.
 
 Try to enable this option if the videos are lagging or dropping frames.
+
+=head2 prefer_m4a
+
+Prefer audio streams in M4A (AAC) format.
+
+By default, the OPUS format for audio is preferred.
 
 =head2 prefer_invidious
 

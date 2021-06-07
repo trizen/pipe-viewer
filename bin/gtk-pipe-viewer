@@ -206,11 +206,11 @@ my %CONFIG = (
 
     # Pipe options
     split_videos     => 1,
-    m4a_audio        => 1,
     dash             => 1,        # may load slow
     prefer_mp4       => 0,
     prefer_av1       => 0,
     ignore_av1       => 0,
+    prefer_m4a       => 0,
     prefer_invidious => 0,
     maxResults       => 10,
     hfr              => 1,        # true to prefer high frame rate (HFR) videos
@@ -3400,9 +3400,9 @@ sub get_streaming_url {
         hfr        => $CONFIG{hfr},
         ignore_av1 => $CONFIG{ignore_av1},
 
-        split     => $CONFIG{split_videos},
-        m4a_audio => $CONFIG{m4a_audio},
-        dash      => $CONFIG{dash},
+        split      => $CONFIG{split_videos},
+        prefer_m4a => $CONFIG{prefer_m4a},
+        dash       => $CONFIG{dash},
 
         ignored_projections => $CONFIG{ignored_projections},
                                                                 );
