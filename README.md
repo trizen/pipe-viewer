@@ -34,7 +34,7 @@ The project is in its early stages of development and some features are not impl
 * [EN] Pipe-Viewer and Straw-Viewer -- Search Youtube via Terminal - Linux CLI
     * https://www.youtube.com/watch?v=I4tfHUmklWo
 
-* [CN] Pipe-viewer！有史以來最佳的 YouTube 體驗就在這裡～
+* [TW] Pipe-viewer！有史以來最佳的 YouTube 體驗就在這裡～
     * https://wiwi.video/videos/watch/798d38cd-9d10-4f8a-ac1f-f776c6d0aa2c
 
 ### TRY
