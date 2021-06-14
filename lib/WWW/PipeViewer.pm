@@ -419,6 +419,9 @@ sub lwp_get {
         $url = 'https://i.ytimg.com' . $url;
     }
 
+    # Fix YouTube thumbnails for results from invidious instances
+    $url =~ s{^https?://[^/]+(/vi/.*\.jpg)\z}{https://i.ytimg.com$1};
+
     my %lwp_header = ($opt{simple} ? () : $self->_auth_lwp_header);
 
     my $response = do {
