@@ -581,6 +581,7 @@ sub select_good_invidious_instances {
                    'invidious.kavin.rocks'    => 1,
                    'invidious.snopyta.org'    => 0,
                    'invidious.silkky.cloud'   => 1,    # broken thumbnail URLs for popular videos
+                   'invidious.moomoo.me'      => 1,    # ==//==
                   );
 
 #<<<
