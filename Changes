@@ -5,6 +5,11 @@
 
 [CHANGELOG]
 
+Version 0.1.1
+
+- Temporary fix for the `404 Error` on `get_video_info`.
+- Added fallback code for retrieving closed-caption URLs with `youtube-dl`.
+
 Version 0.1.0
 
 - CLI: added support for saving channel IDs (and listing them).
