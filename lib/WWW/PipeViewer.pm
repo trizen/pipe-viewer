@@ -830,6 +830,11 @@ sub _info_from_ytdl {
     my $json = $self->proxy_stdout(@ytdl_cmd, quotemeta("https://www.youtube.com/watch?v=" . $videoID));
     my $ref  = $self->parse_json_string($json // return);
 
+    if ($self->get_debug >= 3) {
+        require Data::Dump;
+        Data::Dump::pp($ref);
+    }
+
     return $ref;
 }
 
@@ -1132,6 +1137,7 @@ sub get_streaming_urls {
     my @streaming_urls = $self->_extract_streaming_urls(\%info, $videoID);
 
     my @caption_urls;
+
     if (exists $info{player_response}) {
 
         my $captions_json = $info{player_response};                     # don't run uri_unescape() on this
@@ -1142,10 +1148,79 @@ sub get_streaming_urls {
             push @caption_urls, @{$caption_data->{captions}{playerCaptionsTracklistRenderer}{captionTracks}};
 
             my $translationLanguages = $caption_data->{captions}{playerCaptionsTracklistRenderer}{translationLanguages};
+
             if (ref($translationLanguages) eq 'ARRAY') {
                 foreach my $caption (@caption_urls) {
                     $caption->{translationLanguages} = $translationLanguages;
                 }
+            }
+        }
+    }
+
+    # Extract closed-captions with youtube-dl if our code failed
+    if (!@caption_urls) {
+
+        my $ytdl_info = $self->_info_from_ytdl($videoID);
+
+        if (defined($ytdl_info) and ref($ytdl_info) eq 'HASH') {
+
+            foreach my $key (qw(subtitles automatic_captions)) {
+
+                my $ccaps = $ytdl_info->{$key} // next;
+
+                ref($ccaps) eq 'HASH' or next;
+
+                foreach my $lang_code (sort keys %$ccaps) {
+
+                    my ($caption_info) = grep { $_->{ext} eq 'srv1' } @{$ccaps->{$lang_code}};
+
+                    if (defined($caption_info) and ref($caption_info) eq 'HASH' and defined($caption_info->{url})) {
+                        push @caption_urls,
+                          scalar {
+                                  kind         => ($key eq 'automatic_captions' ? 'asr' : ''),
+                                  languageCode => $lang_code,
+                                  baseUrl      => $caption_info->{url},
+                                 };
+                    }
+                }
+            }
+
+            # Auto-translated captions
+            if (@caption_urls and not exists $ytdl_info->{automatic_captions}) {
+
+                if ($self->get_debug) {
+                    say STDERR ":: Generating translated closed-caption URLs...";
+                }
+
+                my @asr;
+                foreach my $caption (@caption_urls) {
+                    if ($caption->{baseUrl} =~ /\basr_langs=([^&]+)/) {
+                        my @languages = split(/%2C/, $1);
+
+                        push @languages, qw(
+                          af am ar az be bg bn bs ca ceb co cs cy da de el en eo es et eu fa fi fil
+                          fr fy ga gd gl gu ha haw hi hmn hr ht hu hy id ig is it iw ja jv ka kk km
+                          kn ko ku ky la lb lo lt lv mg mi mk ml mn mr ms mt my ne nl no ny or pa pl
+                          ps pt ro ru rw sd si sk sl sm sn so sq sr st su sv sw ta te tg th tk tr tt
+                          ug uk ur uz vi xh yi yo zh-Hans zh-Hant zu
+                        );
+
+                        @languages = do {
+                            my %seen;
+                            grep { $_ ne $caption->{languageCode} } grep { !$seen{$_}++ } @languages;
+                        };
+
+                        foreach my $lang_code (@languages) {
+                            my %caption_copy = %$caption;
+                            $caption_copy{languageCode} = $lang_code;
+                            $caption_copy{kind}         = 'asr';
+                            $caption_copy{baseUrl}      = $caption_copy{baseUrl} . "&tlang=$lang_code";
+                            push @asr, \%caption_copy;
+                        }
+                    }
+                }
+
+                push @caption_urls, @asr;
             }
         }
     }
