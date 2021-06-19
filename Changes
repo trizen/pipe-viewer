@@ -5,6 +5,10 @@
 
 [CHANGELOG]
 
+Version 0.1.2
+
+- Fixed the support for related videos.
+
 Version 0.1.1
 
 - Temporary fix for the `404 Error` on `get_video_info`.

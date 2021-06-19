@@ -33,7 +33,7 @@ WWW::PipeViewer - A very easy interface to YouTube, using the API of invidious.
 
 =cut
 
-our $VERSION = '0.1.1';
+our $VERSION = '0.1.2';
 
 =head1 SYNOPSIS
 
