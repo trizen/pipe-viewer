@@ -1145,19 +1145,20 @@ sub _get_youtubei_content {
     return $content;
 }
 
+sub _old_get_video_info {
+    my ($self, $videoID) = @_;
+
+    my $url     = $self->get_video_info_url() . sprintf($self->get_video_info_args(), $videoID);
+    my $content = $self->lwp_get($url, simple => 1) // return;
+    my %info    = $self->parse_query_string($content);
+
+    return %info;
+}
+
 sub _get_video_info {
     my ($self, $videoID) = @_;
 
-    if (0) {    # old way
-
-        my $url     = $self->get_video_info_url() . sprintf($self->get_video_info_args(), $videoID);
-        my $content = $self->lwp_get($url, simple => 1) // return;
-        my %info    = $self->parse_query_string($content);
-
-        return %info;
-    }
-
-    my $content = $self->_get_youtubei_content('player', $videoID);
+    my $content = $self->_get_youtubei_content('player', $videoID) // return $self->_old_get_video_info($videoID);
     my %info    = (player_response => $content);
 
     return %info;
@@ -1240,7 +1241,7 @@ sub get_streaming_urls {
             say STDERR ":: Extracting closed-caption URLs with `youtube-dl`...";
         }
 
-        # Extract closed-captions with youtube-dl if our code failed
+        # Extract closed-caption URLs with youtube-dl if our code failed
         my $ytdl_info = $self->_info_from_ytdl($videoID);
 
         if (defined($ytdl_info) and ref($ytdl_info) eq 'HASH') {
