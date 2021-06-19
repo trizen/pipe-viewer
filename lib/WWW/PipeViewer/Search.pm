@@ -171,15 +171,11 @@ be set to a YouTube video ID.
 sub related_to_videoID {
     my ($self, $videoID) = @_;
 
-    my %info                = $self->_get_video_info($videoID);
-    my $watch_next_response = $self->parse_json_string($info{watch_next_response});
+    my $watch_next_response = $self->parse_json_string($self->_get_video_next_info($videoID) // return {results => []});
 
     my $related =
       eval { $watch_next_response->{contents}{twoColumnWatchNextResults}{secondaryResults}{secondaryResults}{results} }
       // return {results => []};
-
-    #use Data::Dump qw(pp);
-    #pp $related;
 
     my @results;
 

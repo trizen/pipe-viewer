@@ -170,6 +170,10 @@ sub _ytdl_video_details {
 sub _fallback_video_details {
     my ($self, $id, $fields) = @_;
 
+    if ($self->get_debug) {
+        say STDERR ":: Extracting video info with youtube-dl...";
+    }
+
     my $info = $self->_ytdl_video_details($id);
 
     if (defined($info) and ref($info) eq 'HASH') {
