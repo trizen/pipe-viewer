@@ -351,7 +351,7 @@ sub set_lwp_useragent {
         my $cookies = HTTP::Cookies->new();
 
         # Consent cookie
-        $cookies->set_cookie(0, "CONSENT", "YES+cb-m.20210516-15-p0.en+FX+687",
+        $cookies->set_cookie(0, "CONSENT", "YES+cb-m.20210615-14-p0.en+FX+096",
                              "/", ".youtube.com", undef, 0, 1, '21' . join('', map { int(rand(10)) } 1 .. 8),
                              0, {});
 
@@ -1196,6 +1196,64 @@ sub _make_translated_captions {
     return @asr;
 }
 
+sub _fallback_extract_captions {
+    my ($self, $videoID) = @_;
+
+    if ($self->get_debug) {
+        say STDERR ":: Extracting closed-caption URLs with `youtube-dl`...";
+    }
+
+    # Extract closed-caption URLs with youtube-dl if our code failed
+    my $ytdl_info = $self->_info_from_ytdl($videoID);
+
+    my @caption_urls;
+
+    if (defined($ytdl_info) and ref($ytdl_info) eq 'HASH') {
+
+        my $has_subtitles = 0;
+
+        foreach my $key (qw(subtitles automatic_captions)) {
+
+            my $ccaps = $ytdl_info->{$key} // next;
+
+            ref($ccaps) eq 'HASH' or next;
+
+            foreach my $lang_code (sort keys %$ccaps) {
+
+                my ($caption_info) = grep { $_->{ext} eq 'srv1' } @{$ccaps->{$lang_code}};
+
+                if (defined($caption_info) and ref($caption_info) eq 'HASH' and defined($caption_info->{url})) {
+
+                    push @caption_urls,
+                      scalar {
+                              kind         => ($key eq 'automatic_captions' ? 'asr' : ''),
+                              languageCode => $lang_code,
+                              baseUrl      => $caption_info->{url},
+                             };
+
+                    if ($key eq 'subtitles') {
+                        $has_subtitles = 1;
+                    }
+                }
+            }
+
+            last if $has_subtitles;
+        }
+
+        # Auto-translated captions
+        if ($has_subtitles) {
+
+            if ($self->get_debug) {
+                say STDERR ":: Generating translated closed-caption URLs...";
+            }
+
+            push @caption_urls, $self->_make_translated_captions(\@caption_urls);
+        }
+    }
+
+    return @caption_urls;
+}
+
 =head2 get_streaming_urls($videoID)
 
 Returns a list of streaming URLs for a videoID.
@@ -1233,59 +1291,11 @@ sub get_streaming_urls {
         # Try again with youtube-dl
         if (!@streaming_urls or (($caption_data->{playabilityStatus}{status} // '') =~ /fail|error/i)) {
             @streaming_urls = $self->_fallback_extract_urls($videoID);
+            push @caption_urls, $self->_fallback_extract_captions($videoID);
         }
     }
     else {
-
-        if ($self->get_debug) {
-            say STDERR ":: Extracting closed-caption URLs with `youtube-dl`...";
-        }
-
-        # Extract closed-caption URLs with youtube-dl if our code failed
-        my $ytdl_info = $self->_info_from_ytdl($videoID);
-
-        if (defined($ytdl_info) and ref($ytdl_info) eq 'HASH') {
-
-            my $has_subtitles = 0;
-
-            foreach my $key (qw(subtitles automatic_captions)) {
-
-                my $ccaps = $ytdl_info->{$key} // next;
-
-                ref($ccaps) eq 'HASH' or next;
-
-                foreach my $lang_code (sort keys %$ccaps) {
-
-                    my ($caption_info) = grep { $_->{ext} eq 'srv1' } @{$ccaps->{$lang_code}};
-
-                    if (defined($caption_info) and ref($caption_info) eq 'HASH' and defined($caption_info->{url})) {
-
-                        push @caption_urls,
-                          scalar {
-                                  kind         => ($key eq 'automatic_captions' ? 'asr' : ''),
-                                  languageCode => $lang_code,
-                                  baseUrl      => $caption_info->{url},
-                                 };
-
-                        if ($key eq 'subtitles') {
-                            $has_subtitles = 1;
-                        }
-                    }
-                }
-
-                last if $has_subtitles;
-            }
-
-            # Auto-translated captions
-            if ($has_subtitles) {
-
-                if ($self->get_debug) {
-                    say STDERR ":: Generating translated closed-caption URLs...";
-                }
-
-                push @caption_urls, $self->_make_translated_captions(\@caption_urls);
-            }
-        }
+        push @caption_urls, $self->_fallback_extract_captions($videoID);
     }
 
     if ($self->get_debug) {
@@ -1296,6 +1306,7 @@ sub get_streaming_urls {
     # Try again with youtube-dl
     if (!@streaming_urls or (($info{status} // '') =~ /fail|error/i)) {
         @streaming_urls = $self->_fallback_extract_urls($videoID);
+        push @caption_urls, $self->_fallback_extract_captions($videoID);
     }
 
     if ($self->get_prefer_mp4 or $self->get_prefer_av1) {
