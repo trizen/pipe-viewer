@@ -27,7 +27,10 @@ The project is in its early stages of development and some features are not impl
 * Arch Linux (AUR): https://aur.archlinux.org/packages/pipe-viewer-git/
 * Void Linux: `sudo xbps-install pipe-viewer`
 * Gentoo Linux (kske overlay): `eselect repository enable kske && emerge -av net-misc/pipe-viewer`
-
+* [Guix](https://guix.gnu.org):
+Pipe-Viewer can be deployed on any GNU/Linux distribution using Guix.
+To install in the user's default profile, do `guix install pipe-viewer`.
+To test without installing, do `guix environment --pure --ad-hoc pipe-viewer mpv -- pipe-viewer`.
 
 ### VIDEO REVIEWS
 
