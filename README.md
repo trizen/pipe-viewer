@@ -17,11 +17,6 @@ This fork parses the YouTube website directly and relies on the invidious instan
 ![gtk-pipe-viewer](https://user-images.githubusercontent.com/614513/97737137-89125100-1ad4-11eb-8ff3-b19cd0041528.png)
 
 
-### STATUS
-
-The project is in its early stages of development and some features are not implemented yet.
-
-
 ### AVAILABILITY
 
 * Arch Linux (AUR): https://aur.archlinux.org/packages/pipe-viewer-git/
