@@ -282,8 +282,11 @@ my %CONFIG = (
     recent_history         => 10,
     remember_session       => 1,
     remember_session_depth => 10,
-    save_titles_to_history => 0,
     entry_completion_limit => 10,
+
+    # Save titles
+    save_titles_to_history  => 0,
+    save_watched_to_history => 0,
 );
 
 {
@@ -1534,7 +1537,7 @@ set_text(
     F11    : minimize-maximize the main window
 
 HELP_TEXT
-        );
+);
 
 {
     my $font = Pango::FontDescription::from_string('Monospace 8');
@@ -3492,6 +3495,11 @@ sub prepend_video_data_to_file {
 
 sub save_watched_video {
     my ($video_id, $video_data) = @_;
+
+    # Store the video title to history (when `save_watched_to_history` is true)
+    if ($CONFIG{save_watched_to_history}) {
+        append_to_history($yv_utils->get_title($video_data), 0);
+    }
 
     if ($CONFIG{watch_history}) {
 
