@@ -2316,7 +2316,6 @@ sub popular_uploads {
     my $results = $yv_obj->popular_videos($channel);
 
     if ($yv_utils->has_entries($results)) {
-        $liststore->clear if $CONFIG{clear_search_list};
         display_results($results);
     }
     else {
@@ -2367,7 +2366,6 @@ sub popular_uploads {
                                           );
 
             if ($yv_utils->has_entries($request)) {
-                $liststore->clear if $CONFIG{clear_search_list};
                 display_results($request);
             }
             else {
@@ -2430,8 +2428,6 @@ sub search {
     my $keywords = $search_entry->get_text();
 
     return if check_keywords($keywords);
-
-    $liststore->clear if $CONFIG{clear_search_list};
 
     # Remember the input text when "history" is enabled
     if ($CONFIG{history}) {
@@ -2523,7 +2519,6 @@ sub get_code {
                     die "This is the last page!\n";
                 }
 
-                $liststore->clear if $CONFIG{clear_search_list};
                 display_results($results);
             }
             elsif ($type eq 'video') {
@@ -2851,12 +2846,10 @@ sub get_watched_video_results {
 }
 
 sub display_watched_videos {
-    $liststore->clear if $CONFIG{clear_search_list};
     display_results(get_watched_video_results());
 }
 
 sub display_subscription_videos {
-    $liststore->clear if $CONFIG{clear_search_list};
     display_results(get_subscription_video_results());
 }
 
@@ -2897,6 +2890,8 @@ sub display_results {
     if (not $yv_utils->has_entries($results)) {
         die "No results...\n";
     }
+
+    $liststore->clear if $CONFIG{clear_search_list};
 
     if (@$items) {
         add_results_to_history($results) if not $from_history;
@@ -3266,7 +3261,6 @@ sub list_playlist {
     my $results = $yv_obj->videos_from_playlist_id($playlist_id);
 
     if ($yv_utils->has_entries($results)) {
-        $liststore->clear if $CONFIG{clear_search_list};
         display_results($results);
         return 1;
     }
@@ -3282,7 +3276,6 @@ sub list_channel_videos {
     my $results = $yv_obj->uploads($channel_id);
 
     if ($yv_utils->has_entries($results)) {
-        $liststore->clear if $CONFIG{clear_search_list};
         display_results($results);
         return 1;
     }
@@ -3298,7 +3291,6 @@ sub list_username_videos {
     my $results = $yv_obj->uploads_from_username($username);
 
     if ($yv_utils->has_entries($results)) {
-        $liststore->clear if $CONFIG{clear_search_list};
         display_results($results);
         return 1;
     }
@@ -3314,7 +3306,6 @@ sub list_channel_playlists {
     my $results = $yv_obj->playlists($channel_id);
 
     if ($yv_utils->has_entries($results)) {
-        $liststore->clear if $CONFIG{clear_search_list};
         display_results($results);
         return 1;
     }
@@ -3330,7 +3321,6 @@ sub list_username_playlists {
     my $results = $yv_obj->playlists_from_username($username);
 
     if ($yv_utils->has_entries($results)) {
-        $liststore->clear if $CONFIG{clear_search_list};
         display_results($results);
         return 1;
     }
@@ -3570,7 +3560,6 @@ sub list_category {
     my $videos = $yv_obj->trending_videos_from_category($cat_id);
 
     if ($yv_utils->has_entries($videos)) {
-        $liststore->clear if $CONFIG{clear_search_list};
         display_results($videos);
     }
     else {
@@ -3583,8 +3572,6 @@ sub list_local_playlist {
 
     my $reverse_playlist = $gui->get_object('reverse_playlist')->get_active;
     my $playlist_file    = $playlists_liststore->get($iter, 3);
-
-    $liststore->clear if $CONFIG{clear_search_list};
 
     my $results = videos_from_data_file($playlist_file, reverse => $reverse_playlist);
     display_results($results);
@@ -3780,7 +3767,6 @@ sub show_related_videos {
 
     my $results = $yv_obj->related_to_videoID($video_id);
     if ($yv_utils->has_entries($results)) {
-        $liststore->clear if $CONFIG{clear_search_list};
         display_results($results);
     }
     else {
@@ -3955,7 +3941,6 @@ sub display_next_results {
 
 sub display_relative_results {
     my ($nth_item) = @_;
-    $liststore->clear if $CONFIG{clear_search_list};
     my $results_copy = $ResultsHistory{results}[$nth_item];
     display_results($results_copy, 1);
     set_prev_next_results_sensitivity();
@@ -3973,7 +3958,6 @@ sub show_videos_from_selected_author {
 sub show_playlists_from_selected_author {
     my $request = $yv_obj->playlists(get_channel_id_for_selected_video() || return);
     if ($yv_utils->has_entries($request)) {
-        $liststore->clear if $CONFIG{clear_search_list};
         display_results($request);
     }
     else {
