@@ -3080,7 +3080,7 @@ sub print_local_subscription_videos {
     }
 
     if (@$subscriptions_data) {
-        Storable::store($subscriptions_data, $subscription_videos_data_file);
+        Storable::store([grep { $yv_utils->get_time($_) ne 'LIVE' } @$subscriptions_data], $subscription_videos_data_file);
     }
 
     print_videos(get_results_from_list($subscriptions_data));

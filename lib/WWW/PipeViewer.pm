@@ -462,7 +462,7 @@ sub lwp_get {
     }
 
     # Too many errors. Pick another invidious instance.
-    if ($url !~ m{\byoutube\.com\b/}) {
+    if ($url !~ m{(?:\byoutube\.com/|\bi\.ytimg\.com/)}) {
         $self->pick_and_set_random_instance();
     }
 

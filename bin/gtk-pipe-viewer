@@ -2523,6 +2523,7 @@ sub get_code {
                     die "This is the last page!\n";
                 }
 
+                $liststore->clear if $CONFIG{clear_search_list};
                 display_results($results);
             }
             elsif ($type eq 'video') {
@@ -2555,7 +2556,7 @@ sub append_next_page {
 
     $liststore->set(
                     $iter,
-                    0 => "<big><b>LOAD MORE</b></big>",
+                    0 => "<big><b>NEXT PAGE</b></big>",
                     3 => $url,
                     5 => $token,
                     7 => 'next_page',
@@ -2839,7 +2840,7 @@ sub get_subscription_video_results {
     }
 
     if (@$subscriptions_data) {
-        Storable::store($subscriptions_data, $subscription_videos_data_file);
+        Storable::store([grep { $yv_utils->get_time($_) ne 'LIVE' } @$subscriptions_data], $subscription_videos_data_file);
     }
 
     get_results_from_list(entries => $subscriptions_data);
