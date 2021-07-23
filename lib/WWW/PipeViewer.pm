@@ -773,10 +773,10 @@ sub _extract_from_invidious {
     }
     else {
         @instances = qw(
-          invidious.tube
-          invidious.site
-          invidious.fdn.fr
           invidious.snopyta.org
+          invidious.silkky.cloud
+          invidious.namazso.eu
+          ytprivate.com
         );
     }
 
