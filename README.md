@@ -14,7 +14,7 @@ This fork parses the YouTube website directly and relies on the invidious instan
 
 * GTK+ interface to YouTube.
 
-![gtk-pipe-viewer](https://user-images.githubusercontent.com/614513/97737137-89125100-1ad4-11eb-8ff3-b19cd0041528.png)
+![gtk-pipe-viewer](https://user-images.githubusercontent.com/614513/127567550-d5742dee-593c-4167-acc4-6d80fd061ffc.png)
 
 
 ### AVAILABILITY
