@@ -775,6 +775,7 @@ sub _extract_from_invidious {
         @instances = qw(
           invidious.snopyta.org
           invidious.silkky.cloud
+          invidious.fdn.fr
           invidious.namazso.eu
           ytprivate.com
         );
@@ -1138,6 +1139,7 @@ sub _get_youtubei_content {
                                                            "hl"            => "en",
                                                            "gl"            => "US",
                                                            "clientName"    => "WEB",
+                                                           "clientScreen"  => "EMBED",
                                                            "clientVersion" =>
                                                              sprintf("2.%s.05.00", Time::Piece->new(time)->strftime("%Y%m%d")),
                                                        }
