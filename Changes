@@ -5,6 +5,11 @@
 
 [CHANGELOG]
 
+Version 0.1.3
+
+- Added basic support for age-restricted videos.
+- Improved support for retrieving closed-captions.
+
 Version 0.1.2
 
 - Fixed the support for related videos.
