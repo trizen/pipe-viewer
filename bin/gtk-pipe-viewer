@@ -55,8 +55,6 @@ my $version = $WWW::PipeViewer::VERSION;
 # Saved and subscribed channels
 my %channels;
 my %subscribed_channels;
-my %removed_channels;
-my %unsubbed_channels;
 
 # Share directory
 my $share_dir =
@@ -1994,14 +1992,7 @@ set_local_playlists();
 # ------------ Usernames list window ------------ #
 sub set_usernames {
     if (-e $CONFIG{youtube_users_file}) {
-        %channels = (
-                     %channels,
-                     (
-                      map    { @$_ }
-                        grep { not exists $removed_channels{$_->[0]} }
-                        $yv_utils->read_channels_from_file($CONFIG{youtube_users_file})
-                     )
-                    );
+        %channels = ((map { @$_ } $yv_utils->read_channels_from_file($CONFIG{youtube_users_file})), %channels);
     }
     else {
         # Default channels
@@ -2033,15 +2024,8 @@ sub set_usernames {
     }
 
     if (-e $CONFIG{subscribed_channels_file}) {
-        %subscribed_channels = (
-                                %subscribed_channels,
-                                (
-                                 map    { @$_ }
-                                   grep { not exists $unsubbed_channels{$_->[0]} }
-                                   grep { not exists $removed_channels{$_->[0]} }
-                                   $yv_utils->read_channels_from_file($CONFIG{subscribed_channels_file})
-                                )
-                               );
+        %subscribed_channels =
+          ((map { @$_ } $yv_utils->read_channels_from_file($CONFIG{subscribed_channels_file})), %subscribed_channels,);
     }
 
     $users_liststore->clear;    # clear the list
@@ -2114,11 +2098,11 @@ sub save_channel_by_id {
         say ":: Subscribed channel: $channel_name" if $yv_obj->get_debug;
         $subscribed_channels{$channel_id} = $channel_name;
         write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
-        set_usernames();
     }
 
     # Channel ID already exists in the list
     if (exists($channels{$channel_id})) {
+        set_usernames() if $args{subscribe};
         return;
     }
 
@@ -2127,19 +2111,11 @@ sub save_channel_by_id {
         $channel_name = $yv_obj->channel_title_from_id($channel_id) // $channel_id;
     }
 
-    # Store it internally
+    # Save channel to file
+    say ":: Saving channel: $channel_name" if $yv_obj->get_debug;
     $channels{$channel_id} = $channel_name;
-
-    # Append it to the list
-    my $iter = $users_liststore->append;
-
-    $users_liststore->set(
-                          $iter,
-                          0 => $channel_id,
-                          1 => $channel_name,
-                          2 => 'channel',
-                          3 => $user_icon_pixbuf,
-                         );
+    write_channels_to_file(\%channels, $CONFIG{youtube_users_file});
+    set_usernames();
 }
 
 sub add_user_to_favorites {
@@ -2163,13 +2139,11 @@ sub subscribe_toggle_selected_username {
     my $channel_name = $users_liststore->get($iter, 1);
 
     if (exists $subscribed_channels{$channel_id}) {
-        $unsubbed_channels{$channel_id} = 1;
         delete $subscribed_channels{$channel_id};
         $users_liststore->set($iter, [3], [$user_icon_pixbuf]);
     }
     else {
         $subscribed_channels{$channel_id} = $channel_name;
-        delete $unsubbed_channels{$channel_id};
         $users_liststore->set($iter, [3], [$feed_icon_pixbuf]);
     }
 
@@ -2185,8 +2159,10 @@ sub remove_selected_username {
     delete $channels{$channel_id};
     delete $subscribed_channels{$channel_id};
 
-    $removed_channels{$channel_id} = 1;
     $users_liststore->remove($iter);
+
+    write_channels_to_file(\%channels,            $CONFIG{youtube_users_file});
+    write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
 }
 
 sub write_channels_to_file {
@@ -2211,16 +2187,7 @@ sub write_channels_to_file {
 
 sub save_usernames_to_file {
 
-    set_usernames();    # update %channels
-
-    foreach my $id (keys %removed_channels) {
-        delete $channels{$id};
-        delete $subscribed_channels{$id};
-    }
-
-    foreach my $id (keys %unsubbed_channels) {
-        delete $subscribed_channels{$id};
-    }
+    set_usernames();    # update channels
 
     write_channels_to_file(\%channels,            $CONFIG{youtube_users_file});
     write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
