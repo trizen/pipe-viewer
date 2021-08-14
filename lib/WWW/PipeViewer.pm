@@ -1295,7 +1295,7 @@ sub get_streaming_urls {
     }
 
     # Try again with youtube-dl
-    if (!@streaming_urls or (($json->{playabilityStatus}{status} // '') =~ /fail|error/i)) {
+    if (!@streaming_urls or (($json->{playabilityStatus}{status} // '') =~ /fail|error|unavailable|not available/i)) {
         @streaming_urls = $self->_fallback_extract_urls($videoID);
         push @caption_urls, $self->_fallback_extract_captions($videoID);
     }
