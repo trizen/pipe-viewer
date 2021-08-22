@@ -64,6 +64,7 @@ To install `gtk-pipe-viewer` along with `pipe-viewer`, run:
     sudo ./Build installdeps
     sudo ./Build install
 ```
+You may need to `sudo cp -r share/* /usr/local/lib64/perl5/5.32/auto/WWW/PipeViewer/`
 
 ### DEPENDENCIES
 Idependencies installation:
