@@ -66,7 +66,8 @@ To install `gtk-pipe-viewer` along with `pipe-viewer`, run:
 ```
 
 ### DEPENDENCIES
-
+Idependencies installation:
+`sudo yum install perl-Module-Build perl-JSON-Any perl-LWP-Protocol-https perl-Memoize`
 #### For pipe-viewer:
 
 * [libwww-perl](https://metacpan.org/release/libwww-perl)
