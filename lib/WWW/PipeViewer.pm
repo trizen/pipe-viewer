@@ -27,6 +27,8 @@ use parent qw(
   WWW::PipeViewer::VideoCategories
 );
 
+use WWW::PipeViewer::Utils;
+
 =head1 NAME
 
 WWW::PipeViewer - A very easy interface to YouTube, using the API of invidious.
@@ -619,8 +621,6 @@ sub _find_working_instance {
     my ($self, $candidates, $extra_candidates) = @_;
 
     require List::Util;
-    require WWW::PipeViewer::Utils;
-
     state $yv_utils = WWW::PipeViewer::Utils->new();
 
     foreach my $instance (List::Util::shuffle(@$candidates), List::Util::shuffle(@$extra_candidates)) {
