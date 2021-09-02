@@ -5,6 +5,11 @@
 
 [CHANGELOG]
 
+Version 0.1.4
+
+- Extended the `get_video_id_re` regular expression to support URI-encoded YouTube URLs.
+- GUI: update the list of saved and subscribed channels on-demand, in order to prevent data loss.
+
 Version 0.1.3
 
 - Added basic support for age-restricted videos.

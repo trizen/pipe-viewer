@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  pipe-viewer
 #  Fork: 30 October 2020
-#  Edit: 04 August 2021
+#  Edit: 02 September 2021
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -46,7 +46,7 @@ no warnings 'once';
 my $DEVEL;                                           # true in devel mode
 use if ($DEVEL = -w __FILE__), lib => qw(../lib);    # devel mode
 
-use WWW::PipeViewer v0.1.3;
+use WWW::PipeViewer v0.1.4;
 use WWW::PipeViewer::RegularExpressions;
 
 require Storable;
