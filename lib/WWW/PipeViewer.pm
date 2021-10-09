@@ -32,11 +32,11 @@ use WWW::PipeViewer::Utils;
 
 =head1 NAME
 
-WWW::PipeViewer - A very easy interface to YouTube, using the API of invidious.
+WWW::PipeViewer - A simple interface to YouTube.
 
 =cut
 
-our $VERSION = '0.1.4';
+our $VERSION = '0.1.5';
 
 =head1 SYNOPSIS
 

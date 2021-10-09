@@ -5,6 +5,11 @@
 
 [CHANGELOG]
 
+Version 0.1.5
+
+- Workaround for the throttling issue.
+- Added the force_fallback config-option. (disabled by default)
+
 Version 0.1.4
 
 - Extended the `get_video_id_re` regular expression to support URI-encoded YouTube URLs.
