@@ -1153,7 +1153,7 @@ sub _get_youtubei_content {
               );
 
     local $self->{access_token} = undef;
-    my $content = $self->post_as_json($url, \%android);
+    my $content = $self->post_as_json($url, $endpoint eq 'next' ? \%web : \%android);
 
     return $content;
 }

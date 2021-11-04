@@ -683,6 +683,23 @@ sub get_thumbnail_url {
     my @thumbs = map  { ref($_) eq 'ARRAY' ? @{$_} : $_ } @{$info->{videoThumbnails}};
     my @wanted = grep { $_->{quality} eq $type } grep { ref($_) eq 'HASH' } @thumbs;
 
+    my %types = (
+                 low      => '',
+                 high     => 'hq',
+                 medium   => 'mq',
+                 standard => 'sd',
+                );
+
+    if (exists $types{$type}) {
+
+        my $type_prefix = $types{$type};
+        my @selected    = grep { $_->{url} =~ m{/${type_prefix}default\.\w} } @thumbs;
+
+        if (@selected) {
+            @wanted = @selected;
+        }
+    }
+
     my $url;
 
     if (@wanted) {
