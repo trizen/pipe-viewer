@@ -698,6 +698,10 @@ sub get_thumbnail_url {
         if (@selected) {
             @wanted = @selected;
         }
+        else {
+            $_->{url} =~ s{/\K\w*?(?=default\.\w)}{$type_prefix} for @thumbs;
+            @wanted = @thumbs;
+        }
     }
 
     my $url;
