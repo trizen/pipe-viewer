@@ -5,6 +5,11 @@
 
 [CHANGELOG]
 
+Version 0.1.6
+
+- Fixed the support for related videos.
+- Thumbnail fixes for related videos and watched videos.
+
 Version 0.1.5
 
 - Workaround for the throttling issue.
