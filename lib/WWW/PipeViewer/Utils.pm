@@ -717,6 +717,11 @@ sub get_thumbnail_url {
     # Clean URL of trackers and other junk
     $url =~ s/\.(?:jpg|png|webp)\K\?.*//;
 
+    # Prefer JPEG over WEBP (otherwise, it fails when webp-pixbuf-loader is not installed - #50)
+    if ($url =~ s/\.webp\z/.jpg/) {
+        $url =~ s{/vi_webp/}{/vi/};
+    }
+
     return $url;
 }
 
