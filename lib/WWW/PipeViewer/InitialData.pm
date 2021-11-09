@@ -420,7 +420,10 @@ sub _parse_itemSection_nextpage {
 sub _extract_sectionList_results {
     my ($self, $data, %args) = @_;
 
-    eval { ref($data->{contents}) eq 'ARRAY' } or return;
+    $data // return;
+    ref($data) eq 'HASH' or return;
+    $data->{contents} // return;
+    ref($data->{contents}) eq 'ARRAY' or return;
 
     my @results;
 
@@ -508,7 +511,10 @@ sub _add_author_to_results {
 sub _find_sectionList {
     my ($self, $data) = @_;
 
-    if (ref($data) eq 'HASH' and exists($data->{alerts})) {
+    $data // return undef;
+    ref($data) eq 'HASH' or return undef;
+
+    if (exists($data->{alerts})) {
         if (
             ref($data->{alerts}) eq 'ARRAY' and grep {
                 eval { $_->{alertRenderer}{type} =~ /error/i }
@@ -516,6 +522,10 @@ sub _find_sectionList {
           ) {
             return undef;
         }
+    }
+
+    if (not exists $data->{contents}) {
+        return undef;
     }
 
     eval {
