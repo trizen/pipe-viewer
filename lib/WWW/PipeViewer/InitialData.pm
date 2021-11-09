@@ -508,6 +508,16 @@ sub _add_author_to_results {
 sub _find_sectionList {
     my ($self, $data) = @_;
 
+    if (ref($data) eq 'HASH' and exists($data->{alerts})) {
+        if (
+            ref($data->{alerts}) eq 'ARRAY' and grep {
+                eval { $_->{alertRenderer}{type} =~ /error/i }
+            } @{$data->{alerts}}
+          ) {
+            return undef;
+        }
+    }
+
     eval {
         (
          grep {
