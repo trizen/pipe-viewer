@@ -28,6 +28,65 @@ sub _make_commentThreads_url {
                            );
 }
 
+sub comments_from_ytdlp {
+    my ($self, $video_id) = @_;
+
+    my $max_comments      = $self->get_ytdlp_max_comments;
+    my $max_comment_depth = $self->get_ytdlp_max_comment_depth;
+    my $comments_order    = $self->get_comments_order;
+    my $ytdlp_cmd         = $self->get_ytdlp_cmd;
+
+    my @cmd = (
+        $ytdlp_cmd,
+        '--write-comments',
+        '--extractor-args',
+        quotemeta(
+"youtube:comment_sort=$comments_order;skip=hls,dash;player_skip=js;max_comments=$max_comments;max_comment_depth=$max_comment_depth"
+        ),
+        '--no-check-formats',
+        '--ignore-no-formats-error',
+        '--dump-single-json',
+        quotemeta("https://www.youtube.com/watch?v=$video_id"),
+    );
+
+    if ($self->get_debug) {
+        say STDERR ":: Extracting comments with `yt-dlp`...";
+    }
+
+    my $info = $self->parse_json_string($self->proxy_stdout(@cmd) // return);
+
+    (ref($info) eq 'HASH' and exists($info->{comments}) and ref($info->{comments}) eq 'ARRAY')
+      || return;
+
+    my @comments = @{$info->{comments}};
+
+    my %table;
+    foreach my $comment (@comments) {
+        my $id = $comment->{id} // "root";
+        $table{$id} = $comment;
+    }
+
+    my @formatted_comments;
+    foreach my $comment (@comments) {
+        my $parent = $comment->{parent} // "root";
+
+        if ($parent ne "root" and exists($table{$parent})) {
+            push @{$table{$parent}{replies}}, $comment;
+        }
+        else {
+            push @formatted_comments, $comment;
+        }
+    }
+
+    scalar {
+            results => {
+                        comments => \@formatted_comments,
+                        videoId  => $video_id,
+                       },
+            url => undef,
+           };
+}
+
 =head2 comments_from_videoID($videoID)
 
 Retrieve comments from a video ID.
@@ -36,6 +95,12 @@ Retrieve comments from a video ID.
 
 sub comments_from_video_id {
     my ($self, $video_id) = @_;
+
+    if ($self->get_ytdlp_comments) {
+        my $comments = $self->comments_from_ytdlp($video_id);
+        defined($comments) and return $comments;
+    }
+
     $self->_get_results($self->_make_feed_url("comments/$video_id", sort_by => $self->get_comments_order));
 }
 

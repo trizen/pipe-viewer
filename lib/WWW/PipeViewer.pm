@@ -90,6 +90,12 @@ my %valid_options = (
     ytdl     => {valid => [1, 0], default => 1},
     ytdl_cmd => {valid => qr/\w/, default => "youtube-dl"},
 
+    # yt-dlp comment options
+    ytdlp_cmd               => {valid => qr/\w/,     default => "yt-dlp"},
+    ytdlp_comments          => {valid => [1, 0],     default => 0},
+    ytdlp_max_comments      => {valid => qr/^\d+\z/, default => 50},
+    ytdlp_max_comment_depth => {valid => [1, 2],     default => 2},
+
     # Booleans
     env_proxy        => {valid => [1, 0], default => 1},
     escape_utf8      => {valid => [1, 0], default => 0},

@@ -739,7 +739,7 @@ sub get_author {
 
 sub get_comment_id {
     my ($self, $info) = @_;
-    $info->{commentId};
+    $info->{commentId} // $info->{id};
 }
 
 sub get_video_count {
@@ -769,7 +769,7 @@ sub get_playlist_item_count {
 
 sub get_comment_content {
     my ($self, $info) = @_;
-    $info->{content};
+    $info->{content} // $info->{text};
 }
 
 sub get_id {
@@ -831,6 +831,9 @@ sub get_publication_date {
 
     if (defined($info->{published})) {
         $time = eval { Time::Piece->new($info->{published}) };
+    }
+    elsif (defined($info->{timestamp})) {
+        $time = eval { Time::Piece->new($info->{timestamp}) };
     }
     elsif (defined($info->{publishDate})) {
         if ($info->{publishDate} =~ /^[0-9]+\z/) {    # time given as "%yyyy%mm%dd" (from youtube-dl)
@@ -905,7 +908,7 @@ sub get_publication_time {
 
 sub get_publication_age {
     my ($self, $info) = @_;
-    ($info->{publishedText} // '') =~ s/\sago\z//r;
+    ($info->{publishedText} // $info->{time_text} // '') =~ s/\sago\z//r;
 }
 
 sub get_publication_age_approx {

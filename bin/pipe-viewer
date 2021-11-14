@@ -277,6 +277,12 @@ my %CONFIG = (
     ytdl     => 1,
     ytdl_cmd => undef,                                       # auto-defined
 
+    # yt-dlp comment options
+    ytdlp_cmd               => undef,                        # auto-defined
+    ytdlp_comments          => 0,
+    ytdlp_max_comments      => 20,
+    ytdlp_max_comment_depth => 1,
+
     # Custom layout
     custom_layout_format => [{width => 3,     align => "right", color => "bold",      text => "*NO*.",},
                              {width => "55%", align => "left",  color => "bold blue", text => "*TITLE*",},
@@ -512,19 +518,24 @@ sub load_config {
         }
     }
 
-    # Locate yt-dlp or youtube-dl (in this order)
-    if (not defined($CONFIG{ytdl_cmd})) {
+    # Locate yt-dlp and youtube-dl
+    if (not defined($CONFIG{ytdl_cmd}) or not defined($CONFIG{ytdlp_cmd})) {
 
         foreach my $ytdl (qw(yt-dlp youtube-dl)) {
             my $ytdl_path = which_command($ytdl);
 
+            if ($ytdl eq 'yt-dlp') {
+                $CONFIG{ytdlp_cmd} //= $ytdl_path;
+            }
+
             if (defined($ytdl_path)) {
-                $CONFIG{ytdl_cmd} = $ytdl_path;
+                $CONFIG{ytdl_cmd} //= $ytdl_path;
                 last;
             }
         }
 
-        $CONFIG{ytdl_cmd} //= 'youtube-dl';
+        $CONFIG{ytdl_cmd}  //= 'youtube-dl';
+        $CONFIG{ytdlp_cmd} //= 'yt-dlp';
         $update_config = 1;
     }
 
@@ -654,6 +665,7 @@ my $yv_obj = WWW::PipeViewer->new(
                                   config_dir  => $config_dir,
                                   ytdl        => $opt{ytdl},
                                   ytdl_cmd    => $opt{ytdl_cmd},
+                                  ytdlp_cmd   => $opt{ytdlp_cmd},
                                   cache_dir   => $opt{cache_dir},
                                   env_proxy   => $opt{env_proxy},
                                   cookie_file => $opt{cookie_file},
@@ -724,6 +736,10 @@ usage: $execname [options] ([url] | [keywords])
    --comments=s         : display comments for a video by ID or URL
    --comments-order=s   : change the order of YouTube comments
                           valid values: relevance, time
+   --ytdlp-comments!    : use `yt-dlp` to extract comments
+   --max-comments=i     : maximum number of comments (with --ytdlp-comments)
+   --comments-depth=i   : depth of comments (with --ytdlp-comments)
+                          valid values: 1 (without replies), 2 (with replies)
 
  * Filtering
    --author=s           : search in videos uploaded by a specific user
@@ -860,6 +876,7 @@ usage: $execname [options] ([url] | [keywords])
    --ytdl!              : use youtube-dl for videos with encrypted signatures
                           `--no-ytdl` will use invidious instances
    --ytdl-cmd=s         : youtube-dl command (default: youtube-dl)
+   --ytdlp-cmd=s        : yt-dlp command (default: yt-dlp)
 
 Help options:
    -T  --tricks         : show more 'hidden' features of $execname
@@ -1148,6 +1165,8 @@ sub apply_configuration {
                              user_agent force_fallback
                              cookie_file timeout ytdl ytdl_cmd
                              prefer_mp4 prefer_av1 prefer_invidious
+                             ytdlp_comments ytdlp_max_comments
+                             ytdlp_max_comment_depth ytdlp_cmd
                              )
       ) {
 
@@ -1441,6 +1460,10 @@ sub parse_arguments {
         'comments=s'       => \$opt{get_comments},
         'comments-order=s' => \$opt{comments_order},
 
+        'yt-dlp-comments|ytdlp-comments!'          => \$opt{ytdlp_comments},
+        'max-comments=i'                           => \$opt{ytdlp_max_comments},
+        'comments-depth|max-comment-depth|depth=i' => \$opt{ytdlp_max_comment_depth},
+
         'c|categories'                => \$opt{categories},
         'video-ids|videoids|id|ids=s' => \$opt{play_video_ids},
 
@@ -1577,8 +1600,9 @@ sub parse_arguments {
         'pos|position=i'                    => \$opt{position},
         'ps|playlist-save=s'                => \$opt{playlist_save},
 
-        'ytdl!'      => \$opt{ytdl},
-        'ytdl-cmd=s' => \$opt{ytdl_cmd},
+        'ytdl!'       => \$opt{ytdl},
+        'ytdl-cmd=s'  => \$opt{ytdl_cmd},
+        'ytdlp-cmd=s' => \$opt{ytdlp_cmd},
 
         'quiet|q!'      => \$opt{quiet},
         'really-quiet!' => \$opt{really_quiet},
@@ -2670,19 +2694,20 @@ sub print_comments {
     my $url      = $results->{url};
     my $comments = $results->{results}{comments} // [];
 
-    my $i = 0;
     foreach my $comment (@{$comments}) {
-        my $comment_id  = $yv_utils->get_comment_id($comment);
-        my $comment_age = $yv_utils->get_publication_age_approx($comment);
+        my $comment_age = $yv_utils->get_publication_age($comment);
+
+        if ($comment_age) {
+            $comment_age = "$comment_age ago";
+        }
+        else {
+            $comment_age = $yv_utils->get_publication_date($comment) // 'unknown';
+        }
 
         printf(
                "\n%s (%s) commented:\n%s\n",
                colored($yv_utils->get_author($comment), 'bold'),
-               (
-                $comment_age =~ /sec|min|hour|day/
-                ? "$comment_age ago"
-                : $yv_utils->get_publication_date($comment)
-               ),
+               $comment_age,
                wrap_text(
                          i_tab => q{ } x 3,
                          s_tab => q{ } x 3,
@@ -2690,25 +2715,29 @@ sub print_comments {
                         ),
               );
 
-        #~ if (exists $comment->{replies}) {
-        #~ foreach my $reply (reverse @{$comment->{replies}{comments}}) {
-        #~ my $reply_age = $yv_utils->date_to_age($reply->{snippet}{publishedAt});
-        #~ printf(
-        #~ "\n   %s (%s) replied:\n%s\n",
-        #~ colored($reply->{snippet}{authorDisplayName}, 'bold'),
-        #~ (
-        #~ $reply_age =~ /sec|min|hour|day/
-        #~ ? "$reply_age ago"
-        #~ : $yv_utils->format_date($reply->{snippet}{publishedAt})
-        #~ ),
-        #~ wrap_text(
-        #~ i_tab => q{ } x 6,
-        #~ s_tab => q{ } x 6,
-        #~ text  => [$reply->{snippet}{textDisplay} // 'Empty comment...']
-        #~ ),
-        #~ );
-        #~ }
-        #~ }
+        if (exists($comment->{replies}) and ref($comment->{replies}) eq 'ARRAY') {
+            foreach my $reply (@{$comment->{replies}}) {
+                my $reply_age = $yv_utils->get_publication_age($reply);
+
+                if ($reply_age) {
+                    $reply_age = "$reply_age ago";
+                }
+                else {
+                    $reply_age = $yv_utils->get_publication_date($reply) // 'unknown';
+                }
+
+                printf(
+                       "\n   %s (%s) replied:\n%s\n",
+                       colored($yv_utils->get_author($reply), 'bold'),
+                       $reply_age,
+                       wrap_text(
+                                 i_tab => q{ } x 6,
+                                 s_tab => q{ } x 6,
+                                 text  => [$yv_utils->get_comment_content($reply) // 'Empty reply...']
+                                ),
+                      );
+            }
+        }
     }
 
     my @keywords = get_input_for_comments();
@@ -4981,7 +5010,30 @@ When set to C<0>, invidious instances will be used instead.
 
 =head2 ytdl_cmd
 
-Command for C<youtube-dl> when C<ytdl> is set to a true value.
+Command for C<youtube-dl> when C<ytdl> is set to C<1>.
+
+=head2 ytdlp_cmd
+
+Command for C<yt-dlp> for extracting YouTube comments when C<ytdlp_comments> is set to C<1>.
+
+=head2 ytdlp_comments
+
+When set to C<1>, use C<yt-dlp> for extracting YouTube comments. (experimental)
+
+When set to C<0>, invidious instances will be used instead.
+
+=head2 ytdlp_max_comments
+
+Maximum number of comments to extract with C<yt-dlp>.
+
+Replies count as comments.
+
+=head2 ytdlp_max_comment_depth
+
+Depth for YouTube comments: 1 or 2.
+
+    1 = comments only
+    2 = comments + replies
 
 =head1 CONFIGURATION FILES
 
