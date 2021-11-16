@@ -45,14 +45,14 @@ sub comments_from_ytdlp {
         $ytdlp_cmd,
         '--write-comments',
         '--extractor-args',
-        quotemeta(
-"youtube:comment_sort=$comments_order;skip=hls,dash;player_skip=js;max_comments=$max_comments;max_comment_depth=$max_comment_depth"
-        ),
+#<<<
+        quotemeta("youtube:comment_sort=$comments_order;skip=hls,dash;player_skip=js;max_comments=$max_comments;max_comment_depth=$max_comment_depth"),
+#>>>
         '--no-check-formats',
         '--ignore-no-formats-error',
         '--dump-single-json',
         quotemeta("https://www.youtube.com/watch?v=$video_id"),
-    );
+              );
 
     if ($self->get_debug) {
         say STDERR ":: Extracting comments with `yt-dlp`...";
@@ -85,7 +85,6 @@ sub comments_from_ytdlp {
     $last_root_comment_id //= $prev_root_comment_id // '';
 
     if ($page > 1) {
-        my $index = 0;
         my $prev_root_comment;
 
         foreach my $i (0 .. $#comments) {
@@ -96,12 +95,10 @@ sub comments_from_ytdlp {
             }
 
             if ($prev_comment_id and $comment->{id} eq $prev_comment_id) {
-                $index = $i + 1;
+                @comments = splice(@comments, $i + 1);
                 last;
             }
         }
-
-        @comments = splice(@comments, $index);
 
         if (defined($prev_root_comment)) {
             $prev_root_comment->{_hidden} = 1;
@@ -131,9 +128,8 @@ sub comments_from_ytdlp {
     my $continuation = undef;
 
     if ($comment_count >= $max_comments) {
-        my $next_page = $page + 1;
         $url          = 'https://yt-dlp';
-        $continuation = join(':', 'ytdlp:comments', $video_id, $next_page, $last_root_comment_id, $last_comment_id);
+        $continuation = join(':', 'ytdlp:comments', $video_id, $page + 1, $last_root_comment_id, $last_comment_id);
     }
 
     scalar {
