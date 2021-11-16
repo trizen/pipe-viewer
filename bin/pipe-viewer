@@ -280,7 +280,7 @@ my %CONFIG = (
     # yt-dlp comment options
     ytdlp_cmd               => undef,                        # auto-defined
     ytdlp_comments          => 0,
-    ytdlp_max_comments      => 20,
+    ytdlp_max_comments      => 10,
     ytdlp_max_comment_depth => 1,
 
     # Custom layout
@@ -1657,7 +1657,7 @@ for (my $i = 0 ; $i <= $#ARGV ; $i++) {
     }
 }
 
-if (my @keywords = grep chr ord ne q{-}, @ARGV) {
+if (my @keywords = grep { substr($_, 0, 1) ne q{-} } @ARGV) {
     print_videos($yv_obj->search_videos(\@keywords));
 }
 elsif ($opt{interactive} and -t) {
@@ -1851,9 +1851,7 @@ sub parse_options2 {
     my ($args, $keywords) = _parse_options($input);
 
     my @args =
-        map $args->{$_} eq '0' ? "--no-$_"
-      : $args->{$_} eq '1'     ? "--$_"
-      :                          "--$_=$args->{$_}" => keys %{$args};
+      map { $args->{$_} eq '0' ? "--no-$_" : $args->{$_} eq '1' ? "--$_" : "--$_=$args->{$_}" } keys %{$args};
 
     return wantarray ? (\@args, [split q{ }, $keywords]) : \@args;
 }
@@ -2698,7 +2696,9 @@ sub print_comments {
         my $comment_age = $yv_utils->get_publication_age($comment);
 
         if ($comment_age) {
-            $comment_age = "$comment_age ago";
+            if ($comment_age !~ / ago\b/) {
+                $comment_age = "$comment_age ago";
+            }
         }
         else {
             $comment_age = $yv_utils->get_publication_date($comment) // 'unknown';
@@ -2713,7 +2713,8 @@ sub print_comments {
                          s_tab => q{ } x 3,
                          text  => [$yv_utils->get_comment_content($comment) // 'Empty comment...']
                         ),
-              );
+              )
+          if not $comment->{_hidden};
 
         if (exists($comment->{replies}) and ref($comment->{replies}) eq 'ARRAY') {
             foreach my $reply (@{$comment->{replies}}) {
@@ -3271,7 +3272,7 @@ sub print_playlists {
         }
     }
 
-    my $contains_keywords = grep /$non_digit_or_opt_re/, @keywords;
+    my $contains_keywords = grep { /$non_digit_or_opt_re/ } @keywords;
 
     my @for_search;
     foreach my $key (@keywords) {
@@ -3771,7 +3772,7 @@ sub get_player_command {
             ),
 
             # Rest of the arguments
-            grep({ defined($_) and /\S/ } values %MPLAYER)
+            (grep { defined($_) and /\S/ } values %MPLAYER)
         )
     );
 
@@ -4271,7 +4272,7 @@ sub print_videos {
     state @for_play;
 
     my @copy_of_keywords  = @keywords;
-    my $contains_keywords = grep /$non_digit_or_opt_re/, @keywords;
+    my $contains_keywords = grep { /$non_digit_or_opt_re/ } @keywords;
 
     while (@keywords) {
         my $key = shift @keywords;

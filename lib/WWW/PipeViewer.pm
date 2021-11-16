@@ -1455,6 +1455,11 @@ sub next_page_with_token {
         return $token->();
     }
 
+    if ($token =~ /^ytdlp:comments:(.*?):(\d+):(.*?):(.*)/) {
+        my ($video_id, $page, $prev_root_comment_id, $prev_comment_id) = ($1, $2, $3, $4);
+        return $self->comments_from_ytdlp($video_id, $page, $prev_root_comment_id, $prev_comment_id);
+    }
+
     if ($token =~ /^yt(search|browse):(\w+):(.*)/) {
         if ($1 eq 'browse') {
             return $self->yt_browse_next_page($url, $3, type => $2, url => $url);

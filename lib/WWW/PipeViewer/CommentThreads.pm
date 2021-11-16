@@ -29,12 +29,17 @@ sub _make_commentThreads_url {
 }
 
 sub comments_from_ytdlp {
-    my ($self, $video_id) = @_;
+    my ($self, $video_id, $page, $prev_root_comment_id, $prev_comment_id) = @_;
+
+    $page //= 1;
 
     my $max_comments      = $self->get_ytdlp_max_comments;
     my $max_comment_depth = $self->get_ytdlp_max_comment_depth;
     my $comments_order    = $self->get_comments_order;
     my $ytdlp_cmd         = $self->get_ytdlp_cmd;
+
+    my $max_comments_per_page = $max_comments;
+    $max_comments = $page * $max_comments;
 
     my @cmd = (
         $ytdlp_cmd,
@@ -58,7 +63,51 @@ sub comments_from_ytdlp {
     (ref($info) eq 'HASH' and exists($info->{comments}) and ref($info->{comments}) eq 'ARRAY')
       || return;
 
-    my @comments = @{$info->{comments}};
+    my @comments      = @{$info->{comments}};
+    my $comment_count = $info->{comment_count} // scalar(@comments);
+
+    my $last_comment_id      = undef;
+    my $last_root_comment_id = undef;
+
+    if (@comments) {
+        $last_comment_id = $comments[-1]{id};
+    }
+
+    for (my $i = $#comments ; $i >= 0 ; --$i) {
+        my $comment = $comments[$i];
+        if ($comment->{parent} eq 'root') {
+            $last_root_comment_id = $comment->{id};
+            last;
+        }
+    }
+
+    $last_comment_id      //= $prev_comment_id      // '';
+    $last_root_comment_id //= $prev_root_comment_id // '';
+
+    if ($page > 1) {
+        my $index = 0;
+        my $prev_root_comment;
+
+        foreach my $i (0 .. $#comments) {
+            my $comment = $comments[$i];
+
+            if ($prev_root_comment_id and $comment->{id} eq $prev_root_comment_id) {
+                $prev_root_comment = $comment;
+            }
+
+            if ($prev_comment_id and $comment->{id} eq $prev_comment_id) {
+                $index = $i + 1;
+                last;
+            }
+        }
+
+        @comments = splice(@comments, $index);
+
+        if (defined($prev_root_comment)) {
+            $prev_root_comment->{_hidden} = 1;
+            unshift @comments, $prev_root_comment;
+        }
+    }
 
     my %table;
     foreach my $comment (@comments) {
@@ -78,12 +127,22 @@ sub comments_from_ytdlp {
         }
     }
 
+    my $url          = undef;
+    my $continuation = undef;
+
+    if ($comment_count >= $max_comments) {
+        my $next_page = $page + 1;
+        $url          = 'https://yt-dlp';
+        $continuation = join(':', 'ytdlp:comments', $video_id, $next_page, $last_root_comment_id, $last_comment_id);
+    }
+
     scalar {
             results => {
-                        comments => \@formatted_comments,
-                        videoId  => $video_id,
+                        comments     => \@formatted_comments,
+                        videoId      => $video_id,
+                        continuation => $continuation,
                        },
-            url => undef,
+            url => $url,
            };
 }
 

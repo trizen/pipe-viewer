@@ -256,7 +256,7 @@ my %CONFIG = (
     # yt-dlp comment options
     ytdlp_cmd               => undef,    # auto-detect
     ytdlp_comments          => 0,
-    ytdlp_max_comments      => 50,
+    ytdlp_max_comments      => 20,
     ytdlp_max_comment_depth => 1,
 
     tooltips        => 1,
@@ -3431,7 +3431,7 @@ sub get_player_command {
             ),
 
             # Rest of the arguments
-            grep({ defined($_) and /\S/ } values %MPLAYER)
+            (grep { defined($_) and /\S/ } values %MPLAYER)
         )
     );
 
@@ -3799,7 +3799,9 @@ sub display_comments {
         my $comment_age = $yv_utils->get_publication_age($comment);
 
         if ($comment_age) {
-            $comment_age = "$comment_age ago";
+            if ($comment_age !~ / ago\b/) {
+                $comment_age = "$comment_age ago";
+            }
         }
         else {
             $comment_age = $yv_utils->get_publication_date($comment) // 'unknown';
@@ -3820,13 +3822,15 @@ sub display_comments {
                                              )
                                       );
 
-        my $iter = $feeds_liststore->append;
-        $feeds_liststore->set(
-                              $iter,
-                              0 => $comment_text,
-                              3 => $video_id,
-                              4 => $comment_id,
-                             );
+        if (not $comment->{_hidden}) {
+            my $iter = $feeds_liststore->append;
+            $feeds_liststore->set(
+                                  $iter,
+                                  0 => $comment_text,
+                                  3 => $video_id,
+                                  4 => $comment_id,
+                                 );
+        }
 
         if (exists($comment->{replies}) and ref($comment->{replies}) eq 'ARRAY') {
 
