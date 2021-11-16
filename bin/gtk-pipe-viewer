@@ -2489,8 +2489,21 @@ sub get_code {
                 my $results;
                 my $next_page_token = $liststore->get($iter, 5);
 
-                if ($next_page_token =~ /^json (.*)/s) {
-                    my $data = $yv_obj->parse_json_string($1);
+                if (substr($next_page_token, 0, 4) eq 'json') {
+                    my ($format, $json_data) = split(' ', $next_page_token, 2);
+
+                    if ($format eq 'json-deflate') {
+                        state $has_rawinflate = do {
+                            require MIME::Base64;
+                            require IO::Uncompress::RawInflate;
+                        };
+                        say STDERR ":: Decompressing JSON data with RawInflate..." if $yv_obj->get_debug;
+                        IO::Uncompress::RawInflate::rawinflate(\MIME::Base64::decode_base64($json_data), \my $buffer)
+                          or die "rawinflate failed: $IO::Uncompress::RawInflate::RawInflateError\n";
+                        $json_data = $buffer;
+                    }
+
+                    my $data = $yv_obj->parse_json_string($json_data);
                     $results = get_results_from_list(%$data);
                 }
                 else {
@@ -2702,12 +2715,29 @@ sub get_results_from_list {
     #$results{pageInfo} = {resultsPerPage => scalar(@entries), totalResults => $totalResults};
 
     if ($args{page} * $maxResults < $totalResults) {
-        $results{continuation} = 'json '
-          . $yv_obj->make_json_string(
-                                      {
-                                       %args, page => $args{page} + 1,
-                                      }
-                                     );
+
+        my $json_str = $yv_obj->make_json_string(
+                                                 {
+                                                  %args, page => $args{page} + 1,
+                                                 }
+                                                );
+
+        state $has_rawdeflate = $CONFIG{remember_session} && eval {
+            require MIME::Base64;
+            require IO::Compress::RawDeflate;
+            require IO::Uncompress::RawInflate;
+            1;
+        };
+
+        if ($has_rawdeflate) {
+            say STDERR ":: Compressing JSON data with RawDeflate..." if $yv_obj->get_debug;
+            IO::Compress::RawDeflate::rawdeflate(\$json_str, \my $json_raw_deflate)
+              or die "rawdeflate failed: $IO::Compress::RawDeflate::RawDeflateError\n";
+            $results{continuation} = 'json-deflate ' . MIME::Base64::encode_base64($json_raw_deflate);
+        }
+        else {
+            $results{continuation} = 'json ' . $json_str;
+        }
     }
 
     scalar {results => \%results, url => 'file'};
