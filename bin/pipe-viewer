@@ -316,7 +316,7 @@ my %CONFIG = (
 
 local $SIG{__WARN__} = sub { warn @_; ++$opt{_error} };
 
-my %MPLAYER;    # will store video player arguments
+my %PLAYER_ARGS;    # will store video player arguments
 
 my $base_options = <<'BASE';
 # Base
@@ -1559,7 +1559,7 @@ sub parse_arguments {
             $opt{video_player_selected} = $_[1];
         },
 
-        'append-arg|append-args=s' => \$MPLAYER{user_defined_arguments},
+        'append-arg|append-args=s' => \$PLAYER_ARGS{user_defined_arguments},
 
         # Others
         'captions!'        => \$opt{videoCaption},
@@ -3747,32 +3747,37 @@ sub save_watched_video {
 sub get_player_command {
     my ($streaming, $video) = @_;
 
-    $MPLAYER{fullscreen} = $opt{fullscreen} ? $opt{video_players}{$opt{video_player_selected}}{fs}      // '' : q{};
-    $MPLAYER{novideo}    = $opt{novideo}    ? $opt{video_players}{$opt{video_player_selected}}{novideo} // '' : q{};
-    $MPLAYER{arguments}  = $opt{video_players}{$opt{video_player_selected}}{arg} // q{};
+    my %player_args = (%PLAYER_ARGS);
+    my $player      = $opt{video_players}{$opt{video_player_selected}};
+
+    if (ref($player) ne 'HASH') {
+        die ":: The selected video player does not exist! Check the configuration file.";
+    }
+
+    $player_args{fullscreen} = $opt{fullscreen} ? $player->{fs}      : undef;
+    $player_args{novideo}    = $opt{novideo}    ? $player->{novideo} : undef;
+    $player_args{arguments}  = $player->{arg};
 
     my $cmd = join(
         q{ },
         (
             # Video player
-            $opt{video_players}{$opt{video_player_selected}}{cmd},
+            $player->{cmd},
 
             (    # Audio file (https://)
-               ref($streaming->{streaming}{__AUDIO__}) eq 'HASH'
-                 && exists($opt{video_players}{$opt{video_player_selected}}{audio})
-               ? $opt{video_players}{$opt{video_player_selected}}{audio}
+               (ref($streaming->{streaming}{__AUDIO__}) eq 'HASH' && defined($player->{audio}))
+               ? $player->{audio}
                : ()
             ),
 
             (    # Subtitle file (.srt)
-               defined($streaming->{srt_file})
-                 && exists($opt{video_players}{$opt{video_player_selected}}{srt})
-               ? $opt{video_players}{$opt{video_player_selected}}{srt}
+               (defined($streaming->{srt_file}) && defined($player->{srt}))
+               ? $player->{srt}
                : ()
             ),
 
             # Rest of the arguments
-            (grep { defined($_) and /\S/ } values %MPLAYER)
+            (grep { defined($_) and /\S/ } values %player_args)
         )
     );
 
