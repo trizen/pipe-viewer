@@ -268,6 +268,8 @@ my %CONFIG = (
     subscriptions_limit      => 10_000,                      # maximum number of subscription videos stored
     youtube_users_file       => $youtube_users_file,
 
+    local_playlist_limit => -1,
+
     # Options for watched videos
     highlight_watched => 1,
     highlight_color   => 'bold',
@@ -3719,6 +3721,10 @@ sub prepend_video_data_to_file {
     my %seen;
     @$videos = grep { !$seen{$yv_utils->get_video_id($_)}++ } @$videos;
 
+    if ($opt{local_playlist_limit} > 0 and scalar(@$videos) > $opt{local_playlist_limit}) {
+        $#$videos = $opt{local_playlist_limit} - 1;
+    }
+
     Storable::store($videos, $file);
     return 1;
 }
@@ -4828,6 +4834,14 @@ Interactive mode, prompting for user-input.
 =head2 keep_original_video
 
 Keep the original video after conversion. When set to C<0>, the original video will be deleted.
+
+=head2 local_playlist_limit
+
+When set to a positive value, will restrict the size of local playlists to this many entries. When this limit has been reached, older entries will be discarded from the playlist.
+
+A reasonable value would be between 500 and 1000.
+
+When set to a non-positive value, no limit is imposed.
 
 =head2 maxResults
 

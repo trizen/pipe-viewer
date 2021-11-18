@@ -288,6 +288,7 @@ my %CONFIG = (
     remember_session       => 1,
     remember_session_depth => 10,
     entry_completion_limit => 10,
+    local_playlist_limit   => -1,
 
     # Save titles
     save_titles_to_history  => 0,
@@ -3499,6 +3500,13 @@ sub prepend_video_data_to_file {
 
     my %seen;
     @$videos = grep { !$seen{$yv_utils->get_video_id($_)}++ } @$videos;
+
+    if ($CONFIG{local_playlist_limit} > 0 and scalar(@$videos) > $CONFIG{local_playlist_limit}) {
+        if ($yv_obj->get_debug) {
+            say STDERR ":: Resizing the playlist <<$file>> from $#$videos to $CONFIG{local_playlist_limit} entries.";
+        }
+        $#$videos = $CONFIG{local_playlist_limit} - 1;
+    }
 
     Storable::store($videos, $file);
     return 1;
