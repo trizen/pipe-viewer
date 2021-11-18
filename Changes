@@ -5,6 +5,12 @@
 
 [CHANGELOG]
 
+Version 0.1.7
+
+- Added support for extracting YouTube comments with `yt-dlp` via the config-option `ytdlp_comments`.
+- Prefer JPEG over WEBP for thumbnails. (used to cause an issue when `webp-pixbuf-loader` was not installed)
+- Some internal performance improvements.
+
 Version 0.1.6
 
 - Fixed the support for related videos.
