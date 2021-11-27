@@ -3806,13 +3806,14 @@ sub get_player_command {
 sub autoplay {
     my $video_id = get_valid_video_id(shift) // return;
 
-    my %seen = ($video_id => 1);    # make sure we don't get stuck in a loop
+    my %seen;    # make sure we don't get stuck in a loop
     local $yv_obj->{maxResults} = 10;
 
     while (1) {
+        $seen{$video_id} = 1;
         get_and_play_video_ids($video_id) || return;
         my $related = $yv_obj->related_to_videoID($video_id);
-        (my @video_ids = grep { !$seen{$_}++ } map { $yv_utils->get_video_id($_) } @{$related->{results}}) || return;
+        (my @video_ids = grep { not $seen{$_} } map { $yv_utils->get_video_id($_) } @{$related->{results}}) || return;
         $video_id = $opt{shuffle} ? $video_ids[rand @video_ids] : $video_ids[0];
     }
 
