@@ -1652,7 +1652,7 @@ if (@ARGV) {
 for (my $i = 0 ; $i <= $#ARGV ; $i++) {
     my $arg = $ARGV[$i];
 
-    next if chr ord $arg eq q{-};
+    next if (substr($arg, 0, 1) eq q{-});
 
     if (youtube_urls($arg)) {
         splice(@ARGV, $i--, 1);
@@ -1867,7 +1867,7 @@ sub parse_options {
     }
 
     foreach my $word (get_quotewords(qr/\s+/, 0, $input)) {
-        if (chr ord $word eq q{-}) {
+        if (substr($word, 0, 1) eq q{-}) {
             push @args, $word;
         }
         else {
