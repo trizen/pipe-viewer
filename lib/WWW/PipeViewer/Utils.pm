@@ -445,6 +445,11 @@ sub set_thousands {    # ugly, but fast
     my ($self, $n) = @_;
 
     return 0 unless $n;
+
+    if ($n =~ /[KMB]/) {    # human-readable number
+        return $n;
+    }
+
     length($n) > 3 or return $n;
 
     my $l = length($n) - 3;
@@ -985,6 +990,8 @@ sub get_views {
 
 sub short_human_number {
     my ($self, $int) = @_;
+
+    $int // return undef;
 
     if ($int < 1000) {
         return $int;

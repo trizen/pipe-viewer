@@ -228,6 +228,9 @@ sub video_details {
     my %video_info = $self->_get_video_info($id);
     my $video = $self->parse_json_string($video_info{player_response} // return $self->_fallback_video_details($id, $fields));
 
+    state %cache;
+    my $extra_info = ($cache{$id} //= $self->yt_video_info(id => $id));
+
     my $videoDetails = {};
     my $microformat  = {};
 
@@ -271,6 +274,35 @@ sub video_details {
         authorId => $videoDetails->{channelId} // $microformat->{externalChannelId},
         rating   => $videoDetails->{averageRating},
                   );
+
+    if (defined($extra_info) and ref($extra_info) eq 'HASH') {
+
+        require WWW::PipeViewer::Utils;
+        state $yv_utils = WWW::PipeViewer::Utils->new();
+
+        my $like_count = $extra_info->{likeCount};
+
+        $details{likeCount} = $like_count;
+
+        #$details{likeCount} = $yv_utils->short_human_number($like_count);
+
+        if ($like_count and $details{rating} and $details{rating} > 1) {
+
+            my $rating        = $details{rating};
+            my $dislike_count = sprintf('%.0f', -$like_count * ($rating - 5) / ($rating - 1));
+
+            $details{dislikeCount} = $dislike_count;
+
+            #$details{dislikeCount} = $yv_utils->short_human_number($dislike_count);
+        }
+
+        $details{author} //= $extra_info->{author};
+        $details{title}  //= $extra_info->{title};
+
+        if (not defined($details{publishDate})) {
+            $details{publishedText} = $extra_info->{publishDate};
+        }
+    }
 
     return \%details;
 }

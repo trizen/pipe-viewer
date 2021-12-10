@@ -41,6 +41,8 @@ sub _time_to_seconds {
 sub _human_number_to_int {
     my ($text) = @_;
 
+    $text // return undef;
+
     # 7.6K -> 7600; 7.6M -> 7600000
     if ($text =~ /([\d,.]+)\s*([KMB])/i) {
 
@@ -669,6 +671,118 @@ sub _prepare_results_for_return {
            };
 }
 
+=head2 yt_video_info($id)
+
+Get video info for a given YouTube video ID, by scrapping the YouTube C<watch> page.
+
+=cut
+
+sub yt_video_info {
+    my ($self, %args) = @_;
+
+    my $url = $self->get_m_youtube_url . "/watch";
+
+    my %params = (
+                  hl => 'en',
+                  v  => $args{id},
+                 );
+
+    $url = $self->_append_url_args($url, %params);
+    my $hash = $self->_get_initial_data($url) // return;
+
+    ref($hash) eq 'HASH' or return;
+
+    my %video_info;
+
+    if (ref(my $metadata = eval { $hash->{contents}{singleColumnWatchNextResults}{results}{results}{contents} }) eq 'ARRAY') {
+
+        foreach my $entry (@$metadata) {
+
+            ref($entry) eq 'HASH' or next;
+
+            if (ref(my $section = eval { $entry->{slimVideoMetadataSectionRenderer}{contents} }) eq 'ARRAY') {
+                foreach my $part (@$section) {
+                    ref($part) eq 'HASH' or next;
+
+                    if (my $info = $part->{slimVideoInformationRenderer}) {
+                        $video_info{title} = eval { $info->{title}{runs}[0]{text} };
+                    }
+
+                    if (ref(my $buttons = $part->{slimVideoActionBarRenderer}{buttons}) eq 'ARRAY') {
+                        foreach my $toggle_button (@$buttons) {
+
+                            ref($toggle_button) eq 'HASH' or next;
+                            my $button = $toggle_button->{slimMetadataToggleButtonRenderer};
+
+                            if (    ref($button) eq 'HASH'
+                                and $button->{isLike}
+                                and ref(my $like_button = eval { $button->{button}{toggleButtonRenderer} }) eq 'HASH') {
+
+                                $video_info{likeCount} = eval {
+                                    _human_number_to_int($like_button->{defaultText}{accessibility}{accessibilityData}{label});
+                                } // eval {
+                                    _human_number_to_int($like_button->{toggledText}{accessibility}{accessibilityData}{label})
+                                      - 1;
+                                };
+
+                                if (not $video_info{likeCount} or $video_info{likeCount} < 0) {
+                                    delete $video_info{likeCount};
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    my $engagements = $hash->{engagementPanels} // return;
+    ref($engagements) eq 'ARRAY' or return;
+
+    foreach my $entry (@$engagements) {
+
+        ref($entry) eq 'HASH' or next;
+
+        if (exists $entry->{engagementPanelSectionListRenderer}) {
+
+            my $main_info =
+              eval { $entry->{engagementPanelSectionListRenderer}{content}{structuredDescriptionContentRenderer}{items} };
+
+            ref($main_info) eq 'ARRAY' or next;
+
+            foreach my $entry (@$main_info) {
+
+                ref($entry) eq 'HASH' or next;
+
+                if (my $desc = $entry->{videoDescriptionHeaderRenderer}) {
+
+                    if (ref($desc->{factoid}) eq 'ARRAY') {
+                        foreach my $factoid (@{$desc->{factoid}}) {
+                            ref($factoid) eq 'HASH' or next;
+                            if (my $likes_info = $factoid->{sentimentFactoidRenderer}) {
+                                $video_info{likeCount} //= eval {
+                                    _human_number_to_int($likes_info->{factoidIfLiked}{factoidRenderer}{value}{runs}[0]{text});
+                                };
+                            }
+                        }
+                    }
+
+                    $video_info{author}      //= eval { $desc->{channel}{runs}[0]{text} };
+                    $video_info{publishDate} //= eval { $desc->{publishDate}{runs}[0]{text} };
+                    $video_info{title}       //= eval { $desc->{title}{runs}[0]{text} };
+                    $video_info{viewCount}   //= eval { _human_number_to_int($desc->{views}{runs}[0]{text} || 0) };
+                }
+
+                if (my $desc_body = $entry->{expandableVideoDescriptionBodyRenderer}) {
+                    $video_info{description} //= eval { $desc_body->{descriptionBodyText}{runs}[0]{text} };
+                }
+            }
+        }
+    }
+
+    return \%video_info;
+}
+
 =head2 yt_search(q => $keyword, %args)
 
 Search for videos given a keyword string (uri-escaped).
@@ -678,10 +792,13 @@ Search for videos given a keyword string (uri-escaped).
 sub yt_search {
     my ($self, %args) = @_;
 
-    my $url = $self->get_m_youtube_url . "/results?search_query=$args{q}";
+    my $url = $self->get_m_youtube_url . "/results";
 
     my @sp;
-    my %params = (hl => 'en',);
+    my %params = (
+                  hl           => 'en',
+                  search_query => $args{q},
+                 );
 
     $args{type} //= 'video';
 
