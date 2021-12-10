@@ -736,19 +736,19 @@ sub yt_video_info {
         }
     }
 
-    my $engagements = $hash->{engagementPanels} // return;
-    ref($engagements) eq 'ARRAY' or return;
+    my $engagements = $hash->{engagementPanels} // return \%video_info;
+    ref($engagements) eq 'ARRAY' or return \%video_info;
 
     foreach my $entry (@$engagements) {
 
         ref($entry) eq 'HASH' or next;
 
-        if (exists $entry->{engagementPanelSectionListRenderer}) {
-
-            my $main_info =
-              eval { $entry->{engagementPanelSectionListRenderer}{content}{structuredDescriptionContentRenderer}{items} };
-
-            ref($main_info) eq 'ARRAY' or next;
+        if (
+            ref(
+                my $main_info =
+                  eval { $entry->{engagementPanelSectionListRenderer}{content}{structuredDescriptionContentRenderer}{items} }
+            ) eq 'ARRAY'
+          ) {
 
             foreach my $entry (@$main_info) {
 

@@ -277,14 +277,13 @@ sub video_details {
 
     if (defined($extra_info) and ref($extra_info) eq 'HASH') {
 
-        require WWW::PipeViewer::Utils;
-        state $yv_utils = WWW::PipeViewer::Utils->new();
+        #require WWW::PipeViewer::Utils;
+        #state $yv_utils = WWW::PipeViewer::Utils->new();
 
         my $like_count = $extra_info->{likeCount};
 
         $details{likeCount} = $like_count;
-
-        #$details{likeCount} = $yv_utils->short_human_number($like_count);
+        ##$details{likeCount} = $yv_utils->short_human_number($like_count);
 
         if ($like_count and $details{rating} and $details{rating} > 1) {
 
@@ -292,8 +291,7 @@ sub video_details {
             my $dislike_count = sprintf('%.0f', -$like_count * ($rating - 5) / ($rating - 1));
 
             $details{dislikeCount} = $dislike_count;
-
-            #$details{dislikeCount} = $yv_utils->short_human_number($dislike_count);
+            ##$details{dislikeCount} = $yv_utils->short_human_number($dislike_count);
         }
 
         $details{author} //= $extra_info->{author};
