@@ -725,7 +725,7 @@ sub yt_video_info {
                                       - 1;
                                 };
 
-                                if (not $video_info{likeCount} or $video_info{likeCount} < 0) {
+                                if (not defined($video_info{likeCount}) or $video_info{likeCount} <= 0) {
                                     delete $video_info{likeCount};
                                 }
                             }
@@ -760,9 +760,15 @@ sub yt_video_info {
                         foreach my $factoid (@{$desc->{factoid}}) {
                             ref($factoid) eq 'HASH' or next;
                             if (my $likes_info = $factoid->{sentimentFactoidRenderer}) {
+
                                 $video_info{likeCount} //= eval {
-                                    _human_number_to_int($likes_info->{factoidIfLiked}{factoidRenderer}{value}{runs}[0]{text});
+                                    _human_number_to_int($likes_info->{factoidIfLiked}{factoidRenderer}{value}{runs}[0]{text})
+                                      - 1;
                                 };
+
+                                if (not defined($video_info{likeCount}) or $video_info{likeCount} <= 0) {
+                                    delete $video_info{likeCount};
+                                }
                             }
                         }
                     }

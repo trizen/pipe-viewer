@@ -288,7 +288,7 @@ sub video_details {
         if ($like_count and $details{rating} and $details{rating} > 1) {
 
             my $rating        = $details{rating};
-            my $dislike_count = sprintf('%.0f', -$like_count * ($rating - 5) / ($rating - 1));
+            my $dislike_count = sprintf('%.0f', $like_count * ((5 - $rating) / ($rating - 1)));
 
             $details{dislikeCount} = $dislike_count;
             ##$details{dislikeCount} = $yv_utils->short_human_number($dislike_count);
