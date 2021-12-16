@@ -721,8 +721,11 @@ sub yt_video_info {
                                 $video_info{likeCount} = eval {
                                     _human_number_to_int($like_button->{defaultText}{accessibility}{accessibilityData}{label});
                                 } // eval {
-                                    _human_number_to_int($like_button->{toggledText}{accessibility}{accessibilityData}{label})
-                                      - 1;
+                                    (
+                                     _human_number_to_int(
+                                                          $like_button->{toggledText}{accessibility}{accessibilityData}{label}
+                                       ) // 0
+                                    ) - 1;
                                 };
 
                                 if (not defined($video_info{likeCount}) or $video_info{likeCount} <= 0) {
@@ -762,8 +765,11 @@ sub yt_video_info {
                             if (my $likes_info = $factoid->{sentimentFactoidRenderer}) {
 
                                 $video_info{likeCount} //= eval {
-                                    _human_number_to_int($likes_info->{factoidIfLiked}{factoidRenderer}{value}{runs}[0]{text})
-                                      - 1;
+                                    (
+                                     _human_number_to_int(
+                                                          $likes_info->{factoidIfLiked}{factoidRenderer}{value}{runs}[0]{text}
+                                       ) // 0
+                                    ) - 1;
                                 };
 
                                 if (not defined($video_info{likeCount}) or $video_info{likeCount} <= 0) {
