@@ -782,9 +782,36 @@ sub get_id {
     $info->{videoId};
 }
 
+sub calculate_rating {
+    my ($self, $info) = @_;
+
+    my $likes    = $self->get_likes($info);
+    my $dislikes = $self->get_dislikes($info);
+    my $views    = $self->get_views($info);
+
+    my $rating = "1.00";
+
+    if (defined($likes) and $dislikes) {
+        if ($likes > 0) {
+            $rating = sprintf('%.2f', $likes / ($likes + $dislikes) * 4 + 1);
+        }
+        elsif ($dislikes == 0) {
+            $rating = "0.00";
+        }
+    }
+    elsif (defined($likes) and $views) {
+        $rating = sprintf("%.2g%%", $likes / $views * 100);
+    }
+    else {
+        $rating = "N/A";
+    }
+
+    return $rating;
+}
+
 sub get_rating {
     my ($self, $info) = @_;
-    my $rating = $info->{rating} // return;
+    my $rating = $info->{rating} // return $self->calculate_rating($info);
     sprintf('%.2f', $rating);
 }
 

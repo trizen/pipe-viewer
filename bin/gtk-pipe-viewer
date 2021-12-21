@@ -4037,38 +4037,24 @@ sub set_entry_details {
 
         my $likes    = $yv_utils->get_likes($info);
         my $dislikes = $yv_utils->get_dislikes($info);
+        my $views    = $yv_utils->get_views($info);
 
-        my $rating = "1.00";
-        my $views  = $yv_utils->get_views($info);
-
-        if (defined($likes) and $dislikes) {
-            if ($likes > 0) {
-                $rating = sprintf('%.2f', $likes / ($likes + $dislikes) * 4 + 1);
-            }
-            elsif ($dislikes == 0) {
-                $rating = "0.00";
-            }
-        }
-        elsif (defined($likes) and $views) {
-            $rating = sprintf("%.2g%%", $likes / $views * 100);
-        }
-        else {
-            $rating = "N/A";
-        }
-
-        $text_info = join "\n",
-          map  { sprintf("%s  %s", $_->[0], $_->[1]) }
-          grep { defined($_->[1]) and $_->[1] !~ /^(0|unknown)\z/i } (
-                                                               [$symbols{author}      => $yv_utils->get_channel_title($info)],
-                                                               [$symbols{category}    => $yv_utils->get_category_name($info)],
-                                                               [$symbols{thumbs_up}   => $yv_utils->set_thousands($likes)],
-                                                               [$symbols{thumbs_down} => $yv_utils->set_thousands($dislikes)],
-                                                               [$symbols{average} => $yv_utils->get_rating($info) // $rating],
-                                                               [$symbols{play}    => $yv_utils->get_time($info)],
-                                                               [$symbols{views}   => $yv_utils->set_thousands($views)],
-                                                               [$symbols{published} => $yv_utils->get_publication_date($info)],
-                                                               [$symbols{author_id} => $yv_utils->get_channel_id($info)],
-          );
+        $text_info = join(
+                          "\n",
+                          map    { sprintf("%s  %s", $_->[0], $_->[1]) }
+                            grep { $_->[1] !~ /^(0|unknown)\z/i }
+                            grep { defined($_->[1]) } (
+                                                       [$symbols{author}      => $yv_utils->get_channel_title($info)],
+                                                       [$symbols{category}    => $yv_utils->get_category_name($info)],
+                                                       [$symbols{thumbs_up}   => $yv_utils->set_thousands($likes)],
+                                                       [$symbols{thumbs_down} => $yv_utils->set_thousands($dislikes)],
+                                                       [$symbols{average}     => $yv_utils->get_rating($info)],
+                                                       [$symbols{play}        => $yv_utils->get_time($info)],
+                                                       [$symbols{views}       => $yv_utils->set_thousands($views)],
+                                                       [$symbols{published}   => $yv_utils->get_publication_date($info)],
+                                                       [$symbols{author_id}   => $yv_utils->get_channel_id($info)],
+                                                      )
+                         );
 
         $text_info .= "\n";
     }
