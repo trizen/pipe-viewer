@@ -3127,29 +3127,27 @@ sub add_video_entry {
     set_entry_tooltip($iter, $title, $description);
 
     my $title_label = reflow_text(
-        sprintf(
-            "<big><b>%s</b></big>
-
-$symbols{author}\t %s
-$symbols{published}\t %s
-
-<i>%s</i>",
-
-            encode_entities($title),
-            encode_entities($yv_utils->get_channel_title($video)),
-            ($yv_utils->get_publication_date($video) // 'unknown'),
-            encode_entities($row_description),
-               )
-    );
+                                  sprintf("<big><b>%s</b></big>", encode_entities($title)) . "\n\n"
+                                    . join(
+                                           "\n",
+                                           map { sprintf("%s   %s", $_->[0], $_->[1]) } (
+                                               [$symbols{author}    => encode_entities($yv_utils->get_channel_title($video))],
+                                               [$symbols{published} => ($yv_utils->get_publication_date($video) // 'unknown')],
+                                           )
+                                          )
+                                    . "\n\n"
+                                    . sprintf("<i>%s</i>", encode_entities($row_description))
+                                 );
 
     my $info_label = reflow_text(
-        sprintf(
-            "$symbols{play}\t %s
-$symbols{views}\t %s",
-            $yv_utils->get_time($video),
-            $yv_utils->set_thousands($yv_utils->get_views($video)),
-               )
-    );
+                                 join(
+                                      "\n",
+                                      map { sprintf("%s   %s", $_->[0], $_->[1]) } (
+                                                   [$symbols{play}  => $yv_utils->get_time($video)],
+                                                   [$symbols{views} => $yv_utils->set_thousands($yv_utils->get_views($video))],
+                                      )
+                                     )
+                                );
 
     $liststore->set(
                     $iter,
@@ -4037,18 +4035,39 @@ sub set_entry_details {
             }
         }
 
+        my $likes    = $yv_utils->get_likes($info);
+        my $dislikes = $yv_utils->get_dislikes($info);
+
+        my $rating = "1.00";
+        my $views  = $yv_utils->get_views($info);
+
+        if (defined($likes) and $dislikes) {
+            if ($likes > 0) {
+                $rating = sprintf('%.2f', $likes / ($likes + $dislikes) * 4 + 1);
+            }
+            elsif ($dislikes == 0) {
+                $rating = "0.00";
+            }
+        }
+        elsif (defined($likes) and $views) {
+            $rating = sprintf("%.2g%%", $likes / $views * 100);
+        }
+        else {
+            $rating = "N/A";
+        }
+
         $text_info = join "\n",
-          map  { sprintf("%s %s", $_->[0], $_->[1]) }
+          map  { sprintf("%s  %s", $_->[0], $_->[1]) }
           grep { defined($_->[1]) and $_->[1] !~ /^(0|unknown)\z/i } (
-                                           [$symbols{author}      => $yv_utils->get_channel_title($info)],
-                                           [$symbols{category}    => $yv_utils->get_category_name($info)],
-                                           [$symbols{play}        => $yv_utils->get_time($info)],
-                                           [$symbols{average}     => $yv_utils->get_rating($info)],
-                                           [$symbols{thumbs_up}   => $yv_utils->set_thousands($yv_utils->get_likes($info))],
-                                           [$symbols{thumbs_down} => $yv_utils->set_thousands($yv_utils->get_dislikes($info))],
-                                           [$symbols{views}       => $yv_utils->set_thousands($yv_utils->get_views($info))],
-                                           [$symbols{published}   => $yv_utils->get_publication_date($info)],
-                                           [$symbols{author_id}   => $yv_utils->get_channel_id($info)],
+                                                               [$symbols{author}      => $yv_utils->get_channel_title($info)],
+                                                               [$symbols{category}    => $yv_utils->get_category_name($info)],
+                                                               [$symbols{thumbs_up}   => $yv_utils->set_thousands($likes)],
+                                                               [$symbols{thumbs_down} => $yv_utils->set_thousands($dislikes)],
+                                                               [$symbols{average} => $yv_utils->get_rating($info) // $rating],
+                                                               [$symbols{play}    => $yv_utils->get_time($info)],
+                                                               [$symbols{views}   => $yv_utils->set_thousands($views)],
+                                                               [$symbols{published} => $yv_utils->get_publication_date($info)],
+                                                               [$symbols{author_id} => $yv_utils->get_channel_id($info)],
           );
 
         $text_info .= "\n";
