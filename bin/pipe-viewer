@@ -4085,24 +4085,46 @@ sub print_video_info {
 
     $rep = 0 if $rep < 0;
 
+    my $likes    = $yv_utils->get_likes($video);
+    my $dislikes = $yv_utils->get_dislikes($video);
+    my $views    = $yv_utils->get_views($video);
+
+    my $rating = "1.00";
+
+    if (defined($likes) and $dislikes) {
+        if ($likes > 0) {
+            $rating = sprintf('%.2f', $likes / ($likes + $dislikes) * 4 + 1);
+        }
+        elsif ($dislikes == 0) {
+            $rating = "0.00";
+        }
+    }
+    elsif (defined($likes) and $views) {
+        $rating = sprintf("%.2g%%", $likes / $views * 100);
+    }
+    else {
+        $rating = "N/A";
+    }
+
     print(
           "\n$hr\n",
           q{ } x $rep => (_bold_color("=>> $title <<=") . "\n\n"),
           (
            map    { sprintf(q{-> } . "%-*s: %s\n", $opt{_colors} ? 18 : 10, _bold_color($_->[0]), $_->[1]) }
-             grep { defined($_->[1]) and $_->[1] !~ /^(0|unknown)\z/i } (
-                                                     ['Channel'    => $yv_utils->get_channel_title($video)],
-                                                     ['ChannelID'  => $yv_utils->get_channel_id($video)],
-                                                     ['VideoID'    => $yv_utils->get_video_id($video)],
-                                                     ['Category'   => $yv_utils->get_category_name($video)],
-                                                     ['Definition' => $yv_utils->get_definition($video)],
-                                                     ['Duration'   => $yv_utils->get_time($video)],
-                                                     ['Rating'     => $yv_utils->get_rating($video)],
-                                                     ['Likes'      => $yv_utils->set_thousands($yv_utils->get_likes($video))],
-                                                     ['Dislikes' => $yv_utils->set_thousands($yv_utils->get_dislikes($video))],
-                                                     ['Views'    => $yv_utils->set_thousands($yv_utils->get_views($video))],
-                                                     ['Published' => $yv_utils->get_publication_date($video)],
-             )
+             grep { $_->[1] !~ /^(0|unknown)\z/i }
+             grep { defined($_->[1]) } (
+                                        ['Channel'    => $yv_utils->get_channel_title($video)],
+                                        ['ChannelID'  => $yv_utils->get_channel_id($video)],
+                                        ['VideoID'    => $yv_utils->get_video_id($video)],
+                                        ['Category'   => $yv_utils->get_category_name($video)],
+                                        ['Definition' => $yv_utils->get_definition($video)],
+                                        ['Duration'   => $yv_utils->get_time($video)],
+                                        ['Likes'      => $yv_utils->set_thousands($likes)],
+                                        ['Dislikes'   => $yv_utils->set_thousands($dislikes)],
+                                        ['Rating'     => $yv_utils->get_rating($video) // $rating],
+                                        ['Views'      => $yv_utils->set_thousands($views)],
+                                        ['Published'  => $yv_utils->get_publication_date($video)],
+                                       )
           ),
           "$hr\n"
          );
