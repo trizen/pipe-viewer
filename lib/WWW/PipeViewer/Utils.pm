@@ -799,7 +799,7 @@ sub calculate_rating {
             $rating = "0.00";
         }
     }
-    elsif ($likes and $views) {
+    elsif ($likes and $views and $views >= $likes) {
         ##$rating = sprintf("%.2g%%", $likes / $views * 100);
         $rating = sprintf("%.2g%%", log($likes + 1) / log($views + 1) * 100);
     }
