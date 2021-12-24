@@ -105,10 +105,22 @@ To package this application, run the following commands:
 
 ### INVIDIOUS INSTANCES
 
-To use a specific invidious instance, like [invidious.snopyta.org](https://invidious.snopyta.org/), we have (see also the [--invidious](https://github.com/trizen/pipe-viewer/commit/17fb2136f3f3d8ee6dacac05beabcc15082f699d) option):
+To use invidious instances, pass the [--invidious](https://github.com/trizen/pipe-viewer/commit/17fb2136f3f3d8ee6dacac05beabcc15082f699d) option:
 
 ```console
-    pipe-viewer --api=invidious.snopyta.org
+    pipe-viewer --invidious
+```
+
+or set in the configuration file (`~/.config/pipe-viewer/pipe-viewer.conf`):
+
+```perl
+    prefer_invidious => 1,
+```
+
+To use a specific invidious instance, like [invidious.snopyta.org](https://invidious.snopyta.org/), pass the `--api=HOST` option:
+
+```console
+    pipe-viewer --invidious --api=invidious.snopyta.org
 ```
 
 To make the change permanent, set in the configuration file:
@@ -117,7 +129,7 @@ To make the change permanent, set in the configuration file:
     api_host => "invidious.snopyta.org",
 ```
 
-By default, `pipe-viewer` picks a random invidious instance from [api.invidious.io](https://api.invidious.io/) on-demand.
+When `api_host` is set to `"auto"`, `pipe-viewer` picks a random invidious instance from [api.invidious.io](https://api.invidious.io/).
 
 ### SUPPORT AND DOCUMENTATION
 
