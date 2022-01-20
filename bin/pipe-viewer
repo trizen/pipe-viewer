@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2010-2021 Trizen <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d>.
+# Copyright (C) 2010-2022 Trizen <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d>.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of either: the GNU General Public License as published
@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  pipe-viewer
 #  Fork: 30 October 2020
-#  Edit: 18 November 2021
+#  Edit: 20 January 2022
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -280,10 +280,10 @@ my %CONFIG = (
     ytdl_cmd => undef,                                       # auto-defined
 
     # yt-dlp comment options
-    ytdlp_cmd               => undef,                        # auto-defined
-    ytdlp_comments          => 0,
-    ytdlp_max_comments      => 10,
-    ytdlp_max_comment_depth => 1,
+    ytdlp_cmd          => undef,                             # auto-defined
+    ytdlp_comments     => 0,
+    ytdlp_max_comments => 10,
+    ytdlp_max_replies  => 3,
 
     # Custom layout
     custom_layout_format => [{width => 3,     align => "right", color => "bold",      text => "*NO*.",},
@@ -740,8 +740,7 @@ usage: $execname [options] ([url] | [keywords])
                           valid values: relevance, time
    --ytdlp-comments!    : use `yt-dlp` to extract comments
    --max-comments=i     : maximum number of comments (with --ytdlp-comments)
-   --comments-depth=i   : depth of comments (with --ytdlp-comments)
-                          valid values: 1 (without replies), 2 (with replies)
+   --max-replies=i      : maximum number of replies per thread
 
  * Filtering
    --author=s           : search in videos uploaded by a specific user
@@ -1168,7 +1167,7 @@ sub apply_configuration {
                              cookie_file timeout ytdl ytdl_cmd
                              prefer_mp4 prefer_av1 prefer_invidious
                              ytdlp_comments ytdlp_max_comments
-                             ytdlp_max_comment_depth ytdlp_cmd
+                             ytdlp_max_replies ytdlp_cmd
                              )
       ) {
 
@@ -1462,9 +1461,9 @@ sub parse_arguments {
         'comments=s'       => \$opt{get_comments},
         'comments-order=s' => \$opt{comments_order},
 
-        'yt-dlp-comments|ytdlp-comments!'          => \$opt{ytdlp_comments},
-        'max-comments=i'                           => \$opt{ytdlp_max_comments},
-        'comments-depth|max-comment-depth|depth=i' => \$opt{ytdlp_max_comment_depth},
+        'yt-dlp-comments|ytdlp-comments!' => \$opt{ytdlp_comments},
+        'max-comments=i'                  => \$opt{ytdlp_max_comments},
+        'max-replies=s'                   => \$opt{ytdlp_max_replies},    # also supports "all"
 
         'c|categories'                => \$opt{categories},
         'video-ids|videoids|id|ids=s' => \$opt{play_video_ids},
@@ -5054,12 +5053,13 @@ Maximum number of comments to extract with C<yt-dlp>.
 
 Replies count as comments.
 
-=head2 ytdlp_max_comment_depth
+=head2 ytdlp_max_replies
 
-Depth for YouTube comments: 1 or 2.
+Maximum number of replies per thread.
 
-    1 = comments only
-    2 = comments + replies
+Use C<0> to disable replies.
+
+Use C<"all"> to extract all replies.
 
 =head1 CONFIGURATION FILES
 
@@ -5078,7 +5078,7 @@ https://github.com/trizen/pipe-viewer
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2010-2021 Trizen.
+Copyright 2010-2022 Trizen.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

@@ -33,10 +33,10 @@ sub comments_from_ytdlp {
 
     $page //= 1;
 
-    my $max_comments      = $self->get_ytdlp_max_comments;
-    my $max_comment_depth = $self->get_ytdlp_max_comment_depth;
-    my $comments_order    = $self->get_comments_order;
-    my $ytdlp_cmd         = $self->get_ytdlp_cmd;
+    my $max_comments   = $self->get_ytdlp_max_comments;
+    my $max_replies    = $self->get_ytdlp_max_replies;
+    my $comments_order = $self->get_comments_order;
+    my $ytdlp_cmd      = $self->get_ytdlp_cmd;
 
     my $max_comments_per_page = $max_comments;
     $max_comments = $page * $max_comments;
@@ -46,7 +46,7 @@ sub comments_from_ytdlp {
         '--write-comments',
         '--extractor-args',
 #<<<
-        quotemeta("youtube:comment_sort=$comments_order;skip=hls,dash;player_skip=js;max_comments=$max_comments;max_comment_depth=$max_comment_depth"),
+        quotemeta("youtube:comment_sort=$comments_order;skip=hls,dash;player_skip=js;max_comments=$max_comments,all,all,$max_replies"),
 #>>>
         '--no-check-formats',
         '--ignore-no-formats-error',

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Generated with glade 3.38.2
 
-Copyright (C) Copyright © 2010-2021 Trizen
+Copyright (C) Copyright © 2010-2022 Trizen
 
 This file is part of GTK Pipe Viewer.
 
@@ -16,7 +16,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with GTK Pipe Viewer.  If not, see <https://www.gnu.org/licenses/>.
+along with GTK Pipe Viewer.  If not, see <http://www.gnu.org/licenses/>.
 
 Author: Trizen https://github.com/trizen
 
@@ -26,7 +26,7 @@ Author: Trizen https://github.com/trizen
   <!-- interface-license-type gplv3 -->
   <!-- interface-name GTK Pipe Viewer -->
   <!-- interface-description Search and play YouTube videos. -->
-  <!-- interface-copyright Copyright \302\251 2010-2021 Trizen -->
+  <!-- interface-copyright Copyright \302\251 2010-2022 Trizen -->
   <!-- interface-authors Trizen https://github.com/trizen -->
   <object class="GtkAdjustment" id="adjustment1">
     <property name="lower">1</property>
@@ -2105,7 +2105,7 @@ When the specified resolution is not found, the best available resolution is use
     <property name="type-hint">normal</property>
     <property name="transient-for">__MAIN__</property>
     <property name="program-name">GTK Pipe Viewer</property>
-    <property name="copyright" translatable="yes">Copyright © 2010-2021 Trizen</property>
+    <property name="copyright" translatable="yes">Copyright © 2010-2022 Trizen</property>
     <property name="comments" translatable="yes">Written in Perl, Gtk3 and Glade.</property>
     <property name="website">https://github.com/trizen/pipe-viewer</property>
     <property name="website-label" translatable="yes">https://github.com/trizen/pipe-viewer</property>

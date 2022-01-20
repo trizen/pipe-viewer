@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2010-2021 Trizen <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d>.
+# Copyright (C) 2010-2022 Trizen <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d>.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of either: the GNU General Public License as published
@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  GTK Pipe Viewer
 #  Fork: 30 October 2020
-#  Edit: 18 November 2021
+#  Edit: 20 January 2022
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -254,18 +254,18 @@ my %CONFIG = (
     ytdl_cmd => undef,    # auto-detect
 
     # yt-dlp comment options
-    ytdlp_cmd               => undef,    # auto-detect
-    ytdlp_comments          => 0,
-    ytdlp_max_comments      => 20,
-    ytdlp_max_comment_depth => 1,
+    ytdlp_cmd          => undef,    # auto-detect
+    ytdlp_comments     => 0,
+    ytdlp_max_comments => 20,
+    ytdlp_max_replies  => 3,
 
     tooltips        => 1,
-    tooltip_max_len => 512,              # max length of description in tooltips
+    tooltip_max_len => 512,         # max length of description in tooltips
 
     thousand_separator => q{,},
     downloads_dir      => curdir(),
-    web_browser        => undef,         # defaults to $ENV{WEBBROWSER} or xdg-open
-    terminal           => undef,         # autodetect it later
+    web_browser        => undef,        # defaults to $ENV{WEBBROWSER} or xdg-open
+    terminal           => undef,        # autodetect it later
     terminal_exec      => q{-e '%s'},
     pipe_viewer        => undef,
     pipe_viewer_args   => [],
@@ -930,7 +930,7 @@ sub apply_configuration {
                              api_host prefer_mp4 prefer_av1
                              comments_order prefer_invidious
                              force_fallback ytdlp_cmd ytdlp_comments
-                             ytdlp_max_comments ytdlp_max_comment_depth
+                             ytdlp_max_comments ytdlp_max_replies
                              )
       ) {
 
