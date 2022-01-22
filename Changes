@@ -5,6 +5,13 @@
 
 [CHANGELOG]
 
+Version 0.1.8
+
+- Added the `ytdlp_max_replies` config-option.
+- Show the published date when playing a video by URL.
+- Show the number of likes of a video and an engagement rating.
+- Fixed a minor issue in the `--autoplay` feature.
+
 Version 0.1.7
 
 - Added support for extracting YouTube comments with `yt-dlp` via the config-option `ytdlp_comments`.
