@@ -3028,10 +3028,14 @@ sub print_subscription_videos {
 
 sub print_local_subscription_videos {
 
+    state $t0 = time;
+
     # Reuse the subscription file if it's less than 10 minutes old
-    if (-f $subscription_videos_data_file and (-M _) < (1 / 6) / 24 and (-M _) < ((-M $opt{subscribed_channels_file}) // 0)) {
+    if ((time - $t0 <= 600) and (-f $subscription_videos_data_file) and (-M _) < ((-M $opt{subscribed_channels_file}) // 0)) {
         return print_subscription_videos();
     }
+
+    $t0 = time;
 
     my @channels = $yv_utils->read_channels_from_file($opt{subscribed_channels_file});
 
