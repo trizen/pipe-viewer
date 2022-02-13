@@ -28,6 +28,11 @@ Pipe-Viewer can be deployed on any GNU/Linux distribution using Guix.
 To install in the user's default profile, do `guix install pipe-viewer`.
 To test without installing, do `guix environment --pure --ad-hoc pipe-viewer mpv -- pipe-viewer`.
 
+### REVIEWS
+
+* [EN] How-to install pipe-viewer in Debian
+    * https://hund.tty1.se/2021/11/14/how-to-install-pipe-viewer-in-debian.html
+
 ### VIDEO REVIEWS
 
 * [EN] Pipe-Viewer and Straw-Viewer -- Search Youtube via Terminal - Linux CLI
