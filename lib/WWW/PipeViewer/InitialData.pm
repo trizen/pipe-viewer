@@ -976,13 +976,29 @@ sub yt_channel_id {
     return $id;
 }
 
-=head2 yt_channel_playlists($channel, %args)
+=head2 yt_channel_created_playlists($channel, %args)
 
-Playlists for a given channel ID or username.
+Playlists created by a given channel ID or username.
 
 =cut
 
-sub yt_channel_playlists {
+sub yt_channel_created_playlists {
+    my ($self, $channel, %args) = @_;
+    my ($url, $hash) = $self->_channel_data($channel, %args, type => 'playlists', params => {view => 1});
+
+    $hash // return;
+
+    my @results = $self->_extract_channel_playlists($hash, %args, type => 'playlist');
+    $self->_prepare_results_for_return(\@results, %args, url => $url);
+}
+
+=head2 yt_channel_all_playlists($channel, %args)
+
+All playlists for a given channel ID or username.
+
+=cut
+
+sub yt_channel_all_playlists {
     my ($self, $channel, %args) = @_;
     my ($url, $hash) = $self->_channel_data($channel, %args, type => 'playlists');
 

@@ -61,7 +61,11 @@ Get and return playlists from a channel ID.
 sub playlists {
     my ($self, $channel_id) = @_;
 
-    if (my $results = $self->yt_channel_playlists($channel_id)) {
+    if (my $results = $self->yt_channel_created_playlists($channel_id)) {
+        return $results;
+    }
+
+    if (my $results = $self->yt_channel_all_playlists($channel_id)) {
         return $results;
     }
 
