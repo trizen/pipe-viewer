@@ -14,7 +14,7 @@ WWW::PipeViewer::InitialData - Extract initial data.
     my $obj = WWW::PipeViewer->new(%opts);
 
     my $results   = $obj->yt_search(q => $keywords);
-    my $playlists = $obj->yt_channel_playlists($channel_ID);
+    my $playlists = $obj->yt_channel_created_playlists($channel_ID);
 
 =head1 SUBROUTINES/METHODS
 
@@ -1173,13 +1173,13 @@ sub yt_search_next_page {
     my $hash = $self->parse_json_string($content);
 
     my @results = $self->_extract_sectionList_results(
-        scalar {
-            contents => eval {
-                $hash->{onResponseReceivedCommands}[0]{appendContinuationItemsAction}{continuationItems};
-              } // undef
-        },
-        %args
-                                                     );
+                       scalar {
+                           contents =>
+                             eval { $hash->{onResponseReceivedCommands}[0]{appendContinuationItemsAction}{continuationItems}; }
+                             // undef
+                       },
+                       %args
+    );
 
     $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
