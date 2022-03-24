@@ -271,7 +271,8 @@ my %CONFIG = (
     pipe_viewer        => undef,
     pipe_viewer_args   => [],
 
-    ignored_projections => [],
+    bypass_age_gate_with_proxy => 0,
+    ignored_projections        => [],
 
     # Watch history
     watch_history => 1,
@@ -932,6 +933,7 @@ sub apply_configuration {
                              comments_order prefer_invidious
                              force_fallback ytdlp_cmd ytdlp_comments
                              ytdlp_max_comments ytdlp_max_replies
+                             bypass_age_gate_with_proxy
                              )
       ) {
 
