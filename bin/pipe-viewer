@@ -3030,13 +3030,17 @@ sub print_subscription_videos {
 sub print_local_subscription_videos {
 
     state $t0 = time;
+    state $d0 = $t0;
 
     # Reuse the subscription file if it's less than 10 minutes old
-    if ((time - $t0 <= 600) and (-f $subscription_videos_data_file) and (-M _) < ((-M $opt{subscribed_channels_file}) // 0)) {
+    if (    $d0 != $t0
+        and (time - $t0 <= 600)
+        and (-f $subscription_videos_data_file)
+        and (-M $subscription_videos_data_file) < ((-M $opt{subscribed_channels_file}) // 0)) {
         return print_subscription_videos();
     }
 
-    $t0 = time;
+    $t0 = time + 1;
 
     my @channels = $yv_utils->read_channels_from_file($opt{subscribed_channels_file});
 
@@ -4634,7 +4638,7 @@ main_quit(0);
 
 =head2 api_host
 
-Hostname of an invidious instance. When set to C<"auto">, a random invidious is selected on-demand.
+Hostname of an invidious instance. When set to C<"auto">, a random invidious instance is selected on-demand.
 
 List of public invidious instances:
 
@@ -4692,7 +4696,7 @@ See also:
 
 =head2 copy_caption
 
-When downloading a video, copy the closed-caption (if any) in the same folder with the video.
+When downloading a video, copy the closed-caption (if any) into the same folder with the video.
 
 If C<merge_into_mkv> and C<merge_with_captions> are both enabled, there is no need to enable this option.
 
@@ -4809,7 +4813,7 @@ Maximum number of entries in the history file.
 
 When the limit is reached, the oldest half of the history file will be deleted.
 
-Set the value to C<-1> for no limit.
+For no limit, set the value to C<-1>.
 
 =head2 http_proxy
 
@@ -4831,7 +4835,7 @@ Ignore videos in AV1 format.
 
 =head2 ignored_projections
 
-An array of video projects to ignore.
+An array of video projections to ignore.
 
 For example, to prefer rectangular projections of 360° videos, use:
 
@@ -4847,11 +4851,11 @@ Keep the original video after conversion. When set to C<0>, the original video w
 
 =head2 local_playlist_limit
 
-When set to a positive value, will restrict the size of local playlists to this many entries. When this limit has been reached, older entries will be discarded from the playlist.
+When set to a positive value, will restrict the size of the local playlists to this many entries. When this limit has been reached, older entries will be discarded from the playlist.
 
 A reasonable value would be between 500 and 1000.
 
-When set to a non-positive value, no limit is imposed.
+For no limit, set the value to C<-1>.
 
 =head2 maxResults
 

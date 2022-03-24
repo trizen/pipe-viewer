@@ -2772,14 +2772,17 @@ sub videos_from_data_file {
 sub get_subscription_video_results {
 
     state $t0 = time;
+    state $d0 = $t0;
 
     # Reuse the subscription file if it's less than 10 minutes old
-    if ((time - $t0 <= 600) and (-f $subscription_videos_data_file) and (-M _) < ((-M $CONFIG{subscribed_channels_file}) // 0))
-    {
+    if (    $t0 != $d0
+        and (time - $t0 <= 600)
+        and (-f $subscription_videos_data_file)
+        and (-M $subscription_videos_data_file) < ((-M $CONFIG{subscribed_channels_file}) // 0)) {
         return videos_from_data_file($subscription_videos_data_file);
     }
 
-    $t0 = time;
+    $t0 = time + 1;
 
     my @channels = $yv_utils->read_channels_from_file($CONFIG{subscribed_channels_file});
 
@@ -3513,7 +3516,7 @@ sub prepend_video_data_to_file {
 
     if ($CONFIG{local_playlist_limit} > 0 and scalar(@$videos) > $CONFIG{local_playlist_limit}) {
         if ($yv_obj->get_debug) {
-            say STDERR ":: Resizing the playlist <<$file>> from $#$videos to $CONFIG{local_playlist_limit} entries.";
+            say STDERR ":: Resizing the playlist <<$file>> from $#$videos+1 to $CONFIG{local_playlist_limit} entries.";
         }
         $#$videos = $CONFIG{local_playlist_limit} - 1;
     }
