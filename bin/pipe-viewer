@@ -265,9 +265,10 @@ my %CONFIG = (
     watched_file  => $watched_file,
 
     # Subscribed channels
-    subscribed_channels_file => $subscribed_channels_file,
-    subscriptions_limit      => 10_000,                      # maximum number of subscription videos stored
+    subscriptions_limit      => 10_000,
+    subscriptions_lifetime   => 600,
     youtube_users_file       => $youtube_users_file,
+    subscribed_channels_file => $subscribed_channels_file,
 
     local_playlist_limit => -1,
 
@@ -278,10 +279,10 @@ my %CONFIG = (
 
     # youtube-dl support
     ytdl     => 1,
-    ytdl_cmd => undef,                                       # auto-defined
+    ytdl_cmd => undef,    # auto-defined
 
     # yt-dlp comment options
-    ytdlp_cmd          => undef,                             # auto-defined
+    ytdlp_cmd          => undef,    # auto-defined
     ytdlp_comments     => 0,
     ytdlp_max_comments => 10,
     ytdlp_max_replies  => 3,
@@ -3036,7 +3037,7 @@ sub print_local_subscription_videos {
 
     # Reuse the subscription file if it's less than 10 minutes old
     if (    $d0 != $t0
-        and (time - $t0 <= 600)
+        and (time - $t0 <= $opt{subscriptions_lifetime})
         and (-f $subscription_videos_data_file)
         and (-M $subscription_videos_data_file) < ((-M $opt{subscribed_channels_file}) // 0)) {
         return print_subscription_videos();
@@ -4956,6 +4957,10 @@ List of SRT languages in the order of preference.
 =head2 subscribed_channels_file
 
 Absolute path to the file where to store subscribed channels (C<:sub=i>).
+
+=head2 subscriptions_lifetime
+
+Amount of time, in seconds, before rescanning the subscribed channels for new videos (during C<-ls>).
 
 =head2 subscriptions_limit
 

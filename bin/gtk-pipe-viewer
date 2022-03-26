@@ -279,9 +279,10 @@ my %CONFIG = (
     watched_file  => $watched_file,
 
     # Subscribed channels
-    subscribed_channels_file => $subscribed_channels_file,
-    subscriptions_limit      => 10_000,                      # maximum number of subscription videos stored
+    subscriptions_limit      => 10_000,
+    subscriptions_lifetime   => 600,
     youtube_users_file       => $youtube_users_file,
+    subscribed_channels_file => $subscribed_channels_file,
 
     history                => 1,
     history_limit          => 100_000,
@@ -2778,7 +2779,7 @@ sub get_subscription_video_results {
 
     # Reuse the subscription file if it's less than 10 minutes old
     if (    $t0 != $d0
-        and (time - $t0 <= 600)
+        and (time - $t0 <= $CONFIG{subscriptions_lifetime})
         and (-f $subscription_videos_data_file)
         and (-M $subscription_videos_data_file) < ((-M $CONFIG{subscribed_channels_file}) // 0)) {
         return videos_from_data_file($subscription_videos_data_file);
