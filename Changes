@@ -5,6 +5,14 @@
 
 [CHANGELOG]
 
+Version 0.1.9
+
+- Added the `subscriptions_lifetime` config-option.
+- Added the `bypass_age_gate_with_proxy` config-option. (disabled by default)
+- Support for YouTube "shorts" video URLs.
+- GTK: added support for playing videos with a single left-click.
+- When requesting playlists for a given channel ID, return the channel created playlists.
+
 Version 0.1.8
 
 - Added the `ytdlp_max_replies` config-option.
