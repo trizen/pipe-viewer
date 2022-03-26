@@ -172,6 +172,13 @@ sub xml2srt {
         my $start = $line->{'-start'};
         my $end   = $start + $line->{'-dur'};
 
+        if (exists $sections->[$i + 1]) {
+            my $next_start = $sections->[$i + 1]{'-start'};
+            if ($end > $next_start) {
+                $end = $next_start - 0.001;
+            }
+        }
+
         push @text,
           join("\n",
                $i + 1,
