@@ -5,6 +5,11 @@
 
 [CHANGELOG]
 
+Version 0.2.0
+
+- New workaround for age-restricted videos.
+- Fixed the overlapping display time for auto-generated captions.
+
 Version 0.1.9
 
 - Added the `subscriptions_lifetime` config-option.
