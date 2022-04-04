@@ -331,12 +331,6 @@ my $base_options = <<'BASE';
 :playlist=ID      : display videos from a playlistID
 BASE
 
-my $action_options = <<'ACTIONS';
-# Actions
-:login            : will prompt you for login
-:logout           : will delete the authentication key
-ACTIONS
-
 my $control_options = <<'CONTROL';
 # Control
 :n(ext)           : display the next page of results
@@ -362,7 +356,6 @@ NOTES
 
 my $general_help = <<"HELP";
 
-$action_options
 $control_options
 $other_options
 $notes_options
@@ -404,7 +397,6 @@ my $complete_help = <<"STDIN_HELP";
 
 $base_options
 $control_options
-$action_options
 # YouTube
 :i(nfo)=i,i       : display more information
 :d(ownload)=i,i   : download the selected videos
@@ -765,10 +757,6 @@ usage: $execname [options] ([url] | [keywords])
    --best               : prefer best resolution available
    --resolution=s       : supported resolutions: best, 2160p, 1440p,
                           1080p, 720p, 480p, 360p, 240p, 144p, audio.
-
- * Account
-   --login              : will prompt for authentication (OAuth 2.0)
-   --logout             : will delete the authentication key
 
  * Display local
    -P  --playlists       : show the local playlists
@@ -1499,8 +1487,8 @@ sub parse_arguments {
         # English-UK friendly
         'favorite|favourite|favorite-video|favourite-video|fav=s' => \$opt{favorite_video},
 
-        'login|authenticate' => \$opt{authenticate},
-        'logout'             => \$opt{logout},
+        #'login|authenticate' => \$opt{authenticate},
+        #'logout'             => \$opt{logout},
 
         'related-videos|rv=s'         => \$opt{related_videos},
         'popular-videos|popular|pv:s' => \$opt{popular_videos},
@@ -1751,7 +1739,6 @@ sub first_user_input {
     state $first_input_help = <<"HELP";
 
 $base_options
-$action_options
 $other_options
 $notes_options
 ** Example:
