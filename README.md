@@ -22,6 +22,7 @@ This fork parses the YouTube website directly and relies on the invidious instan
 * Alpine Linux: `doas apk add pipe-viewer`
 * Arch Linux (AUR): https://aur.archlinux.org/packages/pipe-viewer-git/
 * Void Linux: `sudo xbps-install pipe-viewer`
+* Parabola GNU/Linux-libre: `pacman -S pipe-viewer`
 * Gentoo Linux (kske overlay): `eselect repository enable kske && emerge -av net-misc/pipe-viewer`
 * [Guix](https://guix.gnu.org):
 Pipe-Viewer can be deployed on any GNU/Linux distribution using Guix.
