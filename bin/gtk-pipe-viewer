@@ -187,6 +187,14 @@ my %CONFIG = (
                               fs    => q{--fullscreen},
                               arg   => q{--really-quiet --force-media-title=*TITLE* --no-ytdl *VIDEO*},
                              },
+                      ffplay => {
+                              cmd     => q{ffplay},
+                              srt     => q{-vf subtitles=filename=*SUB*},
+                              audio   => q{},
+                              fs      => q{-fs},
+                              arg     => q{-loglevel quiet -autoexit -window_title *TITLE* *VIDEO*},
+                              novideo => q{-vn},
+                             },
                      },
     video_player_selected => undef,    # autodetect it later
 
