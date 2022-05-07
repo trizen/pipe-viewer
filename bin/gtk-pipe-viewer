@@ -250,9 +250,8 @@ my %CONFIG = (
     autoscroll_to_end => 0,
     single_click_play => 0,
 
-    # youtube-dl support
-    ytdl     => 1,
-    ytdl_cmd => undef,    # auto-detect
+    # yt-dlp / youtube-dl support
+    ytdl => 1,
 
     # yt-dlp comment options
     ytdlp_cmd          => undef,    # auto-detect
@@ -787,23 +786,18 @@ foreach my $path ($CONFIG{cache_dir}) {
     }
 }
 
-# Locate yt-dlp and youtube-dl
-if (not defined($CONFIG{ytdl_cmd}) or not defined($CONFIG{ytdlp_cmd})) {
+# Locate yt-dlp or youtube-dl
+if (not defined($CONFIG{ytdlp_cmd})) {
 
     foreach my $ytdl (qw(yt-dlp youtube-dl)) {
         my $ytdl_path = which_command($ytdl);
 
-        if ($ytdl eq 'yt-dlp') {
-            $CONFIG{ytdlp_cmd} //= $ytdl_path;
-        }
-
         if (defined($ytdl_path)) {
-            $CONFIG{ytdl_cmd} //= $ytdl_path;
+            $CONFIG{ytdlp_cmd} //= $ytdl_path;
             last;
         }
     }
 
-    $CONFIG{ytdl_cmd}  //= 'youtube-dl';
     $CONFIG{ytdlp_cmd} //= 'yt-dlp';
 }
 
@@ -876,7 +870,6 @@ my $yv_obj = WWW::PipeViewer->new(
                                   escape_utf8 => 1,
                                   config_dir  => $config_dir,
                                   ytdl        => $CONFIG{ytdl},
-                                  ytdl_cmd    => $CONFIG{ytdl_cmd},
                                   ytdlp_cmd   => $CONFIG{ytdlp_cmd},
                                   env_proxy   => $CONFIG{env_proxy},
                                   cache_dir   => $CONFIG{cache_dir},
@@ -929,10 +922,10 @@ sub apply_configuration {
                              qw(
                              maxResults videoDimension videoLicense
                              region debug http_proxy user_agent
-                             timeout cookie_file ytdl ytdl_cmd
+                             timeout cookie_file ytdl ytdlp_cmd
                              api_host prefer_mp4 prefer_av1
                              comments_order prefer_invidious
-                             force_fallback ytdlp_cmd ytdlp_comments
+                             force_fallback ytdlp_comments
                              ytdlp_max_comments ytdlp_max_replies
                              bypass_age_gate_with_proxy
                              )

@@ -79,6 +79,9 @@ From a string like 'video/webm;+codecs="vp9"', it returns 'webm'.
 
 sub extension {
     my ($self, $type) = @_;
+
+    $type //= '';
+
         $type =~ /\bflv\b/i      ? q{flv}
       : $type =~ /\bopus\b/i     ? q{opus}
       : $type =~ /\b3gpp?\b/i    ? q{3gp}
@@ -406,7 +409,7 @@ sub format_text {
         ),
 
         URL => sub { sprintf($self->{youtube_url_format}, $self->get_video_id($info)) },
-                         );
+    );
 
     my $tokens_re = do {
         local $" = '|';

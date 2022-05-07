@@ -242,6 +242,7 @@ my %CONFIG = (
     interactive        => 1,
     get_term_width     => $constant{win32} ^ 1,
     download_with_wget => undef,                  # auto-defined
+    download_with_ytdl => undef,                  # auto-defined
     thousand_separator => q{,},
     downloads_dir      => curdir(),
     download_and_play  => 0,
@@ -277,9 +278,8 @@ my %CONFIG = (
     highlight_color   => 'bold',
     skip_watched      => 0,
 
-    # youtube-dl support
-    ytdl     => 1,
-    ytdl_cmd => undef,    # auto-defined
+    # yt-dlp / youtube-dl support
+    ytdl => 1,
 
     # yt-dlp comment options
     ytdlp_cmd          => undef,    # auto-defined
@@ -515,28 +515,26 @@ sub load_config {
     }
 
     # Locate yt-dlp and youtube-dl
-    if (not defined($CONFIG{ytdl_cmd}) or not defined($CONFIG{ytdlp_cmd})) {
+    if (   not defined($CONFIG{ytdlp_cmd})
+        or not defined($CONFIG{download_with_ytdl})) {
 
         foreach my $ytdl (qw(yt-dlp youtube-dl)) {
             my $ytdl_path = which_command($ytdl);
 
-            if ($ytdl eq 'yt-dlp') {
-                $CONFIG{ytdlp_cmd} //= $ytdl_path;
-            }
-
             if (defined($ytdl_path)) {
-                $CONFIG{ytdl_cmd} //= $ytdl_path;
+                $CONFIG{ytdlp_cmd}          //= $ytdl_path;
+                $CONFIG{download_with_ytdl} //= 1;
                 last;
             }
         }
 
-        $CONFIG{ytdl_cmd}  //= 'youtube-dl';
-        $CONFIG{ytdlp_cmd} //= 'yt-dlp';
+        $CONFIG{ytdlp_cmd}          //= 'yt-dlp';
+        $CONFIG{download_with_ytdl} //= 0;
         $update_config = 1;
     }
 
     # Download with wget if it is installed
-    if (not defined $CONFIG{download_with_wget}) {
+    if (not defined $CONFIG{download_with_wget} and not $CONFIG{download_with_ytdl}) {
 
         my $wget_path = which_command('wget');
 
@@ -660,7 +658,6 @@ my $yv_obj = WWW::PipeViewer->new(
                                   escape_utf8 => 1,
                                   config_dir  => $config_dir,
                                   ytdl        => $opt{ytdl},
-                                  ytdl_cmd    => $opt{ytdl_cmd},
                                   ytdlp_cmd   => $opt{ytdlp_cmd},
                                   cache_dir   => $opt{cache_dir},
                                   env_proxy   => $opt{env_proxy},
@@ -866,8 +863,7 @@ usage: $execname [options] ([url] | [keywords])
    --dash!              : include or exclude segmented DASH streams
    --ytdl!              : use youtube-dl for videos with encrypted signatures
                           `--no-ytdl` will use invidious instances
-   --ytdl-cmd=s         : youtube-dl command (default: youtube-dl)
-   --ytdlp-cmd=s        : yt-dlp command (default: yt-dlp)
+   --ytdlp-cmd=s        : yt-dlp / youtube-dl command (default: yt-dlp)
 
 Help options:
    -T  --tricks         : show more 'hidden' features of $execname
@@ -1154,17 +1150,17 @@ sub apply_configuration {
                              channelId region debug
                              http_proxy page comments_order
                              user_agent force_fallback
-                             cookie_file timeout ytdl ytdl_cmd
+                             cookie_file timeout ytdl ytdlp_cmd
                              prefer_mp4 prefer_av1 prefer_invidious
                              ytdlp_comments ytdlp_max_comments
-                             ytdlp_max_replies ytdlp_cmd
+                             ytdlp_max_replies
                              bypass_age_gate_with_proxy
                              )
       ) {
 
         if (defined $opt->{$option_name}) {
             my $code      = \&{"WWW::PipeViewer::set_$option_name"};
-            my $value     = delete $opt->{$option_name};
+            my $value     = $opt->{$option_name};                      # don't delete the value!
             my $set_value = $yv_obj->$code($value);
 
             if (not defined($set_value) or $set_value ne $value) {
@@ -1593,7 +1589,6 @@ sub parse_arguments {
         'ps|playlist-save=s'                => \$opt{playlist_save},
 
         'ytdl!'       => \$opt{ytdl},
-        'ytdl-cmd=s'  => \$opt{ytdl_cmd},
         'ytdlp-cmd=s' => \$opt{ytdlp_cmd},
 
         'quiet|q!'      => \$opt{quiet},
@@ -3463,7 +3458,20 @@ sub get_streaming_url {
 }
 
 sub download_from_url {
-    my ($url, $output_filename) = @_;
+    my ($info, $output_filename) = @_;
+
+    my $url = $info->{url};
+
+    # Download with yt-dlp / youtube-dl
+    if ($opt{download_with_ytdl} and defined($info->{_youtube_url}) and defined($info->{itag})) {
+        my $cmd = join(' ',
+                       $opt{ytdlp_cmd}, '-f', $info->{itag}, quotemeta($info->{_youtube_url}),
+                       '-o', quotemeta("$output_filename.part"));
+        $yv_obj->proxy_system($cmd);
+        return if $?;
+        rename("$output_filename.part", $output_filename) or return undef;
+        return $output_filename;
+    }
 
     # Download with wget
     if ($opt{download_with_wget}) {
@@ -3518,7 +3526,7 @@ sub download_from_url {
         }
 
         unlink("$output_filename.part");
-        return download_from_url($url, $output_filename);
+        return download_from_url($info, $output_filename);
     }
 
     rename("$output_filename.part", $output_filename) or return undef;
@@ -3547,8 +3555,13 @@ sub download_video {
     my $video_info = $streaming->{streaming};
     my $audio_info = $streaming->{streaming}{__AUDIO__};
 
+    if (defined($info->{videoId})) {
+        $video_info->{_youtube_url} = sprintf("https://youtube.com/watch?v=%s", $info->{videoId});
+    }
+
     if ($audio_info) {
         $audio_filename .= "." . $yv_utils->extension($audio_info->{type});
+        $audio_info->{_youtube_url} = $video_info->{_youtube_url};
     }
 
     if (not -d $opt{downloads_dir}) {
@@ -3578,14 +3591,14 @@ sub download_video {
             say ":: File `$video_filename` already exists. Skipping...";
         }
         else {
-            $video_filename = download_from_url($video_info->{url}, $video_filename) // return;
+            $video_filename = download_from_url($video_info, $video_filename) // return;
         }
 
         if ($opt{skip_if_exists} and -e $audio_filename) {
             say ":: File `$audio_filename` already exists. Skipping...";
         }
         elsif ($audio_info) {
-            $audio_filename = download_from_url($audio_info->{url}, $audio_filename) // return;
+            $audio_filename = download_from_url($audio_info, $audio_filename) // return;
         }
     }
 
@@ -5040,11 +5053,9 @@ Use C<youtube-dl> for videos with encrypted signatures.
 
 When set to C<0>, invidious instances will be used instead.
 
-=head2 ytdl_cmd
-
-Command for C<youtube-dl> when C<ytdl> is set to C<1>.
-
 =head2 ytdlp_cmd
+
+Command for C<yt-dlp> or C<youtube-dl> when C<ytdl> is set to C<1>.
 
 Command for C<yt-dlp> for extracting YouTube comments when C<ytdlp_comments> is set to C<1>.
 

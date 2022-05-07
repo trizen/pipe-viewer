@@ -86,9 +86,8 @@ my %valid_options = (
     cache_dir   => {valid => qr/^./,     default => q{.}},
     cookie_file => {valid => qr/^./,     default => undef},
 
-    # Support for youtube-dl
-    ytdl     => {valid => [1, 0], default => 1},
-    ytdl_cmd => {valid => qr/\w/, default => "youtube-dl"},
+    # Support for yt-dlp / youtube-dl
+    ytdl => {valid => [1, 0], default => 1},
 
     # yt-dlp comment options
     ytdlp_cmd          => {valid => qr/\w/,             default => "yt-dlp"},
@@ -793,8 +792,8 @@ sub _extract_from_invidious {
           invidious.snopyta.org
           invidious.fdn.fr
           invidious.namazso.eu
-          invidious.lunar.icu
-          inv.bp.mutahar.rocks
+          vid.puffyan.us
+          invidious.flokinet.to
         );
     }
 
@@ -841,7 +840,7 @@ sub _extract_from_invidious {
 
 sub _ytdl_is_available {
     my ($self) = @_;
-    ($self->proxy_stdout($self->get_ytdl_cmd(), '--version') // '') =~ /\d/;
+    ($self->proxy_stdout($self->get_ytdlp_cmd(), '--version') // '') =~ /\d/;
 }
 
 sub _info_from_ytdl {
@@ -849,15 +848,15 @@ sub _info_from_ytdl {
 
     $self->_ytdl_is_available() || return;
 
-    my @ytdl_cmd = ($self->get_ytdl_cmd(), '--all-formats', '--dump-single-json');
+    my @ytdlp_cmd = ($self->get_ytdlp_cmd(), '--all-formats', '--dump-single-json');
 
     my $cookie_file = $self->get_cookie_file;
 
     if (defined($cookie_file) and -f $cookie_file) {
-        push @ytdl_cmd, '--cookies', quotemeta($cookie_file);
+        push @ytdlp_cmd, '--cookies', quotemeta($cookie_file);
     }
 
-    my $json = $self->proxy_stdout(@ytdl_cmd, quotemeta("https://www.youtube.com/watch?v=" . $videoID));
+    my $json = $self->proxy_stdout(@ytdlp_cmd, quotemeta("https://www.youtube.com/watch?v=" . $videoID));
     my $ref  = $self->parse_json_string($json // return);
 
     if ($self->get_debug >= 3) {
@@ -902,14 +901,16 @@ sub _fallback_extract_urls {
     if ($self->get_ytdl and $self->_ytdl_is_available) {
 
         if ($self->get_debug) {
-            say STDERR ":: Using youtube-dl to extract the streaming URLs...";
+            my $cmd = $self->get_ytdlp_cmd;
+            say STDERR ":: Using $cmd to extract the streaming URLs...";
         }
 
         push @formats, $self->_extract_from_ytdl($videoID);
 
         if ($self->get_debug) {
             my $count = scalar(@formats);
-            say STDERR ":: youtube-dl: found $count streaming URLs...";
+            my $cmd   = $self->get_ytdlp_cmd;
+            say STDERR ":: $cmd: found $count streaming URLs...";
         }
 
         @formats && return @formats;
@@ -1233,10 +1234,11 @@ sub _fallback_extract_captions {
     my ($self, $videoID) = @_;
 
     if ($self->get_debug) {
-        say STDERR ":: Extracting closed-caption URLs with `youtube-dl`...";
+        my $cmd = $self->get_ytdlp_cmd;
+        say STDERR ":: Extracting closed-caption URLs with $cmd";
     }
 
-    # Extract closed-caption URLs with youtube-dl if our code failed
+    # Extract closed-caption URLs with yt-dlp / youtube-dl if our code failed
     my $ytdl_info = $self->_info_from_ytdl($videoID);
 
     my @caption_urls;
