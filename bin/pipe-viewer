@@ -3555,9 +3555,14 @@ sub download_video {
     my $video_info = $streaming->{streaming};
     my $audio_info = $streaming->{streaming}{__AUDIO__};
 
-    if (defined($info->{videoId})) {
-        $video_info->{_youtube_url} = sprintf("https://youtube.com/watch?v=%s", $info->{videoId});
-    }
+    my $video_id = $yv_utils->format_text(
+                                          streaming => $streaming,
+                                          info      => $info,
+                                          text      => '*ID*',
+                                          escape    => 0
+                                         );
+
+    $video_info->{_youtube_url} = sprintf("https://youtube.com/watch?v=%s", $video_id);
 
     if ($audio_info) {
         $audio_filename .= "." . $yv_utils->extension($audio_info->{type});
