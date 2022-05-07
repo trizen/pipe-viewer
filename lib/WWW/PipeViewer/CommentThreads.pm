@@ -36,13 +36,13 @@ sub comments_from_ytdlp {
     my $max_comments   = $self->get_ytdlp_max_comments;
     my $max_replies    = $self->get_ytdlp_max_replies;
     my $comments_order = $self->get_comments_order;
-    my $ytdlp_cmd      = $self->get_ytdlp_cmd;
+    my $ytdl_cmd       = $self->get_ytdl_cmd;
 
     my $max_comments_per_page = $max_comments;
     $max_comments = $page * $max_comments;
 
     my @cmd = (
-        $ytdlp_cmd,
+        $ytdl_cmd,
         '--write-comments',
         '--extractor-args',
 #<<<
@@ -52,7 +52,7 @@ sub comments_from_ytdlp {
         '--ignore-no-formats-error',
         '--dump-single-json',
         quotemeta("https://www.youtube.com/watch?v=$video_id"),
-              );
+    );
 
     if ($self->get_debug) {
         say STDERR ":: Extracting comments with `yt-dlp`...";
@@ -181,8 +181,8 @@ sub comment_to_video_id {
             "videoId" => $video_id,
 
             #"channelId"    => $channel_id,
-        },
-    };
+                     },
+               };
 
     $self->post_as_json($url, $hash);
 }

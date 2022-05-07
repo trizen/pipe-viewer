@@ -87,10 +87,10 @@ my %valid_options = (
     cookie_file => {valid => qr/^./,     default => undef},
 
     # Support for yt-dlp / youtube-dl
-    ytdl => {valid => [1, 0], default => 1},
+    ytdl     => {valid => [1, 0], default => 1},
+    ytdl_cmd => {valid => qr/\w/, default => "yt-dlp"},
 
     # yt-dlp comment options
-    ytdlp_cmd          => {valid => qr/\w/,             default => "yt-dlp"},
     ytdlp_comments     => {valid => [1, 0],             default => 0},
     ytdlp_max_comments => {valid => qr/^\d+\z/,         default => 50},
     ytdlp_max_replies  => {valid => qr/^(?:\d+|all)\z/, default => 0},
@@ -840,7 +840,7 @@ sub _extract_from_invidious {
 
 sub _ytdl_is_available {
     my ($self) = @_;
-    ($self->proxy_stdout($self->get_ytdlp_cmd(), '--version') // '') =~ /\d/;
+    ($self->proxy_stdout($self->get_ytdl_cmd(), '--version') // '') =~ /\d/;
 }
 
 sub _info_from_ytdl {
@@ -848,15 +848,15 @@ sub _info_from_ytdl {
 
     $self->_ytdl_is_available() || return;
 
-    my @ytdlp_cmd = ($self->get_ytdlp_cmd(), '--all-formats', '--dump-single-json');
+    my @ytdl_cmd = ($self->get_ytdl_cmd(), '--all-formats', '--dump-single-json');
 
     my $cookie_file = $self->get_cookie_file;
 
     if (defined($cookie_file) and -f $cookie_file) {
-        push @ytdlp_cmd, '--cookies', quotemeta($cookie_file);
+        push @ytdl_cmd, '--cookies', quotemeta($cookie_file);
     }
 
-    my $json = $self->proxy_stdout(@ytdlp_cmd, quotemeta("https://www.youtube.com/watch?v=" . $videoID));
+    my $json = $self->proxy_stdout(@ytdl_cmd, quotemeta("https://www.youtube.com/watch?v=" . $videoID));
     my $ref  = $self->parse_json_string($json // return);
 
     if ($self->get_debug >= 3) {
@@ -901,7 +901,7 @@ sub _fallback_extract_urls {
     if ($self->get_ytdl and $self->_ytdl_is_available) {
 
         if ($self->get_debug) {
-            my $cmd = $self->get_ytdlp_cmd;
+            my $cmd = $self->get_ytdl_cmd;
             say STDERR ":: Using $cmd to extract the streaming URLs...";
         }
 
@@ -909,7 +909,7 @@ sub _fallback_extract_urls {
 
         if ($self->get_debug) {
             my $count = scalar(@formats);
-            my $cmd   = $self->get_ytdlp_cmd;
+            my $cmd   = $self->get_ytdl_cmd;
             say STDERR ":: $cmd: found $count streaming URLs...";
         }
 
@@ -1234,7 +1234,7 @@ sub _fallback_extract_captions {
     my ($self, $videoID) = @_;
 
     if ($self->get_debug) {
-        my $cmd = $self->get_ytdlp_cmd;
+        my $cmd = $self->get_ytdl_cmd;
         say STDERR ":: Extracting closed-caption URLs with $cmd";
     }
 

@@ -279,10 +279,10 @@ my %CONFIG = (
     skip_watched      => 0,
 
     # yt-dlp / youtube-dl support
-    ytdl => 1,
+    ytdl     => 1,
+    ytdl_cmd => undef,    # auto-defined
 
     # yt-dlp comment options
-    ytdlp_cmd          => undef,    # auto-defined
     ytdlp_comments     => 0,
     ytdlp_max_comments => 10,
     ytdlp_max_replies  => 3,
@@ -515,20 +515,20 @@ sub load_config {
     }
 
     # Locate yt-dlp and youtube-dl
-    if (   not defined($CONFIG{ytdlp_cmd})
+    if (   not defined($CONFIG{ytdl_cmd})
         or not defined($CONFIG{download_with_ytdl})) {
 
         foreach my $ytdl (qw(yt-dlp youtube-dl)) {
             my $ytdl_path = which_command($ytdl);
 
             if (defined($ytdl_path)) {
-                $CONFIG{ytdlp_cmd}          //= $ytdl_path;
+                $CONFIG{ytdl_cmd}           //= $ytdl_path;
                 $CONFIG{download_with_ytdl} //= 1;
                 last;
             }
         }
 
-        $CONFIG{ytdlp_cmd}          //= 'yt-dlp';
+        $CONFIG{ytdl_cmd}           //= 'yt-dlp';
         $CONFIG{download_with_ytdl} //= 0;
         $update_config = 1;
     }
@@ -658,7 +658,7 @@ my $yv_obj = WWW::PipeViewer->new(
                                   escape_utf8 => 1,
                                   config_dir  => $config_dir,
                                   ytdl        => $opt{ytdl},
-                                  ytdlp_cmd   => $opt{ytdlp_cmd},
+                                  ytdl_cmd    => $opt{ytdl_cmd},
                                   cache_dir   => $opt{cache_dir},
                                   env_proxy   => $opt{env_proxy},
                                   cookie_file => $opt{cookie_file},
@@ -863,7 +863,7 @@ usage: $execname [options] ([url] | [keywords])
    --dash!              : include or exclude segmented DASH streams
    --ytdl!              : use youtube-dl for videos with encrypted signatures
                           `--no-ytdl` will use invidious instances
-   --ytdlp-cmd=s        : yt-dlp / youtube-dl command (default: yt-dlp)
+   --ytdl-cmd=s         : yt-dlp / youtube-dl command (default: $CONFIG{ytdl_cmd})
 
 Help options:
    -T  --tricks         : show more 'hidden' features of $execname
@@ -1150,7 +1150,7 @@ sub apply_configuration {
                              channelId region debug
                              http_proxy page comments_order
                              user_agent force_fallback
-                             cookie_file timeout ytdl ytdlp_cmd
+                             cookie_file timeout ytdl ytdl_cmd
                              prefer_mp4 prefer_av1 prefer_invidious
                              ytdlp_comments ytdlp_max_comments
                              ytdlp_max_replies
@@ -1588,8 +1588,8 @@ sub parse_arguments {
         'pos|position=i'                    => \$opt{position},
         'ps|playlist-save=s'                => \$opt{playlist_save},
 
-        'ytdl!'       => \$opt{ytdl},
-        'ytdlp-cmd=s' => \$opt{ytdlp_cmd},
+        'ytdl!'      => \$opt{ytdl},
+        'ytdl-cmd=s' => \$opt{ytdl_cmd},
 
         'quiet|q!'      => \$opt{quiet},
         'really-quiet!' => \$opt{really_quiet},
@@ -3465,7 +3465,7 @@ sub download_from_url {
     # Download with yt-dlp / youtube-dl
     if ($opt{download_with_ytdl} and defined($info->{_youtube_url}) and defined($info->{itag})) {
         my $cmd = join(' ',
-                       $opt{ytdlp_cmd}, '-f', $info->{itag}, quotemeta($info->{_youtube_url}),
+                       $opt{ytdl_cmd}, '-f', $info->{itag}, quotemeta($info->{_youtube_url}),
                        '-o', quotemeta("$output_filename.part"));
         $yv_obj->proxy_system($cmd);
         return if $?;
@@ -4756,6 +4756,12 @@ Play downloaded videos.
 
 Download videos with C<wget>.
 
+=head2 download_with_ytdl
+
+Download videos `yt-dlp` or `youtube-dl`.
+
+By enabling this option and setting the value of C<ytdl_cmd> to C<"yt-dlp">, download speed will be greatly improved.
+
 =head2 downloads_dir
 
 Directory where to download files and where to save converted files.
@@ -5053,11 +5059,11 @@ Use C<youtube-dl> for videos with encrypted signatures.
 
 When set to C<0>, invidious instances will be used instead.
 
-=head2 ytdlp_cmd
+=head2 ytdl_cmd
 
 Command for C<yt-dlp> or C<youtube-dl> when C<ytdl> is set to C<1>.
 
-Command for C<yt-dlp> for extracting YouTube comments when C<ytdlp_comments> is set to C<1>.
+Also command for C<yt-dlp> for extracting YouTube comments when C<ytdlp_comments> is set to C<1>.
 
 =head2 ytdlp_comments
 
