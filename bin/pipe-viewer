@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  pipe-viewer
 #  Fork: 30 October 2020
-#  Edit: 29 March 2022
+#  Edit: 09 May 2022
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -46,7 +46,7 @@ no warnings 'once';
 my $DEVEL;                                           # true in devel mode
 use if ($DEVEL = -w __FILE__), lib => qw(../lib);    # devel mode
 
-use WWW::PipeViewer v0.2.0;
+use WWW::PipeViewer v0.2.1;
 use WWW::PipeViewer::RegularExpressions;
 
 require Storable;
@@ -4763,7 +4763,7 @@ Download videos with C<wget>.
 
 =head2 download_with_ytdl
 
-Download videos `yt-dlp` or `youtube-dl`.
+Download videos with `yt-dlp` or `youtube-dl`.
 
 By enabling this option and setting the value of C<ytdl_cmd> to C<"yt-dlp">, download speed will be greatly improved.
 
