@@ -1308,6 +1308,8 @@ sub get_streaming_urls {
     my %info = $self->_get_video_info($videoID);
     my $json = defined($info{player_response}) ? $self->parse_json_string($info{player_response}) : {};
 
+    my @caption_urls;
+
     if (not defined $json->{streamingData}) {
         say STDERR ":: Trying to bypass age-restricted gate..." if $self->get_debug;
 
@@ -1347,13 +1349,14 @@ sub get_streaming_urls {
         foreach my $fallback_method (@fallback_methods) {
             $fallback_method->();
             $json = defined($info{player_response}) ? $self->parse_json_string($info{player_response}) : {};
-            last if defined($json->{streamingData});
+            if (defined($json->{streamingData})) {
+                push @caption_urls, $self->_fallback_extract_captions($videoID);
+                last;
+            }
         }
     }
 
     my @streaming_urls = $self->_extract_streaming_urls($json, $videoID);
-
-    my @caption_urls;
 
     if (eval { ref($json->{captions}{playerCaptionsTracklistRenderer}{captionTracks}) eq 'ARRAY' }) {
 
