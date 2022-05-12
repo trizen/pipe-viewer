@@ -46,7 +46,7 @@ sub comments_from_ytdlp {
         '--write-comments',
         '--extractor-args',
 #<<<
-        quotemeta("youtube:comment_sort=$comments_order;skip=hls,dash;player_skip=js;max_comments=$max_comments,all,all,$max_replies"),
+        quotemeta("youtube:comment_sort=$comments_order;skip=hls,dash,translated_subs;player_skip=js;max_comments=$max_comments,all,all,$max_replies"),
 #>>>
         '--no-check-formats',
         '--ignore-no-formats-error',
