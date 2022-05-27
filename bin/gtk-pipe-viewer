@@ -2674,15 +2674,20 @@ sub get_pixbuf_thumbnail_from_entry {
     my ($entry) = @_;
 
     my $thumbnail_url  = $yv_utils->get_thumbnail_url($entry, $CONFIG{thumbnail_type});
-    my $thumbnail_data = ($entry->{_thumbnail_data} ||= lwp_get($thumbnail_url));
+    my $thumbnail_data = $entry->{_thumbnail_data} // lwp_get($thumbnail_url);
 
     # Don't cache thumbnails that failed to be retrieved.
-    if (not $entry->{_thumbnail_data}) {
+    if (not $thumbnail_data) {
         delete $entry->{_thumbnail_data};
     }
 
     my $square_format = $yv_utils->is_channel($entry) || $yv_utils->is_subscription($entry);
     my $pixbuf        = get_pixbuf_thumbnail_from_content($thumbnail_data, ($square_format ? (160, 160) : ()));
+
+    if (defined($pixbuf) and not $entry->{_thumbnail_data}) {
+        my $buffer = pack('C*', @{$pixbuf->save_to_buffer('jpeg')});
+        $entry->{_thumbnail_data} = $buffer;
+    }
 
     return $pixbuf;
 }
