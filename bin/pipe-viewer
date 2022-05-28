@@ -19,7 +19,7 @@
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
-# pipe-viewer is a command line utility for streaming YouTube videos in mpv/vlc.
+# pipe-viewer is a command line utility for streaming YouTube videos in mpv/vlc/ffplay.
 
 # This is a fork of straw-viewer:
 #   https://github.com/trizen/straw-viewer
@@ -176,6 +176,14 @@ my %CONFIG = (
                               fs      => q{--fullscreen},
                               arg     => q{--really-quiet --force-media-title=*TITLE* --no-ytdl *VIDEO*},
                               novideo => q{--no-video},
+                             },
+                     ffplay => {
+                              cmd     => q{ffplay},
+                              srt     => q{-vf subtitles=filename=*SUB*},
+                              audio   => q{},
+                              fs      => q{-fs},
+                              arg     => q{-loglevel quiet -autoexit -window_title *TITLE* *VIDEO*},
+                              novideo => q{-vn},
                              },
                      },
 
