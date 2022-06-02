@@ -97,6 +97,7 @@ my $youtube_users_file       = catfile($config_dir, 'users.txt');
 my $subscribed_channels_file = catfile($config_dir, 'subscribed_channels.txt');
 my $history_file             = catfile($config_dir, 'gtk-history.txt');
 my $session_file             = catfile($config_dir, 'session.dat');
+my $thumbnails_file          = catfile($config_dir, 'thumbnails.dat');
 my $watched_file             = catfile($config_dir, 'watched.txt');
 
 # Special local playlists
@@ -127,6 +128,9 @@ my @VIDEO_QUEUE;
 
 # Keep track of watched videos
 my %WATCHED_VIDEOS;
+
+# Cache for thumbnails
+my $THUMBNAILS_CACHE = {};
 
 sub which_command {
     my ($cmd) = @_;
@@ -283,14 +287,19 @@ my %CONFIG = (
     youtube_users_file       => $youtube_users_file,
     subscribed_channels_file => $subscribed_channels_file,
 
-    history                => 1,
-    history_limit          => 100_000,
-    history_file           => $history_file,
-    recent_history         => 10,
+    history        => 1,
+    history_limit  => 100_000,
+    history_file   => $history_file,
+    recent_history => 10,
+
     remember_session       => 1,
     remember_session_depth => 10,
+
     entry_completion_limit => 10,
     local_playlist_limit   => -1,
+
+    cache_thumbnails        => 1,
+    cache_thumbnails_format => 'jpeg',
 
     # Save titles
     save_titles_to_history  => 0,
@@ -2596,17 +2605,17 @@ sub lwp_get {
 }
 
 sub get_pixbuf_thumbnail_from_content {
-    my ($thumbnail, $xsize, $ysize) = @_;
+    my ($thumbnail, $url, $xsize, $ysize) = @_;
 
     $xsize //= 160;
     $ysize //= 90;
 
-    require Digest::MD5;
-
-    my $md5 = Digest::MD5::md5_hex($thumbnail // return $default_thumb);
-    my $key = "$md5 $xsize $ysize";
+    $thumbnail // return $default_thumb;
 
     state %cache;
+
+    require Digest::MD5;
+    my $key = Digest::MD5::md5_hex($url);
 
     if (exists $cache{$key}) {
         return $cache{$key};
@@ -2633,39 +2642,64 @@ sub get_pixbuf_thumbnail_from_content {
         };
     }
 
-    if (defined($pixbuf)) {
-        $cache{$key} = $pixbuf;
+    if (defined($pixbuf) and !get_thumbnail_from_cache($url)) {
+
+        my $buffer = eval { pack('C*', @{$pixbuf->save_to_buffer($CONFIG{cache_thumbnails_format})}) };
+
+        if (defined($buffer)) {
+            add_thumbnail_to_cache($url, $buffer);
+        }
     }
 
     $pixbuf //= $default_thumb;
+    $cache{$key} = $pixbuf;
 
     return $pixbuf;
+}
+
+sub add_thumbnail_to_cache {
+    my ($url, $data) = @_;
+
+    $data // return;
+
+    require Digest::MD5;
+    my $key = Digest::MD5::md5_hex($url);
+
+    $THUMBNAILS_CACHE->{$key}{data}      = $data;
+    $THUMBNAILS_CACHE->{$key}{timestamp} = time;
+
+    return 1;
+}
+
+sub get_thumbnail_from_cache {
+    my ($url) = @_;
+
+    require Digest::MD5;
+    my $key = Digest::MD5::md5_hex($url);
+
+    exists($THUMBNAILS_CACHE->{$key}) || return undef;
+
+    my $data = $THUMBNAILS_CACHE->{$key}{data};
+
+    if (defined($data)) {
+        $THUMBNAILS_CACHE->{$key}{timestamp} = time;    # update the cache hit timestamp
+    }
+
+    return $data;
 }
 
 sub get_pixbuf_thumbnail_from_url {
     my ($url, $xsize, $ysize) = @_;
 
-    state %cache;
-
-    my $key = "$url $xsize $ysize";
-
-    if (exists $cache{$key}) {
-        return $cache{$key};
-    }
-
-    my $thumbnail = lwp_get($url);
+    my $thumbnail = get_thumbnail_from_cache($url) // lwp_get($url);
 
     if (not defined($thumbnail)) {
         if ($url =~ s{/mq([0-9])\.}{/$1.}) {
-            $thumbnail = lwp_get($url);
+            $thumbnail = get_thumbnail_from_cache($url) // lwp_get($url);
         }
     }
 
-    my $pixbuf = get_pixbuf_thumbnail_from_content($thumbnail, $xsize, $ysize);
-
-    if (defined($pixbuf)) {
-        $cache{$key} = $pixbuf;
-    }
+    my $pixbuf = get_pixbuf_thumbnail_from_content($thumbnail, $url, $xsize, $ysize);
 
     return $pixbuf;
 }
@@ -2674,20 +2708,10 @@ sub get_pixbuf_thumbnail_from_entry {
     my ($entry) = @_;
 
     my $thumbnail_url  = $yv_utils->get_thumbnail_url($entry, $CONFIG{thumbnail_type});
-    my $thumbnail_data = $entry->{_thumbnail_data} // lwp_get($thumbnail_url);
-
-    # Don't cache thumbnails that failed to be retrieved.
-    if (not $thumbnail_data) {
-        delete $entry->{_thumbnail_data};
-    }
+    my $thumbnail_data = $entry->{_thumbnail_data} // get_thumbnail_from_cache($thumbnail_url) // lwp_get($thumbnail_url);
 
     my $square_format = $yv_utils->is_channel($entry) || $yv_utils->is_subscription($entry);
-    my $pixbuf        = get_pixbuf_thumbnail_from_content($thumbnail_data, ($square_format ? (160, 160) : ()));
-
-    if (defined($pixbuf) and not $entry->{_thumbnail_data}) {
-        my $buffer = pack('C*', @{$pixbuf->save_to_buffer('jpeg')});
-        $entry->{_thumbnail_data} = $buffer;
-    }
+    my $pixbuf        = get_pixbuf_thumbnail_from_content($thumbnail_data, $thumbnail_url, ($square_format ? (160, 160) : ()));
 
     return $pixbuf;
 }
@@ -3970,6 +3994,22 @@ sub save_session {
                     },
                     $session_file
                    );
+
+    # Keep only thumbnails that have been accessed in the past 3 days
+    my @keys = grep { time - $THUMBNAILS_CACHE->{$_}{timestamp} <= 259200 } keys %{$THUMBNAILS_CACHE};
+
+    if ($yv_obj->get_debug) {
+        say "[1] Cached thumbnails: ", scalar keys %{$THUMBNAILS_CACHE};
+    }
+
+    my %common_thumbnails;
+    @common_thumbnails{@keys} = @{$THUMBNAILS_CACHE}{@keys};
+
+    if ($yv_obj->get_debug) {
+        say "[2] Cached thumbnails: ", scalar keys %common_thumbnails;
+    }
+
+    Storable::store(\%common_thumbnails, $thumbnails_file);
 }
 
 sub add_results_to_history {
@@ -4183,6 +4223,14 @@ sub on_mainw_destroy {
 }
 
 $notebook->set_current_page($CONFIG{default_notebook_page});
+
+if ($CONFIG{cache_thumbnails} and -f $thumbnails_file) {
+    $THUMBNAILS_CACHE = eval { Storable::retrieve($thumbnails_file) } // do {
+        warn "[!] Failed to load the cached thumbnails...\n";
+        warn "[!] Reason: $@\n" if $@;
+        scalar {};
+    };
+}
 
 if ($CONFIG{remember_session} and -f $session_file) {
 
