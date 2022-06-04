@@ -110,7 +110,7 @@ my $local_playlists_dir = catdir($config_dir,      'playlists');
 
 # Configuration files
 my $config_file              = catfile($config_dir, "$execname.conf");
-my $youtube_users_file       = catfile($config_dir, 'users.txt');
+my $saved_channels_file      = catfile($config_dir, 'users.txt');
 my $subscribed_channels_file = catfile($config_dir, 'subscribed_channels.txt');
 my $authentication_file      = catfile($config_dir, 'reg.dat');
 my $history_file             = catfile($config_dir, 'cli-history.txt');
@@ -268,7 +268,7 @@ my %CONFIG = (
     # Subscribed channels
     subscriptions_limit      => 10_000,
     subscriptions_lifetime   => 600,
-    youtube_users_file       => $youtube_users_file,
+    saved_channels_file      => $saved_channels_file,
     subscribed_channels_file => $subscribed_channels_file,
 
     local_playlist_limit => -1,
@@ -479,6 +479,12 @@ sub load_config {
     # Rename `watched_file` to `watch_history_file`
     if (exists $CONFIG->{watched_file}) {
         $CONFIG->{watch_history_file} = delete $CONFIG->{watched_file};
+        $update_config = 1;
+    }
+
+    # Rename `youtube_users_file` to `saved_channels_file`
+    if (exists $CONFIG->{youtube_users_file}) {
+        $CONFIG->{saved_channels_file} = delete $CONFIG->{youtube_users_file};
         $update_config = 1;
     }
 
@@ -2836,12 +2842,12 @@ sub _add_channel_to_file {
 
 sub save_channel {
     my ($channel_id, $channel_title) = @_;
-    _add_channel_to_file($channel_id, $channel_title, $opt{youtube_users_file});
+    _add_channel_to_file($channel_id, $channel_title, $opt{saved_channels_file});
 }
 
 sub subscribe_channel {
     my ($channel_id, $channel_title) = @_;
-    _add_channel_to_file($channel_id, $channel_title, $opt{youtube_users_file});
+    _add_channel_to_file($channel_id, $channel_title, $opt{saved_channels_file});
     _add_channel_to_file($channel_id, $channel_title, $opt{subscribed_channels_file});
 }
 
@@ -2905,7 +2911,7 @@ sub _remove_channels_from_file {
 
 sub remove_saved_channels {
     my (@channel_ids) = @_;
-    _remove_channels_from_file(\@channel_ids, $opt{youtube_users_file});
+    _remove_channels_from_file(\@channel_ids, $opt{saved_channels_file});
     _remove_channels_from_file(\@channel_ids, $opt{subscribed_channels_file});
 }
 
@@ -3157,7 +3163,7 @@ sub _print_local_channel_from_file {
 
 sub print_saved_channels {
     my ($name) = @_;
-    _print_local_channel_from_file($name, $opt{youtube_users_file});
+    _print_local_channel_from_file($name, $opt{saved_channels_file});
 }
 
 sub print_subscribed_channels {
@@ -4971,6 +4977,10 @@ Enable or disable support for split-videos. Split-videos are videos that do not 
 
 List of SRT languages in the order of preference.
 
+=head2 saved_channels_file
+
+Absolute path to the file where to store saved channels (C<:save=i>).
+
 =head2 subscribed_channels_file
 
 Absolute path to the file where to store subscribed channels (C<:sub=i>).
@@ -5055,10 +5065,6 @@ File where to save the video IDs of watched/downloaded videos when C<watch_histo
 =head2 wget_cmd
 
 Command for C<wget> when C<download_with_wget> is set to a true value.
-
-=head2 youtube_users_file
-
-Absolute path to the file where to store saved channels (C<:save=i>).
 
 =head2 youtube_video_url
 
