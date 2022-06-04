@@ -280,7 +280,7 @@ my %CONFIG = (
     # Watch history
     watch_history       => 1,
     watch_history_color => 'blue',
-    watched_file        => $watched_file,
+    watch_history_file  => $watched_file,
 
     # Subscribed channels
     subscriptions_limit      => 10_000,
@@ -496,6 +496,11 @@ require $config_file;    # Load the configuration file
 
 if (ref $CONFIG ne 'HASH') {
     die "ERROR: Invalid configuration file!\n\t\$CONFIG is not an HASH ref!";
+}
+
+# Rename `watched_file` to `watch_history_file`
+if (exists $CONFIG->{watched_file}) {
+    $CONFIG->{watch_history_file} = delete $CONFIG->{watched_file};
 }
 
 # Get valid config keys
@@ -1446,7 +1451,11 @@ sub menu_popup {
                     my ($id, $iter) = get_selected_entry_code();
                     my $type = $liststore->get($iter, 7);
                     if (defined($id) and $type eq 'video') {
-                        execute_cli_pipe_viewer("--id=$id --no-video");
+                        if (execute_cli_pipe_viewer("--id=$id --no-video")) {
+                            my $video_data = $yv_obj->parse_json_string($liststore->get($iter, 8));
+                            save_watched_video($id, $video_data);
+                            highlight_watched_video($liststore, $iter);
+                        }
                     }
                     elsif (defined($id) and $type eq 'playlist') {
                         execute_cli_pipe_viewer("--pp=$id --no-video");
@@ -3599,7 +3608,7 @@ sub save_watched_video {
 
             $WATCHED_VIDEOS{$video_id} = 1;
 
-            open my $fh, '>>', $CONFIG{watched_file} or return;
+            open my $fh, '>>', $CONFIG{watch_history_file} or return;
             say {$fh} $video_id;
             close $fh;
         }
@@ -3645,6 +3654,7 @@ sub play_video {
     }
     else {
         warn "[!] Can't play this video -- player exited with code: $code\n";
+        return 0;
     }
 
     return 1;
@@ -3722,11 +3732,15 @@ sub execute_external_program {
             say "** Forking process: $cmd" if $yv_obj->get_debug;
             $yv_obj->proxy_exec($cmd);
         }
+        return 0;
     }
     else {
         say "** Backgrounding process: $cmd" if $yv_obj->get_debug;
         $yv_obj->proxy_system($cmd . ' &');
+        return $?;
     }
+
+    return 1;
 }
 
 sub make_youtube_url {
@@ -3774,19 +3788,24 @@ sub play_enqueued_videos {
 }
 
 sub play_selected_video_with_cli_pipe_viewer {
-    my ($code, $iter) = get_selected_entry_code();
-    $code // return;
+    my ($id, $iter) = get_selected_entry_code();
+    $id // return;
 
     my $type = $liststore->get($iter, 7);
 
     if ($type eq 'video') {
-        execute_cli_pipe_viewer("--video-id=$code");
+        if (execute_cli_pipe_viewer("--video-id=$id")) {
+            my $video_data = $yv_obj->parse_json_string($liststore->get($iter, 8));
+            save_watched_video($id, $video_data);
+            highlight_watched_video($liststore, $iter);
+        }
     }
     elsif ($type eq 'playlist') {
-        execute_cli_pipe_viewer("--pp=$code");
+        execute_cli_pipe_viewer("--pp=$id");
     }
     else {
-        warn "Can't play $type: $code\n";
+        warn "Can't play $type: $id\n";
+        return 0;
     }
 
     return 1;
@@ -3809,7 +3828,10 @@ sub execute_cli_pipe_viewer {
 
     say $command if $yv_obj->get_debug;
 
-    warn "pipe-viewer - exit code: $code\n" if $code != 0;
+    if ($code != 0) {
+        warn "pipe-viewer - exit code: $code\n";
+    }
+
     return 1;
 }
 
@@ -4265,14 +4287,14 @@ if ($CONFIG{cache_thumbnails} and -f $thumbnails_file) {
     };
 }
 
-if ($CONFIG{watch_history} and -f $CONFIG{watched_file}) {
-    if (open my $fh, '<', $CONFIG{watched_file}) {
+if ($CONFIG{watch_history} and -f $CONFIG{watch_history_file}) {
+    if (open my $fh, '<', $CONFIG{watch_history_file}) {
         chomp(my @video_ids = <$fh>);
         @WATCHED_VIDEOS{@video_ids} = ();
         close $fh;
     }
     else {
-        warn "[!] Can't open the watched file `$CONFIG{watched_file}' for reading: $!";
+        warn "[!] Can't open the watched file `$CONFIG{watch_history_file}' for reading: $!";
     }
 }
 

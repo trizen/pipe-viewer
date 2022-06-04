@@ -262,8 +262,8 @@ my %CONFIG = (
     history_file  => $history_file,
 
     # Watch history
-    watch_history => 1,
-    watched_file  => $watched_file,
+    watch_history      => 1,
+    watch_history_file => $watched_file,
 
     # Subscribed channels
     subscriptions_limit      => 10_000,
@@ -474,11 +474,17 @@ sub load_config {
         die "[ERROR] Invalid configuration file!\n\t\$CONFIG is not an HASH ref!";
     }
 
+    my $update_config = 0;
+
+    # Rename `watched_file` to `watch_history_file`
+    if (exists $CONFIG->{watched_file}) {
+        $CONFIG->{watch_history_file} = delete $CONFIG->{watched_file};
+        $update_config = 1;
+    }
+
     # Get valid config keys
     my @valid_keys = grep { exists $CONFIG{$_} } keys %{$CONFIG};
     @CONFIG{@valid_keys} = @{$CONFIG}{@valid_keys};
-
-    my $update_config = 0;
 
     # Define the cache directory
     if (not defined $CONFIG{cache_dir}) {
@@ -601,14 +607,14 @@ sub load_config {
 load_config($config_file);
 
 if ($opt{watch_history}) {
-    if (-f $opt{watched_file}) {
-        if (open my $fh, '<', $opt{watched_file}) {
+    if (-f $opt{watch_history_file}) {
+        if (open my $fh, '<', $opt{watch_history_file}) {
             chomp(my @ids = <$fh>);
             @WATCHED_VIDEOS{@ids} = ();
             close $fh;
         }
         else {
-            warn "[!] Can't open the watched file `$opt{watched_file}' for reading: $!";
+            warn "[!] Can't open the watched file `$opt{watch_history_file}' for reading: $!";
         }
     }
 }
@@ -3754,7 +3760,7 @@ sub save_watched_video {
 
             $WATCHED_VIDEOS{$video_id} = 1;
 
-            open my $fh, '>>', $opt{watched_file} or return;
+            open my $fh, '>>', $opt{watch_history_file} or return;
             say {$fh} $video_id;
             close $fh;
         }
@@ -4933,7 +4939,7 @@ ISO 3166 country code (default: "US").
 
 Set to C<1> to remember and highlight watched videos across multiple sessions.
 
-The video IDs are saved in the filename specified by C<watched_file>.
+The video IDs are saved in the filename specified by C<watch_history_file>.
 
 =head2 remove_played_file
 
@@ -5042,7 +5048,7 @@ Remember watched videos. Watched videos can be listed with:
 
     pipe-viewer -wv
 
-=head2 watched_file
+=head2 watch_history_file
 
 File where to save the video IDs of watched/downloaded videos when C<watch_history> is set to a true value.
 
