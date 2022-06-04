@@ -278,8 +278,9 @@ my %CONFIG = (
     ignored_projections        => [],
 
     # Watch history
-    watch_history => 1,
-    watched_file  => $watched_file,
+    watch_history       => 1,
+    watch_history_color => 'blue',
+    watched_file        => $watched_file,
 
     # Subscribed channels
     subscriptions_limit      => 10_000,
@@ -2535,9 +2536,13 @@ sub get_code {
                 display_results($results);
             }
             elsif ($type eq 'video') {
-                $CONFIG{audio_only}
-                  ? execute_cli_pipe_viewer("--id=$code")
-                  : play_video($yv_obj->parse_json_string($liststore->get($iter, 8)));
+                if (
+                    $CONFIG{audio_only}
+                    ? execute_cli_pipe_viewer("--id=$code")
+                    : play_video($yv_obj->parse_json_string($liststore->get($iter, 8)))
+                  ) {
+                    highlight_watched_video($liststore, $iter);
+                }
             }
 
             return 0;
@@ -3154,6 +3159,32 @@ sub reflow_text {
     $text =~ s/^/&#x200e;/gmr;
 }
 
+sub highlight_watched_video {
+    my ($liststore, $iter) = @_;
+
+    my $video_id = $liststore->get($iter, 3);
+
+    if (exists $WATCHED_VIDEOS{$video_id}) {
+
+        my $title = $liststore->get($iter, 0);
+        my $info  = $liststore->get($iter, 2);
+
+        foreach my $ref (\$title, \$info) {
+            $$ref = "<span color=\"$CONFIG{watch_history_color}\">$$ref</span>";
+        }
+
+        $liststore->set(
+                        $iter,
+                        0 => $title,
+                        2 => $info,
+                       );
+
+        return 1;
+    }
+
+    return 0;
+}
+
 sub add_video_entry {
     my ($video) = @_;
 
@@ -3199,6 +3230,8 @@ sub add_video_entry {
                     7 => 'video',
                     8 => $yv_obj->make_json_string($video),
                    );
+
+    highlight_watched_video($liststore, $iter);
 
     if ($CONFIG{show_thumbs}) {
         set_thumbnail($video, $liststore, $iter);
@@ -4230,6 +4263,17 @@ if ($CONFIG{cache_thumbnails} and -f $thumbnails_file) {
         warn "[!] Reason: $@\n" if $@;
         scalar {};
     };
+}
+
+if ($CONFIG{watch_history} and -f $CONFIG{watched_file}) {
+    if (open my $fh, '<', $CONFIG{watched_file}) {
+        chomp(my @video_ids = <$fh>);
+        @WATCHED_VIDEOS{@video_ids} = ();
+        close $fh;
+    }
+    else {
+        warn "[!] Can't open the watched file `$CONFIG{watched_file}' for reading: $!";
+    }
 }
 
 if ($CONFIG{remember_session} and -f $session_file) {
