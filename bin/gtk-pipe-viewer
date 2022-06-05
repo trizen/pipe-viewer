@@ -1569,7 +1569,7 @@ set_text(
     CTRL+Y : start CLI Pipe Viewer
     CTRL+E : enqueue the selected video
 
-    CTRL+N : show subscribtion videos
+    CTRL+N : show subscription videos
     CTRL+U : show the saved user-list
     CTRL+D : show more details for a selected entry
     CTRL+W : show the warnings window
