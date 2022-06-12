@@ -5,6 +5,12 @@
 
 [CHANGELOG]
 
+Version 0.2.2
+
+- Extract closed-captions for age-restricted videos.
+- GUI: better cache support for thumbnails.
+- GUI: added support for highlighting watched videos in a given color.
+
 Version 0.2.1
 
 - Added support for downloading videos with `yt-dlp` / `youtube-dl`.
