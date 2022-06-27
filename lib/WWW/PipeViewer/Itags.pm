@@ -44,7 +44,7 @@ sub get_itags {
         'best' => [{value => 38,  format => 'mp4'},                # mp4 (3072p) (v-a)
                    {value => 138, format => 'mp4', split => 1},    # mp4 (2160p-4320p) (v)
                    {value => 266, format => 'mp4', split => 1},    # mp4 (2160p-2304p) (v)
-                   {value => 571, format => 'av1', dash => 1},     # av1 (v)
+                   {value => 571, format => 'av1', split => 1},    # av1 (v)
                   ],
 
         '2160' => [{value => 315, format => 'webm', split => 1, hfr => 1},    # webm HFR (v)
@@ -66,8 +66,10 @@ sub get_itags {
                    {value => 399, format => 'av1',  split => 1, hfr => 1},    # av1 (v)
                    {value => 46,  format => 'webm'},                          # webm (v-a)
                    {value => 37,  format => 'mp4'},                           # mp4 (v-a)
-                   {value => 301, format => 'mp4', live => 1},                # mp4 (live) (v-a)
-                   {value => 96,  format => 'ts',  live => 1},                # ts (live) (v-a)
+                   {value => 301, format => 'mp4',  live  => 1},              # mp4 (live) (v-a)
+                   {value => 96,  format => 'ts',   live  => 1},              # ts (live) (v-a)
+                   {value => 335, format => 'webm', split => 1, hdr => 1},    # vp9 HDR (v)
+                   {value => 699, format => 'av1',  split => 1, hdr => 1},    # av1 HDR (v)
                   ],
 
         '720' => [{value => 302, format => 'webm', split => 1, hfr => 1},    # webm HFR (v)
@@ -77,9 +79,11 @@ sub get_itags {
                   {value => 398, format => 'av1',  split => 1, hfr => 1},    # av1 (v)
                   {value => 45,  format => 'webm'},                          # webm (v-a)
                   {value => 22,  format => 'mp4'},                           # mp4 (v-a)
-                  {value => 300, format => 'mp4', live => 1},                # mp4 (live) (v-a)
-                  {value => 120, format => 'flv', live => 1},                # flv (live) (v-a)
-                  {value => 95,  format => 'ts',  live => 1},                # ts (live) (v-a)
+                  {value => 300, format => 'mp4',  live  => 1},              # mp4 (live) (v-a)
+                  {value => 120, format => 'flv',  live  => 1},              # flv (live) (v-a)
+                  {value => 95,  format => 'ts',   live  => 1},              # ts (live) (v-a)
+                  {value => 334, format => 'webm', split => 1, hdr => 1},    # vp9 HDR (v)
+                  {value => 698, format => 'av1',  split => 1, hdr => 1},    # av1 HDR (v)
                  ],
 
         '480' => [{value => 244, format => 'webm', split => 1},              # webm (v)
@@ -87,7 +91,9 @@ sub get_itags {
                   {value => 397, format => 'av1',  split => 1},              # av1 (v)
                   {value => 44,  format => 'webm'},                          # webm (v-a)
                   {value => 35,  format => 'flv'},                           # flv (v-a)
-                  {value => 94,  format => 'mp4', live => 1},                # mp4 (live) (v-a)
+                  {value => 94,  format => 'mp4',  live  => 1},              # mp4 (live) (v-a)
+                  {value => 333, format => 'webm', split => 1, hdr => 1},    # vp9 HDR (v)
+                  {value => 697, format => 'av1',  split => 1, hdr => 1},    # av1 HDR (v)
                  ],
 
         '360' => [{value => 243, format => 'webm', split => 1},              # webm (v)
@@ -97,6 +103,8 @@ sub get_itags {
                   {value => 34,  format => 'flv'},                           # flv (v-a)
                   {value => 93,  format => 'mp4', live => 1},                # mp4 (live) (v-a)
                   {value => 18,  format => 'mp4'},                           # mp4 (v-a)
+                  {value => 332, format => 'webm', split => 1, hdr => 1},    # vp9 HDR (v)
+                  {value => 696, format => 'av1',  split => 1, hdr => 1},    # av1 HDR (v)
                  ],
 
         '240' => [{value => 242, format => 'webm', split => 1},              # webm (v)
@@ -106,8 +114,10 @@ sub get_itags {
                   {value => 5,   format => 'flv'},                           # flv (v-a)
                   {value => 36,  format => '3gp'},                           # 3gp (v-a)
                   {value => 13,  format => '3gp'},                           # 3gp (v-a)
-                  {value => 92,  format => 'mp4', live => 1},                # mp4 (live) (v-a)
-                  {value => 132, format => 'ts',  live => 1},                # ts (live) (v-a)
+                  {value => 92,  format => 'mp4',  live  => 1},              # mp4 (live) (v-a)
+                  {value => 132, format => 'ts',   live  => 1},              # ts (live) (v-a)
+                  {value => 331, format => 'webm', split => 1, hdr => 1},    # vp9 HDR (v)
+                  {value => 695, format => 'av1',  split => 1, hdr => 1},    # av1 HDR (v)
                  ],
 
         '144' => [{value => 278, format => 'webm', split => 1},              # webm (v)
@@ -116,6 +126,8 @@ sub get_itags {
                   {value => 17,  format => '3gp'},                           # 3gp (v-a)
                   {value => 91,  format => 'mp4'},                           # mp4 (live) (v-a)
                   {value => 151, format => 'ts'},                            # ts (live) (v-a)
+                  {value => 330, format => 'webm', split => 1, hdr => 1},    # vp9 HDR (v)
+                  {value => 694, format => 'av1',  split => 1, hdr => 1},    # av1 HDR (v)
                  ],
 
         'audio' => [{value => 172, format => 'webm', kbps => 192},             # webm (192 kbps)
@@ -253,7 +265,7 @@ sub find_streaming_url {
     }
 
     # Check if we do recognize all the audio/video formats
-    foreach my $stream_itag (keys %stream) {
+    foreach my $stream_itag (sort keys %stream) {
 
         next if $stream_itag =~ m{^(?:sb[012])\z};
 
