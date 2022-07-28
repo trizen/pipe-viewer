@@ -1308,6 +1308,12 @@ sub get_streaming_urls {
     my %info = $self->_get_video_info($videoID);
     my $json = defined($info{player_response}) ? $self->parse_json_string($info{player_response}) : {};
 
+    if ($self->get_debug >= 2) {
+        say STDERR ":: JSON data from player_response";
+        require Data::Dump;
+        Data::Dump::pp($json);
+    }
+
     my @caption_urls;
 
     if (not defined $json->{streamingData}) {
