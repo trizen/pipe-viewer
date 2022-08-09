@@ -182,6 +182,7 @@ sub _fallback_video_details {
             title   => $info->{fulltitle} // $info->{title},
             videoId => $id,
 
+#<<<
             videoThumbnails => [
                 map {
                     scalar {
@@ -192,6 +193,7 @@ sub _fallback_video_details {
                            }
                 } @{$info->{thumbnails}}
             ],
+#>>>
 
             liveNow       => ($info->{is_live} ? 1 : 0),
             description   => $info->{description},
@@ -235,7 +237,16 @@ sub video_details {
     my $microformat  = {};
 
     if (exists $video->{videoDetails}) {
+
         $videoDetails = $video->{videoDetails};
+
+        # Workaround for "Video Not Available" issue
+        if ($videoDetails->{videoId} ne $id) {
+            if ($self->get_debug) {
+                say STDERR ":: Different video ID detected: $videoDetails->{videoId}";
+            }
+            return $self->_fallback_video_details($id, $fields);
+        }
     }
     else {
         return $self->_fallback_video_details($id, $fields);
@@ -249,6 +260,7 @@ sub video_details {
         title   => eval { $microformat->{title}{simpleText} } // $videoDetails->{title},
         videoId => $videoDetails->{videoId},
 
+#<<<
         videoThumbnails => [
             map {
                 scalar {
@@ -259,6 +271,7 @@ sub video_details {
                        }
             } @{$videoDetails->{thumbnail}{thumbnails}}
         ],
+#>>>
 
         liveNow       => ($videoDetails->{isLiveContent} || (($videoDetails->{lengthSeconds} || 0) == 0)),
         description   => eval { $microformat->{description}{simpleText} } // $videoDetails->{shortDescription},
@@ -273,7 +286,7 @@ sub video_details {
         author   => $videoDetails->{author}    // $microformat->{ownerChannelName},
         authorId => $videoDetails->{channelId} // $microformat->{externalChannelId},
         rating   => $videoDetails->{averageRating},
-                  );
+    );
 
     if (defined($extra_info) and ref($extra_info) eq 'HASH') {
 
