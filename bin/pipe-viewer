@@ -53,6 +53,8 @@ use if ($DEVEL = -w __FILE__), lib => (abs_path(__FILE__.'/../../lib'),);
 use WWW::PipeViewer v0.2.3;
 use WWW::PipeViewer::RegularExpressions;
 
+use List::Util qw(uniq);
+
 require Storable;
 
 use File::Spec::Functions qw(
@@ -196,12 +198,9 @@ my %CONFIG = (
     maxResults      => 20,
     hfr             => 1,        # true to prefer high frame rate (HFR) videos
     resolution      => 'best',
-    videoDefinition => undef,
-    videoDimension  => undef,
-    videoLicense    => undef,
-    videoCaption    => undef,
     videoDuration   => undef,
 
+    features => undef,
     order  => undef,
     date   => undef,
     region => undef,
@@ -464,6 +463,16 @@ EOD
 }
 
 our $CONFIG;
+our @FEATURES;
+
+sub toggle_features {
+    my $enabled = shift @_;
+    if ($enabled) {
+        @FEATURES = sort(uniq(@FEATURES, @_));
+    } else {
+        @FEATURES = grep { my $feat = $_; ! grep $feat eq $_, @_ } @FEATURES;
+    }
+}
 
 sub load_config {
     my ($config_file) = @_;
@@ -491,6 +500,23 @@ sub load_config {
         $CONFIG->{saved_channels_file} = delete $CONFIG->{youtube_users_file};
         $update_config = 1;
     }
+
+    toggle_features 1, @{$CONFIG->{features}};
+    my @feature_options = qw(
+        videoCaption     1                 subtitles
+        videoCaption     true              subtitles
+        videoDefinition  high              hd
+        videoDimension   3d                3d
+        videoLicense     creative_commons  creative_commons
+    );
+    while (scalar @feature_options) {
+        (my $option_name, my $option_value, my $feature, @feature_options) = @feature_options;
+        if (($CONFIG->{$option_name} // '') eq $option_value) {
+            toggle_features 1, $feature;
+            $update_config = 1;
+        }
+    }
+    $CONFIG->{features} = \@FEATURES;
 
     # Get valid config keys
     my @valid_keys = grep { exists $CONFIG{$_} } keys %{$CONFIG};
@@ -758,8 +784,14 @@ usage: $execname [options] ([url] | [keywords])
                           valid values: relevance rating upload_date view_count
    --time=s             : short videos published in a time period
                           valid values: hour today week month year
-   --hd!                : search only for videos available in at least 720p
-   --vd=s               : set the video definition (any or high)
+   --360!               : search only for 360° videos
+   --hdr!               : search only for HDR videos
+   --live!              : search only for live videos
+   --vr180!             : search only for VR180 videos
+   --video-definition=s --vd=s:
+                          set the video definition (any, hd, or 4k)
+   --4k                 : shortcut for --video-definition=hd
+   --hd                 : shortcut for --video-definition=4k
    --dimension=s        : set video dimension (any or 3d)
    --license=s          : set video license (any or creative_commons)
    --page=i             : get results starting with a specific page number
@@ -1159,9 +1191,7 @@ sub apply_configuration {
     # ... YOUTUBE OPTIONS ... #
     foreach my $option_name (
                              qw(
-                             videoCaption videoDefinition
-                             videoDimension videoDuration
-                             videoLicense maxResults
+                             videoDuration maxResults
                              api_host date order
                              channelId region debug
                              http_proxy page comments_order
@@ -1185,8 +1215,30 @@ sub apply_configuration {
         }
     }
 
-    if (defined $opt->{hd}) {
-        $yv_obj->set_videoDefinition(delete($opt->{hd}) ? 'high' : undef);
+    my @feature_options = qw(
+        360              1                 360
+        hdr              1                 hdr
+        live             1                 live
+        vr180            1                 vr180
+        videoCaption     1                 subtitles
+        videoDimension   3d                3d
+        videoLicense     creative_commons  creative_commons
+    );
+    while (scalar @feature_options) {
+        (my $option_name, my $option_value, my $feature, @feature_options) = @feature_options;
+        if (defined $opt->{$option_name}) {
+            toggle_features $opt->{$option_name} eq $option_value, $feature;
+        }
+    }
+
+    if (defined $opt->{videoDefinition}) {
+        my $vd = $opt->{videoDefinition};
+        toggle_features $vd eq 'hd', 'hd';
+        toggle_features $vd eq '4k', '4k';
+    }
+
+    if (scalar @FEATURES) {
+        $yv_obj->set_features(\@FEATURES);
     }
 
     if (defined $opt->{author}) {
@@ -1535,7 +1587,12 @@ sub parse_arguments {
         'dimension=s'              => \$opt{videoDimension},
         'license=s'                => \$opt{videoLicense},
         'vd|video-definition=s'    => \$opt{videoDefinition},
-        'hd|high-definition!'      => \$opt{hd},
+        'hd'                       => sub { $opt{videoDefinition} = 'hd' },
+        '4k'                       => sub { $opt{videoDefinition} = '4k' },
+        '360!'                     => \$opt{360},
+        'hdr!'                     => \$opt{hdr},
+        'live!'                    => \$opt{live},
+        'vr180!'                   => \$opt{vr180},
         'I|interactive!'           => \$opt{interactive},
         'convert-to|convert_to=s'  => \$opt{convert_to},
         'keep-original-video!'     => \$opt{keep_original_video},
@@ -5034,27 +5091,24 @@ The keys for each player are:
     novideo    # the no-video mode option
     srt        # option specifying the *SUB* file
 
-=head2 videoCaption
+=head2 features
 
-When set to C<1> or C<"true">, retrieve only videos that contain closed-captions in search results.
-
-=head2 videoDefinition
-
-When set to C<"high">, retrieve only HD videos in search results.
-
-=head2 videoDimension
-
-When set to C<"3d">, retrieve only 3D videos in search results.
+A list of video features, return only videos with the specified features:
+- live: live stream
+- 4k: 4K resolution
+- hd: HD resolution (>=720p)
+- subtitles: video has subtitles/closed-captions
+- creative_commons: Creative Commons license
+- 360: 360° field of view
+- vr180: stereoscopic widh a 180° field of view
+- 3d: 3D
+- hdr: high dynamic range
 
 =head2 videoDuration
 
 Retrieve only short or long videos in search results.
 
 Valid values: "any", "short" (under 4 minutes), "average" (4-20 minutes), and "long" (over 20 minutes).
-
-=head2 videoLicense
-
-When set to C<"creative_commons">, retrieve only videos under the I<Creative Commons> license in search results.
 
 =head2 watch_history
 

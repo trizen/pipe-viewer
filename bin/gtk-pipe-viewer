@@ -52,7 +52,7 @@ use File::Spec::Functions qw(
 
 use Scalar::Util qw(looks_like_number);
 
-use List::Util qw(max min uniq);
+use List::Util qw(any max min pairs uniq);
 
 require Storable;
 binmode(STDOUT, ':utf8');
@@ -225,11 +225,8 @@ my %CONFIG = (
     maxResults       => 10,
     hfr              => 1,        # true to prefer high frame rate (HFR) videos
     resolution       => 'best',
-    videoCaption     => undef,
-    videoDefinition  => undef,
-    videoDimension   => undef,
     videoDuration    => undef,
-    videoLicense     => undef,
+    features         => undef,
     search_for       => 'video',
     order            => 'relevance',
     date             => 'anytime',
@@ -410,9 +407,6 @@ my %objects = (
     'notebook1'              => \my $notebook,
     'comboboxtext9'          => \my $resolution_combobox,
     'comboboxtext8'          => \my $duration_combobox,
-    'comboboxtext3'          => \my $caption_combobox,
-    'comboboxtext4'          => \my $definition_combobox,
-    'comboboxtext5'          => \my $license_combobox,
     'comboboxtext1'          => \my $published_within_combobox,
     'comboboxtext13'         => \my $subscriptions_order_combobox,
     'panel_user_entry'       => \my $panel_user_entry,
@@ -432,6 +426,7 @@ my %objects = (
     'channel_name_save'      => \my $save_channel_name_entry,
     'channel_id_save'        => \my $save_channel_id_entry,
     'main-menu-history-menu' => \my $history_menu,
+    'features_flowbox'       => \my $features_flowbox,
               );
 
 while (my ($key, $value) = each %objects) {
@@ -526,6 +521,34 @@ if (!exists $CONFIG->{resolution} && exists $CONFIG->{active_resolution_combobox
     $CONFIG->{resolution} = $CONFIG->{active_resolution_combobox};
 }
 delete $CONFIG->{active_resolution_combobox};
+
+# Features handling.
+my @FEATURES;
+
+sub toggle_features {
+    my $enabled = shift @_;
+    if ($enabled) {
+        @FEATURES = sort(uniq(@FEATURES, @_));
+    } else {
+        @FEATURES = grep { my $feat = $_; ! grep $feat eq $_, @_ } @FEATURES;
+    }
+    $CONFIG->{features} = \@FEATURES;
+}
+
+toggle_features 1, @{$CONFIG->{features}};
+my @feature_options = qw(
+    videoCaption     1                 subtitles
+    videoCaption     true              subtitles
+    videoDefinition  high              hd
+    videoDimension   3d                3d
+    videoLicense     creative_commons  creative_commons
+);
+while (scalar @feature_options) {
+    (my $option_name, my $option_value, my $feature, @feature_options) = @feature_options;
+    if (($CONFIG->{$option_name} // '') eq $option_value) {
+        toggle_features 1, $feature;
+    }
+}
 
 # Get valid config keys
 my @valid_keys = grep { exists $CONFIG{$_} } keys %{$CONFIG};
@@ -995,9 +1018,28 @@ sub apply_configuration {
     apply_combobox_configuration($duration_combobox, "videoDuration");
     apply_combobox_configuration($order_combobox, "order");
     apply_combobox_configuration($published_within_combobox, "date");
-    apply_combobox_configuration($definition_combobox, "videoDefinition");
-    apply_combobox_configuration($caption_combobox, "videoCaption");
-    apply_combobox_configuration($license_combobox, "videoLicense");
+
+    foreach my $pair (pairs (
+            'live'            , 'Live',
+            '4k'              , '4K',
+            'hd'              , 'HD',
+            'subtitles'       , 'Subtitles/CC',
+            'creative_commons', 'Creative Commons',
+            '360'             , '360°',
+            'vr180'           , 'VR180',
+            '3d'              , '3D',
+            'hdr'             , 'HDR',
+        )) {
+            my ($feat, $label) = @$pair;
+            my $button = Gtk3::CheckButton->new_with_label($label);
+            $features_flowbox->add($button);
+            $button->set_visible(1);
+            $button->signal_connect('toggled', sub {
+                toggle_features $button->get_active, $feat;
+                $yv_obj->set_features(\@FEATURES);
+            });
+        $button->set_active(any {$feat eq $_} @FEATURES);
+    }
 
     # Resize the main window
     $mainw->set_default_size(split(/x/i, $CONFIG{mainw_size}, 2));
@@ -1891,18 +1933,6 @@ sub combobox_panel_account_changed {
 
 sub combobox_channel_type_changed {
     $CONFIG{active_channel_type_combobox} = $channel_type_combobox->get_active;
-}
-
-sub combobox_definition_changed {
-    combobox_changed($definition_combobox, "videoDefinition", 1);
-}
-
-sub combobox_license_changed {
-    combobox_changed($license_combobox, "videoLicense", 1);
-}
-
-sub combobox_caption_changed {
-    combobox_changed($caption_combobox, "videoCaption", 1);
 }
 
 sub combobox_published_within_changed {
