@@ -4,6 +4,11 @@ use utf8;
 use 5.014;
 use warnings;
 
+use MIME::Base64 qw(encode_base64url);
+use List::Util qw(pairs);
+
+use WWW::PipeViewer::Proto;
+
 =head1 NAME
 
 WWW::PipeViewer::InitialData - Extract initial data.
@@ -795,6 +800,49 @@ sub yt_video_info {
     return \%video_info;
 }
 
+my %_DATE = (
+    'anytime' => 0,
+    'hour'    => 1,
+    'today'   => 2,
+    'week'    => 3,
+    'month'   => 4,
+    'year'    => 5,
+);
+
+my %_DURATION = (
+    'any'     => 0,
+    'short'   => 1,
+    'long'    => 2,
+    'average' => 3,
+);
+
+my %_FEATURES = (
+    'hd'               =>  4,
+    'subtitles'        =>  5,
+    'creative_commons' =>  6,
+    '3d'               =>  7,
+    'live'             =>  8,
+    '4k'               => 14,
+    '360'              => 15,
+    'hdr'              => 25,
+    'vr180'            => 26,
+);
+
+my %_ORDER = (
+    'relevance'   => 0,
+    'rating'      => 1,
+    'upload_date' => 2,
+    'view_count'  => 3,
+);
+
+my %_TYPE = (
+    'all'      => 0,
+    'video'    => 1,
+    'channel'  => 2,
+    'playlist' => 3,
+    'movie'    => 4,
+);
+
 =head2 yt_search(q => $keyword, %args)
 
 Search for videos given a keyword string (uri-escaped).
@@ -806,94 +854,63 @@ sub yt_search {
 
     my $url = $self->get_m_youtube_url . "/results";
 
-    my @sp;
     my %params = (
                   hl           => 'en',
                   search_query => $args{q},
                  );
 
-    $args{type} //= 'video';
+    my @sp;
 
-    if ($args{type} eq 'video') {
+    push @sp, proto_uint(1, $_ORDER{$self->get_order // 'relevance'});
 
-        if (defined(my $duration = $self->get_videoDuration)) {
-            if ($duration eq 'long') {
-                push @sp, 'EgQQARgC';
-            }
-            elsif ($duration eq 'short') {
-                push @sp, 'EgQQARgB';
+    # Filtering.
+    {
+        my @filters;
+
+        push @filters, proto_uint(1, $_DATE{$self->get_date // 'anytime'});
+        push @filters, proto_uint(2, $_TYPE{$args{type} // 'video'});
+        push @filters, proto_uint(3, $_DURATION{$self->get_videoDuration // 'any'});
+
+        my @feature_options = qw(
+            videoCaption     1                 subtitles
+            videoCaption     true              subtitles
+            videoDefinition  high              hd
+            videoLicense     creative_commons  creative_commons
+            videoDimension   3d                3d
+        );
+
+        while (scalar @feature_options) {
+            (my $option_name, my $option_value, my $feature, @feature_options) = @feature_options;
+            my $method = "get_$option_name";
+            if (($self->$method || 0) eq $option_value) {
+                push @filters, proto_uint($_FEATURES{$feature}, 1);
             }
         }
 
-        if (defined(my $date = $self->get_date)) {
-            if ($date eq 'hour') {
-                push @sp, 'EgQIARAB';
-            }
-            elsif ($date eq 'today') {
-                push @sp, "EgQIAhAB";
-            }
-            elsif ($date eq 'week') {
-                push @sp, "EgQIAxAB";
-            }
-            elsif ($date eq 'month') {
-                push @sp, "EgQIBBAB";
-            }
-            elsif ($date eq 'year') {
-                push @sp, "EgQIBRAB";
-            }
-        }
-
-        if (defined(my $order = $self->get_order)) {
-            if ($order eq 'upload_date') {
-                push @sp, "CAISAhAB";
-            }
-            elsif ($order eq 'view_count') {
-                push @sp, "CAMSAhAB";
-            }
-            elsif ($order eq 'rating') {
-                push @sp, "CAESAhAB";
-            }
-        }
-
-        if (defined(my $license = $self->get_videoLicense)) {
-            if ($license eq 'creative_commons') {
-                push @sp, "EgIwAQ%253D%253D";
-            }
-        }
-
-        if (defined(my $vd = $self->get_videoDefinition)) {
-            if ($vd eq 'high') {
-                push @sp, "EgIgAQ%253D%253D";
-            }
-        }
-
-        if (defined(my $vc = $self->get_videoCaption)) {
-            if ($vc eq 'true' or $vc eq '1') {
-                push @sp, "EgIoAQ%253D%253D";
-            }
-        }
-
-        if (defined(my $vd = $self->get_videoDimension)) {
-            if ($vd eq '3d') {
-                push @sp, "EgI4AQ%253D%253D";
-            }
-        }
+        push @sp, proto_nested(2, @filters);
     }
 
-    if ($args{type} eq 'video') {
-        push @sp, "EgIQAQ%253D%253D";
-    }
-    elsif ($args{type} eq 'playlist') {
-        push @sp, "EgIQAw%253D%253D";
-    }
-    elsif ($args{type} eq 'channel') {
-        push @sp, "EgIQAg%253D%253D";
-    }
-    elsif ($args{type} eq 'movie') {    # TODO: implement support for movies
-        push @sp, "EgIQBA%253D%253D";
+    # Paging.
+    {
+        my $page = $self->get_page;
+        my $count = $self->get_maxResults;
+
+        # Asking for less than 20 maximum results breaks paging:
+        # e.g. with `$page=1` and `$count=5` the next page link
+        # will return result 20-25, instead 5-10.
+        if ($count < 20) {
+            $count = 20;
+        }
+
+        if ($page > 1) {
+            push @sp, proto_uint(9, ($page - 1) * $count);
+        }
+
+        push @sp, proto_uint(10, $count);
     }
 
-    $params{sp} = join('+', @sp);
+    $params{sp} = encode_base64url(pack('C*', @sp));
+
     $url = $self->_append_url_args($url, %params);
 
     my $hash    = $self->_get_initial_data($url) // return;
