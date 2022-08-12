@@ -71,7 +71,7 @@ my %valid_options = (
     # Video only options
     videoCaption    => {valid => [qw(1 true)],           default => undef},
     videoDefinition => {valid => [qw(high standard)],    default => undef},
-    videoDimension  => {valid => [qw(2d 3d)],            default => undef},
+    videoDimension  => {valid => [qw(3d)],               default => undef},
     videoDuration   => {valid => [qw(short long)],       default => undef},
     videoLicense    => {valid => [qw(creative_commons)], default => undef},
     region          => {valid => qr/^[A-Z]{2}\z/i,       default => undef},
