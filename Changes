@@ -5,6 +5,11 @@
 
 [CHANGELOG]
 
+Version 0.2.3
+
+- Prefer the default language for audio.
+- Workaround for "Video Not Available" issue.
+
 Version 0.2.2
 
 - Extract closed-captions for age-restricted videos.
