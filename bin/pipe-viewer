@@ -1186,7 +1186,7 @@ sub apply_configuration {
     }
 
     if (defined $opt->{hd}) {
-        $yv_obj->set_videoDefinition(delete($opt->{hd}) ? 'high' : 'any');
+        $yv_obj->set_videoDefinition(delete($opt->{hd}) ? 'high' : undef);
     }
 
     if (defined $opt->{author}) {
