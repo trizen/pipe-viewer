@@ -959,11 +959,12 @@ Author: Trizen https://github.com/trizen
                                                             <property name="tooltip-text" translatable="yes">Type of search results</property>
                                                             <property name="active">0</property>
                                                             <items>
-                                                            <item translatable="yes">video</item>
-                                                            <item translatable="yes">playlist</item>
-                                                            <item translatable="yes">channel</item>
-                                                            <item translatable="yes">all</item>
+                                                            <item id="video" translatable="yes">Video</item>
+                                                            <item id="playlist" translatable="yes">Playlist</item>
+                                                            <item id="channel" translatable="yes">Channel</item>
+                                                            <item id="all" translatable="yes">All</item>
                                                             </items>
+                                                            <signal name="changed" handler="combobox_search_for_changed" swapped="no"/>
                                                           </object>
                                                           <packing>
                                                             <property name="expand">False</property>
@@ -1013,10 +1014,10 @@ Author: Trizen https://github.com/trizen
                                                             <property name="tooltip-text" translatable="yes">Search order for videos</property>
                                                             <property name="active">0</property>
                                                             <items>
-                                                            <item translatable="yes">relevance</item>
-                                                            <item translatable="yes">rating</item>
-                                                            <item translatable="yes">upload_date</item>
-                                                            <item translatable="yes">view_count</item>
+                                                            <item id="relevance" translatable="yes">Relevance</item>
+                                                            <item id="rating" translatable="yes">Rating</item>
+                                                            <item id="upload_date" translatable="yes">Upload date</item>
+                                                            <item id="view_count" translatable="yes">View count</item>
                                                             </items>
                                                             <signal name="changed" handler="combobox_order_changed" swapped="no"/>
                                                           </object>
@@ -1060,13 +1061,11 @@ Author: Trizen https://github.com/trizen
                                                       <object class="GtkComboBoxText" id="comboboxtext8">
                                                         <property name="visible">True</property>
                                                         <property name="can-focus">False</property>
-                                                        <property name="tooltip-text" translatable="yes">short – less than 4 minutes long
-long – longer than 20 minutes</property>
                                                         <property name="active">0</property>
                                                         <items>
-                                                          <item translatable="yes">any</item>
-                                                          <item translatable="yes">short</item>
-                                                          <item translatable="yes">long</item>
+                                                          <item translatable="yes">Any</item>
+                                                          <item id="short" translatable="yes">Under 4 minutes</item>
+                                                          <item id="long" translatable="yes">Over 20 minutes</item>
                                                         </items>
                                                         <signal name="changed" handler="combobox_duration_changed" swapped="no"/>
                                                       </object>
@@ -1103,11 +1102,11 @@ long – longer than 20 minutes</property>
                                                       <object class="GtkComboBoxText" id="comboboxtext3">
                                                         <property name="visible">True</property>
                                                         <property name="can-focus">False</property>
-                                                        <property name="tooltip-text" translatable="yes">Retrieve only videos that have closed-captions</property>
+                                                        <property name="tooltip-text" translatable="yes">Retrieve only videos that have captions.</property>
                                                         <property name="active">0</property>
                                                         <items>
-                                                          <item translatable="yes">any</item>
-                                                          <item translatable="yes">true</item>
+                                                          <item translatable="yes">Any</item>
+                                                          <item id="true" translatable="yes">With Subtitles/CC</item>
                                                         </items>
                                                         <signal name="changed" handler="combobox_caption_changed" swapped="no"/>
                                                       </object>
@@ -1144,11 +1143,11 @@ long – longer than 20 minutes</property>
                                                       <object class="GtkComboBoxText" id="comboboxtext4">
                                                         <property name="visible">True</property>
                                                         <property name="can-focus">False</property>
-                                                        <property name="tooltip-text" translatable="yes">Retrieve only videos with resolution 720p+</property>
+                                                        <property name="tooltip-text" translatable="yes">Retrieve only HD videos (720p+ resolution).</property>
                                                         <property name="active">0</property>
                                                         <items>
-                                                          <item translatable="yes">any</item>
-                                                          <item translatable="yes">high</item>
+                                                          <item translatable="yes">Any</item>
+                                                          <item id="high" translatable="yes">HD</item>
                                                         </items>
                                                         <signal name="changed" handler="combobox_definition_changed" swapped="no"/>
                                                       </object>
@@ -1185,11 +1184,11 @@ long – longer than 20 minutes</property>
                                                       <object class="GtkComboBoxText" id="comboboxtext5">
                                                         <property name="visible">True</property>
                                                         <property name="can-focus">False</property>
-                                                        <property name="tooltip-text" translatable="yes">Retrieve only videos with Creative-Commons license</property>
+                                                        <property name="tooltip-text" translatable="yes">Retrieve only videos with Creative Commons license.</property>
                                                         <property name="active">0</property>
                                                         <items>
-                                                          <item translatable="yes">any</item>
-                                                          <item translatable="yes">creative_commons</item>
+                                                          <item translatable="yes">Any</item>
+                                                          <item id="creative_commons" translatable="yes">Creative Commons</item>
                                                         </items>
                                                         <signal name="changed" handler="combobox_license_changed" swapped="no"/>
                                                       </object>
@@ -1334,12 +1333,12 @@ long – longer than 20 minutes</property>
                                                             <property name="can-focus">False</property>
                                                             <property name="tooltip-text" translatable="yes">Retrieve only videos newer than this.</property>
                                                             <items>
-                                                            <item translatable="yes">anytime</item>
-                                                            <item translatable="yes">hour</item>
-                                                            <item translatable="yes">today</item>
-                                                            <item translatable="yes">week</item>
-                                                            <item translatable="yes">month</item>
-                                                            <item translatable="yes">year</item>
+                                                            <item id="anytime" translatable="yes">Anytime</item>
+                                                            <item id="hour" translatable="yes">Last hour</item>
+                                                            <item id="today" translatable="yes">Today</item>
+                                                            <item id="week" translatable="yes">This week</item>
+                                                            <item id="month" translatable="yes">This month</item>
+                                                            <item id="year" translatable="yes">This year</item>
                                                             </items>
                                                             <signal name="changed" handler="combobox_published_within_changed" swapped="no"/>
                                                             </object>
@@ -1358,7 +1357,7 @@ long – longer than 20 minutes</property>
                                                           <object class="GtkLabel" id="label35">
                                                             <property name="visible">True</property>
                                                             <property name="can-focus">False</property>
-                                                            <property name="label" translatable="yes">&lt;b&gt;Published within:&lt;/b&gt;</property>
+                                                            <property name="label" translatable="yes">&lt;b&gt;Upload date:&lt;/b&gt;</property>
                                                             <property name="use-markup">True</property>
                                                           </object>
                                                         </child>
@@ -1591,15 +1590,15 @@ Unless the author name is valid, this field is ignored.</property>
 When the specified resolution is not found, the best available resolution is used.</property>
                                                         <property name="active">0</property>
                                                         <items>
-                                                          <item translatable="yes">best</item>
-                                                          <item translatable="yes">2160p</item>
-                                                          <item translatable="yes">1440p</item>
-                                                          <item translatable="yes">1080p</item>
-                                                          <item translatable="yes">720p</item>
-                                                          <item translatable="yes">480p</item>
-                                                          <item translatable="yes">360p</item>
-                                                          <item translatable="yes">240p</item>
-                                                          <item translatable="yes">144p</item>
+                                                          <item id="best" translatable="yes">Best</item>
+                                                          <item id="2160" translatable="yes">2160p</item>
+                                                          <item id="1440" translatable="yes">1440p</item>
+                                                          <item id="1080" translatable="yes">1080p</item>
+                                                          <item id="720" translatable="yes">720p</item>
+                                                          <item id="480" translatable="yes">480p</item>
+                                                          <item id="360" translatable="yes">360p</item>
+                                                          <item id="240" translatable="yes">240p</item>
+                                                          <item id="144" translatable="yes">144p</item>
                                                         </items>
                                                         <signal name="changed" handler="combobox_resolution_changed" swapped="no"/>
                                                       </object>
