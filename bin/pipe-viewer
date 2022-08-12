@@ -5050,7 +5050,7 @@ When set to C<"3d">, retrieve only 3D videos in search results.
 
 Retrieve only short or long videos in search results.
 
-Valid values: "any", "short", "long".
+Valid values: "any", "short" (under 4 minutes), "average" (4-20 minutes), and "long" (over 20 minutes).
 
 =head2 videoLicense
 

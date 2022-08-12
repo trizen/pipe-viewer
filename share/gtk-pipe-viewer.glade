@@ -1065,6 +1065,7 @@ Author: Trizen https://github.com/trizen
                                                         <items>
                                                           <item translatable="yes">Any</item>
                                                           <item id="short" translatable="yes">Under 4 minutes</item>
+                                                          <item id="average" translatable="yes">4-20 minutes</item>
                                                           <item id="long" translatable="yes">Over 20 minutes</item>
                                                         </items>
                                                         <signal name="changed" handler="combobox_duration_changed" swapped="no"/>

@@ -69,12 +69,12 @@ my %valid_options = (
     channelId => {valid => qr/^[-\w]{2,}\z/, default => undef},
 
     # Video only options
-    videoCaption    => {valid => [qw(1 true)],           default => undef},
-    videoDefinition => {valid => [qw(high)],             default => undef},
-    videoDimension  => {valid => [qw(3d)],               default => undef},
-    videoDuration   => {valid => [qw(short long)],       default => undef},
-    videoLicense    => {valid => [qw(creative_commons)], default => undef},
-    region          => {valid => qr/^[A-Z]{2}\z/i,       default => undef},
+    videoCaption    => {valid => [qw(1 true)],             default => undef},
+    videoDefinition => {valid => [qw(high)],               default => undef},
+    videoDimension  => {valid => [qw(3d)],                 default => undef},
+    videoDuration   => {valid => [qw(short average long)], default => undef},
+    videoLicense    => {valid => [qw(creative_commons)],   default => undef},
+    region          => {valid => qr/^[A-Z]{2}\z/i,         default => undef},
 
     comments_order      => {valid => [qw(top new)],                       default => 'top'},
     subscriptions_order => {valid => [qw(alphabetical relevance unread)], default => undef},
