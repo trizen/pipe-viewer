@@ -43,8 +43,12 @@ use 5.016;
 use warnings;
 no warnings 'once';
 
-my $DEVEL;                                           # true in devel mode
-use if ($DEVEL = -w __FILE__), lib => qw(../lib);    # devel mode
+use File::Basename;
+use Cwd qw(abs_path);
+
+# Devel mode
+my $DEVEL;
+use if ($DEVEL = -w __FILE__), lib => (abs_path(__FILE__.'/../../lib'),);
 
 use WWW::PipeViewer v0.2.3;
 use WWW::PipeViewer::RegularExpressions;

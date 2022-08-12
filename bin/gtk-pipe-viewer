@@ -28,8 +28,12 @@ use 5.016;
 use warnings;
 no warnings 'once';
 
-my $DEVEL;                                           # true in devel mode
-use if ($DEVEL = -w __FILE__), lib => qw(../lib);    # devel only
+use File::Basename;
+use Cwd qw(abs_path);
+
+# Devel mode
+my $DEVEL;
+use if ($DEVEL = -w __FILE__), lib => (abs_path(__FILE__.'/../../lib'),);
 
 use WWW::PipeViewer v0.2.3;
 use WWW::PipeViewer::RegularExpressions;
@@ -58,8 +62,8 @@ my %subscribed_channels;
 
 # Share directory
 my $share_dir =
-  ($DEVEL and -d "../share")
-  ? '../share'
+  ($DEVEL)
+  ? abs_path(__FILE__.'/../../share')
   : do { require File::ShareDir; File::ShareDir::dist_dir('WWW-PipeViewer') };
 
 # Configuration dir/file

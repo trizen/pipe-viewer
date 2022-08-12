@@ -50,8 +50,8 @@ For trying the latest commit of `pipe-viewer`, without installing it, execute th
     cd /tmp
     wget https://github.com/trizen/pipe-viewer/archive/main.zip -O pipe-viewer-main.zip
     unzip -n pipe-viewer-main.zip
-    cd pipe-viewer-main/bin
-    ./pipe-viewer
+    cd pipe-viewer-main
+    ./bin/pipe-viewer
 ```
 
 ### INSTALLATION
