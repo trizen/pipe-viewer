@@ -63,8 +63,8 @@ my %valid_options = (
     page       => {valid => qr/^(?!0+\z)\d+\z/,                            default => 1},
     http_proxy => {valid => qr/./,                                         default => undef},
     maxResults => {valid => [1 .. 50],                                     default => 10},
-    order      => {valid => [qw(relevance rating upload_date view_count)], default => undef},
-    date       => {valid => [qw(hour today week month year)],              default => undef},
+    order      => {valid => [qw(relevance rating upload_date view_count)], default => 'relevance'},
+    date       => {valid => [qw(anytime hour today week month year)],      default => 'anytime'},
 
     channelId => {valid => qr/^[-\w]{2,}\z/, default => undef},
 

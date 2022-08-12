@@ -4761,7 +4761,7 @@ Include or exclude streams in "Dynamic Adaptive Streaming over HTTP" (DASH) form
 
 Search for videos uploaded within a specific amount of time.
 
-Valid values: "hour", "today", "week", "month", "year".
+Valid values: "anytime", "hour", "today", "week", "month", "year".
 
 =head2 debug
 
