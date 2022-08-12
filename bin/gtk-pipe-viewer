@@ -52,6 +52,8 @@ use File::Spec::Functions qw(
 
 use Scalar::Util qw(looks_like_number);
 
+use List::Util qw(max min uniq);
+
 require Storable;
 binmode(STDOUT, ':utf8');
 
@@ -727,19 +729,9 @@ foreach my $path ($CONFIG{cache_dir}) {
             undef $history{CORE::fc($line)};
         }
 
-        require List::Util;
-
-        # Workaround for List::Util < 1.45
-        if (!defined(&List::Util::uniq)) {
-            *List::Util::uniq = sub {
-                my %seen;
-                grep { !$seen{$_}++ } @_;
-            };
-        }
-
         # Keep only the most recent non-duplicated entries
-        @history        = reverse(List::Util::uniq(reverse(@history)));
-        @search_history = List::Util::uniq(@search_history);
+        @history        = reverse(uniq(reverse(@history)));
+        @search_history = uniq(@search_history);
 
         # Set entry completion
         $completion = Gtk3::EntryCompletion->new;
@@ -4051,11 +4043,9 @@ sub save_session {
 
     my @results = @{$ResultsHistory{results}};
 
-    require List::Util;
-
     my $max   = $CONFIG{remember_session_depth};
-    my @left  = @results[List::Util::max(0, $curr - $max) .. $curr - 1];
-    my @right = @results[$curr + 1 .. List::Util::min($#results, $curr + $max)];
+    my @left  = @results[max(0, $curr - $max) .. $curr - 1];
+    my @right = @results[$curr + 1 .. min($#results, $curr + $max)];
 
     if ($yv_obj->get_debug) {
         say "Session total: ", scalar(@results);
