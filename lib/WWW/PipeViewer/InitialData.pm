@@ -871,20 +871,8 @@ sub yt_search {
         push @filters, proto_uint(2, $_TYPE{$args{type} // 'video'});
         push @filters, proto_uint(3, $_DURATION{$self->get_videoDuration // 'any'});
 
-        my @feature_options = qw(
-            videoCaption     1                 subtitles
-            videoCaption     true              subtitles
-            videoDefinition  high              hd
-            videoLicense     creative_commons  creative_commons
-            videoDimension   3d                3d
-        );
-
-        while (scalar @feature_options) {
-            (my $option_name, my $option_value, my $feature, @feature_options) = @feature_options;
-            my $method = "get_$option_name";
-            if (($self->$method || 0) eq $option_value) {
-                push @filters, proto_uint($_FEATURES{$feature}, 1);
-            }
+        foreach my $feat (@{$self->get_features || []}) {
+            push @filters, proto_uint($_FEATURES{$feat}, 1);
         }
 
         push @sp, proto_nested(2, @filters);

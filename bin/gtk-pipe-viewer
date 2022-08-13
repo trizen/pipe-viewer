@@ -50,6 +50,10 @@ use File::Spec::Functions qw(
   file_name_is_absolute
 );
 
+use Scalar::Util qw(looks_like_number);
+
+use List::Util qw(any max min pairs uniq);
+
 require Storable;
 binmode(STDOUT, ':utf8');
 
@@ -174,7 +178,6 @@ my %symbols = (
 my %CONFIG = (
 
     # Combobox values
-    active_resolution_combobox          => 0,
     active_more_options_expander        => 0,
     active_panel_account_combobox       => 0,
     active_channel_type_combobox        => 0,
@@ -222,8 +225,11 @@ my %CONFIG = (
     maxResults       => 10,
     hfr              => 1,        # true to prefer high frame rate (HFR) videos
     resolution       => 'best',
-    videoDimension   => undef,
-    videoLicense     => undef,
+    videoDuration    => undef,
+    features         => undef,
+    search_for       => 'video',
+    order            => 'relevance',
+    date             => 'anytime',
     region           => undef,
 
     comments_width => 80,         # wrap comments longer than `n` characters
@@ -401,9 +407,6 @@ my %objects = (
     'notebook1'              => \my $notebook,
     'comboboxtext9'          => \my $resolution_combobox,
     'comboboxtext8'          => \my $duration_combobox,
-    'comboboxtext3'          => \my $caption_combobox,
-    'comboboxtext4'          => \my $definition_combobox,
-    'comboboxtext5'          => \my $license_combobox,
     'comboboxtext1'          => \my $published_within_combobox,
     'comboboxtext13'         => \my $subscriptions_order_combobox,
     'panel_user_entry'       => \my $panel_user_entry,
@@ -423,6 +426,7 @@ my %objects = (
     'channel_name_save'      => \my $save_channel_name_entry,
     'channel_id_save'        => \my $save_channel_id_entry,
     'main-menu-history-menu' => \my $history_menu,
+    'features_flowbox'       => \my $features_flowbox,
               );
 
 while (my ($key, $value) = each %objects) {
@@ -510,6 +514,40 @@ if (exists $CONFIG->{watched_file}) {
 # Rename `youtube_users_file` to `saved_channels_file`
 if (exists $CONFIG->{youtube_users_file}) {
     $CONFIG->{saved_channels_file} = delete $CONFIG->{youtube_users_file};
+}
+
+# Backward compatibility with old config format.
+if (!exists $CONFIG->{resolution} && exists $CONFIG->{active_resolution_combobox}) {
+    $CONFIG->{resolution} = $CONFIG->{active_resolution_combobox};
+}
+delete $CONFIG->{active_resolution_combobox};
+
+# Features handling.
+my @FEATURES;
+
+sub toggle_features {
+    my $enabled = shift @_;
+    if ($enabled) {
+        @FEATURES = sort(uniq(@FEATURES, @_));
+    } else {
+        @FEATURES = grep { my $feat = $_; ! grep $feat eq $_, @_ } @FEATURES;
+    }
+    $CONFIG->{features} = \@FEATURES;
+}
+
+toggle_features 1, @{$CONFIG->{features}};
+my @feature_options = qw(
+    videoCaption     1                 subtitles
+    videoCaption     true              subtitles
+    videoDefinition  high              hd
+    videoDimension   3d                3d
+    videoLicense     creative_commons  creative_commons
+);
+while (scalar @feature_options) {
+    (my $option_name, my $option_value, my $feature, @feature_options) = @feature_options;
+    if (($CONFIG->{$option_name} // '') eq $option_value) {
+        toggle_features 1, $feature;
+    }
 }
 
 # Get valid config keys
@@ -714,19 +752,9 @@ foreach my $path ($CONFIG{cache_dir}) {
             undef $history{CORE::fc($line)};
         }
 
-        require List::Util;
-
-        # Workaround for List::Util < 1.45
-        if (!defined(&List::Util::uniq)) {
-            *List::Util::uniq = sub {
-                my %seen;
-                grep { !$seen{$_}++ } @_;
-            };
-        }
-
         # Keep only the most recent non-duplicated entries
-        @history        = reverse(List::Util::uniq(reverse(@history)));
-        @search_history = List::Util::uniq(@search_history);
+        @history        = reverse(uniq(reverse(@history)));
+        @search_history = uniq(@search_history);
 
         # Set entry completion
         $completion = Gtk3::EntryCompletion->new;
@@ -915,14 +943,34 @@ require WWW::PipeViewer::Utils;
 my $yv_utils = WWW::PipeViewer::Utils->new(thousand_separator => $CONFIG{thousand_separator},
                                            youtube_url_format => $CONFIG{youtube_video_url},);
 
-# Set default combobox values
-$definition_combobox->set_active(0);
-$duration_combobox->set_active(0);
-$caption_combobox->set_active(0);
-$order_combobox->set_active(0);
-
 # Spin button start with page
 $spin_start_with_page->set_value(1);
+
+sub apply_combobox_configuration {
+    my ($combo, $option) = @_;
+    my $value = $CONFIG{$option};
+
+    if (!$combo->set_active_id($value) && looks_like_number($value)) {
+        # For backward compatibility with old config format.
+        $combo->set_active($value);
+    }
+
+    if ($combo->get_active == -1) {
+        # Default to first item.
+        $combo->set_active(0);
+    }
+}
+
+sub apply_yt_option {
+    my ($option_name, $value) = @_;
+
+    my $setter = "set_$option_name";
+    my $set_value = $yv_obj->$setter($value);
+
+    if (defined $value && $value ne ($set_value // '')) {
+        warn "[!] Invalid value <", $value // 'undef', "> for option <$option_name>.\n";
+    }
+}
 
 sub apply_configuration {
 
@@ -940,11 +988,9 @@ sub apply_configuration {
     $channel_type_combobox->set_active($CONFIG{active_channel_type_combobox});
     $subscriptions_order_combobox->set_active($CONFIG{active_subscriptions_order_combobox});
 
-    $published_within_combobox->set_active(0);
-
     foreach my $option_name (
                              qw(
-                             maxResults videoDimension videoLicense
+                             maxResults
                              region debug http_proxy user_agent
                              timeout cookie_file ytdl ytdl_cmd
                              api_host prefer_mp4 prefer_av1
@@ -954,17 +1000,8 @@ sub apply_configuration {
                              bypass_age_gate_with_proxy
                              )
       ) {
-
-        if (defined $CONFIG{$option_name}) {
-            my $code      = \&{"WWW::PipeViewer::set_$option_name"};
-            my $value     = $CONFIG{$option_name};
-            my $set_value = $yv_obj->$code($value);
-
-            if (not defined($set_value) or $set_value ne $value) {
-                warn "[!] Invalid value <$value> for option <$option_name>.\n";
-            }
-        }
-    }
+          apply_yt_option($option_name);
+      }
 
     # Maximum number of results per page
     $spin_results->set_value($CONFIG{maxResults});
@@ -975,24 +1012,33 @@ sub apply_configuration {
     # Set the "More options" expander
     $more_options_expander->set_expanded($CONFIG{active_more_options_expander});
 
-    my %resolution = (
-                      'best' => 0,
-                      '2160' => 1,
-                      '1440' => 2,
-                      '1080' => 3,
-                      '720'  => 4,
-                      '480'  => 5,
-                      '360'  => 6,
-                      '240'  => 7,
-                     );
+    # Set default combobox values
+    apply_combobox_configuration($search_for_combobox, "search_for");
+    apply_combobox_configuration($resolution_combobox, "resolution");
+    apply_combobox_configuration($duration_combobox, "videoDuration");
+    apply_combobox_configuration($order_combobox, "order");
+    apply_combobox_configuration($published_within_combobox, "date");
 
-    my $name = ($CONFIG{resolution} =~ /^(\d+)/) ? $1 : $CONFIG{resolution};
-
-    if (exists $resolution{$name}) {
-        $resolution_combobox->set_active($resolution{$name});
-    }
-    else {
-        $resolution_combobox->set_active($CONFIG{active_resolution_combobox});
+    foreach my $pair (pairs (
+            'live'            , 'Live',
+            '4k'              , '4K',
+            'hd'              , 'HD',
+            'subtitles'       , 'Subtitles/CC',
+            'creative_commons', 'Creative Commons',
+            '360'             , '360°',
+            'vr180'           , 'VR180',
+            '3d'              , '3D',
+            'hdr'             , 'HDR',
+        )) {
+            my ($feat, $label) = @$pair;
+            my $button = Gtk3::CheckButton->new_with_label($label);
+            $features_flowbox->add($button);
+            $button->set_visible(1);
+            $button->signal_connect('toggled', sub {
+                toggle_features $button->get_active, $feat;
+                $yv_obj->set_features(\@FEATURES);
+            });
+        $button->set_active(any {$feat eq $_} @FEATURES);
     }
 
     # Resize the main window
@@ -1843,24 +1889,30 @@ sub delete_selected_row {
 }
 
 # Combo boxes changes
+
+sub combobox_changed {
+    my ($combo, $option, $update_yt_option) = @_;
+    my $value = $combo->get_active_id;
+    $CONFIG{$option} = $value;
+    if ($update_yt_option) {
+        apply_yt_option($option, $value);
+    }
+}
+
+sub combobox_search_for_changed {
+    combobox_changed($search_for_combobox, "search_for");
+}
+
 sub combobox_order_changed {
-    $yv_obj->set_order($order_combobox->get_active_text);
+    combobox_changed($order_combobox, "order", 1);
 }
 
 sub combobox_resolution_changed {
-    $CONFIG{active_resolution_combobox} = $resolution_combobox->get_active;
-    my $res = $resolution_combobox->get_active_text;
-    $CONFIG{resolution} = $res =~ /^(\d+)p\z/ ? $1 : $res;
+    combobox_changed($resolution_combobox, "resolution");
 }
 
 sub combobox_duration_changed {
-    my $text = $duration_combobox->get_active_text;
-    $yv_obj->set_videoDuration($text);
-}
-
-sub combobox_caption_changed {
-    my $text = $caption_combobox->get_active_text;
-    $yv_obj->set_videoCaption($text);
+    combobox_changed($duration_combobox, "videoDuration", 1);
 }
 
 sub combobox_subscriptions_order_changed {
@@ -1883,26 +1935,8 @@ sub combobox_channel_type_changed {
     $CONFIG{active_channel_type_combobox} = $channel_type_combobox->get_active;
 }
 
-sub combobox_definition_changed {
-    my $text = $definition_combobox->get_active_text;
-    $yv_obj->set_videoDefinition($text);
-}
-
-sub combobox_license_changed {
-    my $text = $license_combobox->get_active_text;
-    $yv_obj->set_videoLicense($text);
-}
-
 sub combobox_published_within_changed {
-
-    my $period = $published_within_combobox->get_active_text;
-
-    if ($period =~ /^any/) {
-        $yv_obj->set_date(undef);
-    }
-    else {
-        $yv_obj->set_date($period);
-    }
+    combobox_changed($published_within_combobox, "date", 1)
 }
 
 # Spin buttons changes
@@ -2471,8 +2505,7 @@ sub search {
         $yv_obj->set_channelId();
     }
 
-    my $type = $search_for_combobox->get_active_text;
-    display_results($yv_obj->search_for($type, $keywords));
+    display_results($yv_obj->search_for($CONFIG{search_for}, $keywords));
 
     return 1;
 }
@@ -4040,11 +4073,9 @@ sub save_session {
 
     my @results = @{$ResultsHistory{results}};
 
-    require List::Util;
-
     my $max   = $CONFIG{remember_session_depth};
-    my @left  = @results[List::Util::max(0, $curr - $max) .. $curr - 1];
-    my @right = @results[$curr + 1 .. List::Util::min($#results, $curr + $max)];
+    my @left  = @results[max(0, $curr - $max) .. $curr - 1];
+    my @right = @results[$curr + 1 .. min($#results, $curr + $max)];
 
     if ($yv_obj->get_debug) {
         say "Session total: ", scalar(@results);

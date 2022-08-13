@@ -4,6 +4,7 @@ use utf8;
 use 5.016;
 use warnings;
 
+use List::Util qw(all any);
 use Memoize;
 use Memoize::Expire;
 
@@ -63,18 +64,20 @@ my %valid_options = (
     page       => {valid => qr/^(?!0+\z)\d+\z/,                            default => 1},
     http_proxy => {valid => qr/./,                                         default => undef},
     maxResults => {valid => [1 .. 50],                                     default => 10},
-    order      => {valid => [qw(relevance rating upload_date view_count)], default => undef},
-    date       => {valid => [qw(hour today week month year)],              default => undef},
+    order      => {valid => [qw(relevance rating upload_date view_count)], default => 'relevance'},
+    date       => {valid => [qw(anytime hour today week month year)],      default => 'anytime'},
 
     channelId => {valid => qr/^[-\w]{2,}\z/, default => undef},
 
     # Video only options
-    videoCaption    => {valid => [qw(1 true)],           default => undef},
-    videoDefinition => {valid => [qw(high standard)],    default => undef},
-    videoDimension  => {valid => [qw(2d 3d)],            default => undef},
-    videoDuration   => {valid => [qw(short long)],       default => undef},
-    videoLicense    => {valid => [qw(creative_commons)], default => undef},
-    region          => {valid => qr/^[A-Z]{2}\z/i,       default => undef},
+    videoDuration   => {valid => [qw(short average long)], default => undef},
+    features        => {valid => sub {
+        my ($value) = @_;
+        my @supported = qw(360 3d 4k subtitles creative_commons hd hdr live vr180);
+        my $valid = all { my $feat = $_; any { $feat eq $_} @supported } @$value;
+        return $valid;
+    }, default => undef},
+    region          => {valid => qr/^[A-Z]{2}\z/i,         default => undef},
 
     comments_order      => {valid => [qw(top new)],                       default => 'top'},
     subscriptions_order => {valid => [qw(alphabetical relevance unread)], default => undef},
@@ -150,6 +153,10 @@ sub _our_smartmatch {
         foreach my $item (@$arg) {
             return 1 if __SUB__->($value, $item);
         }
+    }
+
+    if (ref($arg) eq 'CODE') {
+        return $arg->($value);
     }
 
     return 0;

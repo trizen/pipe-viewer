@@ -21,31 +21,7 @@ WWW::PipeViewer::Search - Search for stuff on YouTube
 sub _make_search_url {
     my ($self, %opts) = @_;
 
-    my @features;
-
-    if (defined(my $vd = $self->get_videoDefinition)) {
-        if ($vd eq 'high') {
-            push @features, 'hd';
-        }
-    }
-
-    if (defined(my $vc = $self->get_videoCaption)) {
-        if ($vc eq 'true' or $vc eq '1') {
-            push @features, 'subtitles';
-        }
-    }
-
-    if (defined(my $vd = $self->get_videoDimension)) {
-        if ($vd eq '3d') {
-            push @features, '3d';
-        }
-    }
-
-    if (defined(my $license = $self->get_videoLicense)) {
-        if ($license eq 'creative_commons') {
-            push @features, 'creative_commons';
-        }
-    }
+    my @features = @{$self->get_features || []};
 
     return $self->_make_feed_url(
         'search',
