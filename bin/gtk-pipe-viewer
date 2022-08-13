@@ -178,7 +178,6 @@ my %symbols = (
 my %CONFIG = (
 
     # Combobox values
-    active_more_options_expander        => 0,
     active_panel_account_combobox       => 0,
     active_channel_type_combobox        => 0,
     active_subscriptions_order_combobox => 0,
@@ -403,7 +402,6 @@ my %objects = (
     'treeviewcolumn2'        => \my $thumbs_column,
     'textview2'              => \my $textview_help,
     'from_author_entry'      => \my $from_author_entry,
-    'more_options_expander'  => \my $more_options_expander,
     'notebook1'              => \my $notebook,
     'comboboxtext9'          => \my $resolution_combobox,
     'comboboxtext8'          => \my $duration_combobox,
@@ -1008,9 +1006,6 @@ sub apply_configuration {
 
     # Enable/disable thumbnails
     $thumbs_checkbutton->set_active($CONFIG{show_thumbs});
-
-    # Set the "More options" expander
-    $more_options_expander->set_expanded($CONFIG{active_more_options_expander});
 
     # Set default combobox values
     apply_combobox_configuration($search_for_combobox, "search_for");
@@ -1973,11 +1968,6 @@ sub toggled_dash_support {
 sub thumbs_checkbutton_toggled {
     $CONFIG{show_thumbs} = ($_[0]->get_active() || 0);
     $thumbs_column->set_visible($CONFIG{show_thumbs});
-}
-
-# "More options" expander
-sub activate_more_options_expander {
-    $CONFIG{active_more_options_expander} = $_[0]->get_expanded() ? 0 : 1;
 }
 
 # Get main window size
