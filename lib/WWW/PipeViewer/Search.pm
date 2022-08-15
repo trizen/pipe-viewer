@@ -4,6 +4,13 @@ use utf8;
 use 5.014;
 use warnings;
 
+my %_ORDER = (
+    'relevance'   => 'relevance',
+    'rating'      => 'rating',
+    'upload_date' => 'date',
+    'view_count'  => 'views',
+);
+
 =head1 NAME
 
 WWW::PipeViewer::Search - Search for stuff on YouTube
@@ -27,7 +34,7 @@ sub _make_search_url {
         'search',
 
         region   => $self->get_region,
-        sort_by  => $self->get_order,
+        sort     => $_ORDER{$self->get_order // 'relevance'},
         date     => $self->get_date,
         page     => $self->page_token,
         duration => $self->get_videoDuration,
