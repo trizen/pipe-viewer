@@ -1000,7 +1000,7 @@ sub apply_configuration {
                              bypass_age_gate_with_proxy
                              )
       ) {
-          apply_yt_option($option_name);
+          apply_yt_option($option_name, $CONFIG{$option_name});
       }
 
     # Maximum number of results per page
