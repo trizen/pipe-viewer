@@ -13,7 +13,7 @@ sub _encode_varint {
         my $b = $uint & 127;
         $uint >>= 7;
         if ($uint) {
-            $b += 128
+            $b += 128;
         }
         push @bytes, $b;
     } while ($uint);
@@ -21,9 +21,9 @@ sub _encode_varint {
 }
 
 sub _proto_field {
-   my ($wire_type, $field_number, @data_bytes) = @_;
-   unshift @data_bytes, _encode_varint(($field_number << 3) | $wire_type);
-   return @data_bytes;
+    my ($wire_type, $field_number, @data_bytes) = @_;
+    unshift @data_bytes, _encode_varint(($field_number << 3) | $wire_type);
+    return @data_bytes;
 }
 
 sub proto_uint {
@@ -37,8 +37,8 @@ sub proto_nested {
 }
 
 our @EXPORT = qw(
-    proto_uint
-    proto_nested
+  proto_uint
+  proto_nested
 );
 
 # vim: expandtab sw=4 ts=4

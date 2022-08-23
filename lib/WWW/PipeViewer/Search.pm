@@ -5,11 +5,11 @@ use 5.014;
 use warnings;
 
 my %_ORDER = (
-    'relevance'   => 'relevance',
-    'rating'      => 'rating',
-    'upload_date' => 'date',
-    'view_count'  => 'views',
-);
+              'relevance'   => 'relevance',
+              'rating'      => 'rating',
+              'upload_date' => 'date',
+              'view_count'  => 'views',
+             );
 
 =head1 NAME
 
@@ -42,7 +42,7 @@ sub _make_search_url {
         (@features ? (features => join(',', @features)) : ()),
 
         %opts,
-                                );
+    );
 }
 
 =head2 search_for($types,$keywords;\%args)
@@ -234,6 +234,7 @@ sub related_to_videoID {
             paid            => 0,
             premium         => 0,
 
+#<<<
             videoThumbnails => [
                 map {
                     scalar {
@@ -244,6 +245,7 @@ sub related_to_videoID {
                            }
                 } @{$info->{thumbnail}{thumbnails}}
             ],
+#>>>
         };
     }
 

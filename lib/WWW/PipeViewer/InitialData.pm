@@ -5,7 +5,7 @@ use 5.014;
 use warnings;
 
 use MIME::Base64 qw(encode_base64url);
-use List::Util qw(pairs);
+use List::Util   qw(pairs);
 
 use WWW::PipeViewer::Proto;
 
@@ -801,47 +801,47 @@ sub yt_video_info {
 }
 
 my %_DATE = (
-    'anytime' => 0,
-    'hour'    => 1,
-    'today'   => 2,
-    'week'    => 3,
-    'month'   => 4,
-    'year'    => 5,
-);
+             'anytime' => 0,
+             'hour'    => 1,
+             'today'   => 2,
+             'week'    => 3,
+             'month'   => 4,
+             'year'    => 5,
+            );
 
 my %_DURATION = (
-    'any'     => 0,
-    'short'   => 1,
-    'long'    => 2,
-    'average' => 3,
-);
+                 'any'     => 0,
+                 'short'   => 1,
+                 'long'    => 2,
+                 'average' => 3,
+                );
 
 my %_FEATURES = (
-    'hd'               =>  4,
-    'subtitles'        =>  5,
-    'creative_commons' =>  6,
-    '3d'               =>  7,
-    'live'             =>  8,
-    '4k'               => 14,
-    '360'              => 15,
-    'hdr'              => 25,
-    'vr180'            => 26,
-);
+                 'hd'               => 4,
+                 'subtitles'        => 5,
+                 'creative_commons' => 6,
+                 '3d'               => 7,
+                 'live'             => 8,
+                 '4k'               => 14,
+                 '360'              => 15,
+                 'hdr'              => 25,
+                 'vr180'            => 26,
+                );
 
 my %_ORDER = (
-    'relevance'   => 0,
-    'rating'      => 1,
-    'upload_date' => 2,
-    'view_count'  => 3,
-);
+              'relevance'   => 0,
+              'rating'      => 1,
+              'upload_date' => 2,
+              'view_count'  => 3,
+             );
 
 my %_TYPE = (
-    'all'      => 0,
-    'video'    => 1,
-    'channel'  => 2,
-    'playlist' => 3,
-    'movie'    => 4,
-);
+             'all'      => 0,
+             'video'    => 1,
+             'channel'  => 2,
+             'playlist' => 3,
+             'movie'    => 4,
+            );
 
 =head2 yt_search(q => $keyword, %args)
 
@@ -867,8 +867,8 @@ sub yt_search {
     {
         my @filters;
 
-        push @filters, proto_uint(1, $_DATE{$self->get_date // 'anytime'});
-        push @filters, proto_uint(2, $_TYPE{$args{type} // 'video'});
+        push @filters, proto_uint(1, $_DATE{$self->get_date              // 'anytime'});
+        push @filters, proto_uint(2, $_TYPE{$args{type}                  // 'video'});
         push @filters, proto_uint(3, $_DURATION{$self->get_videoDuration // 'any'});
 
         foreach my $feat (@{$self->get_features || []}) {
@@ -880,7 +880,7 @@ sub yt_search {
 
     # Paging.
     {
-        my $page = $self->get_page;
+        my $page  = $self->get_page;
         my $count = $self->get_maxResults;
 
         # Asking for less than 20 maximum results breaks paging:

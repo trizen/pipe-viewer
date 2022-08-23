@@ -16,7 +16,7 @@ WriteMakefile
                    'JSON' => 0,
                    'LWP::Protocol::https' => 0,
                    'LWP::UserAgent' => 0,
-                   'List::Util' => 0,
+                   'List::Util' => '1.33',
                    'MIME::Base64' => 0,
                    'Memoize' => 0,
                    'Term::ANSIColor' => 0,

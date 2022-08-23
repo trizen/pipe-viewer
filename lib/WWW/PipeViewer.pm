@@ -70,14 +70,20 @@ my %valid_options = (
     channelId => {valid => qr/^[-\w]{2,}\z/, default => undef},
 
     # Video only options
-    videoDuration   => {valid => [qw(short average long)], default => undef},
-    features        => {valid => sub {
-        my ($value) = @_;
-        my @supported = qw(360 3d 4k subtitles creative_commons hd hdr live vr180);
-        my $valid = all { my $feat = $_; any { $feat eq $_} @supported } @$value;
-        return $valid;
-    }, default => undef},
-    region          => {valid => qr/^[A-Z]{2}\z/i,         default => undef},
+    videoDuration => {valid => [qw(short average long)], default => undef},
+    features      => {
+        valid => sub {
+            my ($value)   = @_;
+            my @supported = qw(360 3d 4k subtitles creative_commons hd hdr live vr180);
+            my $valid     = all {
+                my $feat = $_;
+                any { $feat eq $_ } @supported
+            } @$value;
+            return $valid;
+        },
+        default => undef
+    },
+    region => {valid => qr/^[A-Z]{2}\z/i, default => undef},
 
     comments_order      => {valid => [qw(top new)],                       default => 'top'},
     subscriptions_order => {valid => [qw(alphabetical relevance unread)], default => undef},

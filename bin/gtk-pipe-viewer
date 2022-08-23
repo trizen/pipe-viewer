@@ -28,17 +28,16 @@ use 5.016;
 use warnings;
 no warnings 'once';
 
-use File::Basename;
 use Cwd qw(abs_path);
 
 # Devel mode
 my $DEVEL;
-use if ($DEVEL = -w __FILE__), lib => (abs_path(__FILE__.'/../../lib'),);
+use if ($DEVEL = -w __FILE__), lib => abs_path(__FILE__ . '/../../lib');
 
 use WWW::PipeViewer v0.2.3;
 use WWW::PipeViewer::RegularExpressions;
 
-use Gtk3 qw(-init);
+use Gtk3                  qw(-init);
 use File::Spec::Functions qw(
   rel2abs
   catdir
@@ -52,7 +51,7 @@ use File::Spec::Functions qw(
 
 use Scalar::Util qw(looks_like_number);
 
-use List::Util qw(any max min pairs uniq);
+use List::Util qw(any max min pairs);
 
 require Storable;
 binmode(STDOUT, ':utf8');
@@ -67,7 +66,7 @@ my %subscribed_channels;
 # Share directory
 my $share_dir =
   ($DEVEL)
-  ? abs_path(__FILE__.'/../../share')
+  ? abs_path(__FILE__ . '/../../share')
   : do { require File::ShareDir; File::ShareDir::dist_dir('WWW-PipeViewer') };
 
 # Configuration dir/file
@@ -214,7 +213,7 @@ my %CONFIG = (
 
     # Pipe options
     split_videos     => 1,
-    dash             => 1,        # may load slow
+    dash             => 1,             # may load slow
     prefer_mp4       => 0,
     prefer_av1       => 0,
     ignore_av1       => 0,
@@ -222,7 +221,7 @@ my %CONFIG = (
     prefer_invidious => 0,
     force_fallback   => 0,
     maxResults       => 10,
-    hfr              => 1,        # true to prefer high frame rate (HFR) videos
+    hfr              => 1,             # true to prefer high frame rate (HFR) videos
     resolution       => 'best',
     videoDuration    => undef,
     features         => undef,
@@ -231,8 +230,8 @@ my %CONFIG = (
     date             => 'anytime',
     region           => undef,
 
-    comments_width => 80,         # wrap comments longer than `n` characters
-    comments_order => 'top',      # valid values: time, relevance
+    comments_width => 80,              # wrap comments longer than `n` characters
+    comments_order => 'top',           # valid values: time, relevance
 
     # API
     api_host => "auto",
@@ -526,21 +525,27 @@ my @FEATURES;
 sub toggle_features {
     my $enabled = shift @_;
     if ($enabled) {
-        @FEATURES = sort(uniq(@FEATURES, @_));
-    } else {
-        @FEATURES = grep { my $feat = $_; ! grep $feat eq $_, @_ } @FEATURES;
+        @FEATURES = sort(do {
+                my %seen;
+                grep { !$seen{$_}++ } (@FEATURES, @_);
+            }
+        );
+    }
+    else {
+        @FEATURES = sort(grep { my $feat = $_; !grep $feat eq $_, @_ } @FEATURES);
     }
     $CONFIG->{features} = \@FEATURES;
 }
 
 toggle_features 1, @{$CONFIG->{features}};
 my @feature_options = qw(
-    videoCaption     1                 subtitles
-    videoCaption     true              subtitles
-    videoDefinition  high              hd
-    videoDimension   3d                3d
-    videoLicense     creative_commons  creative_commons
+  videoCaption     1                 subtitles
+  videoCaption     true              subtitles
+  videoDefinition  high              hd
+  videoDimension   3d                3d
+  videoLicense     creative_commons  creative_commons
 );
+
 while (scalar @feature_options) {
     (my $option_name, my $option_value, my $feature, @feature_options) = @feature_options;
     if (($CONFIG->{$option_name} // '') eq $option_value) {
@@ -751,8 +756,16 @@ foreach my $path ($CONFIG{cache_dir}) {
         }
 
         # Keep only the most recent non-duplicated entries
-        @history        = reverse(uniq(reverse(@history)));
-        @search_history = uniq(@search_history);
+        @history = reverse(
+            do {
+                my %seen;
+                grep { !$seen{$_}++ } reverse(@history);
+            }
+        );
+        @search_history = do {
+            my %seen;
+            grep { !$seen{$_}++ } @search_history;
+        };
 
         # Set entry completion
         $completion = Gtk3::EntryCompletion->new;
@@ -949,11 +962,13 @@ sub apply_combobox_configuration {
     my $value = $CONFIG{$option};
 
     if (!$combo->set_active_id($value) && looks_like_number($value)) {
+
         # For backward compatibility with old config format.
         $combo->set_active($value);
     }
 
     if ($combo->get_active == -1) {
+
         # Default to first item.
         $combo->set_active(0);
     }
@@ -962,7 +977,7 @@ sub apply_combobox_configuration {
 sub apply_yt_option {
     my ($option_name, $value) = @_;
 
-    my $setter = "set_$option_name";
+    my $setter    = "set_$option_name";
     my $set_value = $yv_obj->$setter($value);
 
     if (defined $value && $value ne ($set_value // '')) {
@@ -998,8 +1013,8 @@ sub apply_configuration {
                              bypass_age_gate_with_proxy
                              )
       ) {
-          apply_yt_option($option_name, $CONFIG{$option_name});
-      }
+        apply_yt_option($option_name, $CONFIG{$option_name});
+    }
 
     # Maximum number of results per page
     $spin_results->set_value($CONFIG{maxResults});
@@ -1008,13 +1023,14 @@ sub apply_configuration {
     $thumbs_checkbutton->set_active($CONFIG{show_thumbs});
 
     # Set default combobox values
-    apply_combobox_configuration($search_for_combobox, "search_for");
-    apply_combobox_configuration($resolution_combobox, "resolution");
-    apply_combobox_configuration($duration_combobox, "videoDuration");
-    apply_combobox_configuration($order_combobox, "order");
+    apply_combobox_configuration($search_for_combobox,       "search_for");
+    apply_combobox_configuration($resolution_combobox,       "resolution");
+    apply_combobox_configuration($duration_combobox,         "videoDuration");
+    apply_combobox_configuration($order_combobox,            "order");
     apply_combobox_configuration($published_within_combobox, "date");
 
-    foreach my $pair (pairs (
+    foreach my $pair (pairs(
+#<<<
             'live'            , 'Live',
             '4k'              , '4K',
             'hd'              , 'HD',
@@ -1024,16 +1040,20 @@ sub apply_configuration {
             'vr180'           , 'VR180',
             '3d'              , '3D',
             'hdr'             , 'HDR',
-        )) {
-            my ($feat, $label) = @$pair;
-            my $button = Gtk3::CheckButton->new_with_label($label);
-            $features_flowbox->add($button);
-            $button->set_visible(1);
-            $button->signal_connect('toggled', sub {
+#>>>
+    )) {
+        my ($feat, $label) = @$pair;
+        my $button = Gtk3::CheckButton->new_with_label($label);
+        $features_flowbox->add($button);
+        $button->set_visible(1);
+        $button->signal_connect(
+            'toggled',
+            sub {
                 toggle_features $button->get_active, $feat;
                 $yv_obj->set_features(\@FEATURES);
-            });
-        $button->set_active(any {$feat eq $_} @FEATURES);
+            }
+        );
+        $button->set_active(any { $feat eq $_ } @FEATURES);
     }
 
     # Resize the main window
@@ -1931,7 +1951,7 @@ sub combobox_channel_type_changed {
 }
 
 sub combobox_published_within_changed {
-    combobox_changed($published_within_combobox, "date", 1)
+    combobox_changed($published_within_combobox, "date", 1);
 }
 
 # Spin buttons changes

@@ -43,17 +43,14 @@ use 5.016;
 use warnings;
 no warnings 'once';
 
-use File::Basename;
 use Cwd qw(abs_path);
 
 # Devel mode
 my $DEVEL;
-use if ($DEVEL = -w __FILE__), lib => (abs_path(__FILE__.'/../../lib'),);
+use if ($DEVEL = -w __FILE__), lib => abs_path(__FILE__ . '/../../lib');
 
 use WWW::PipeViewer v0.2.3;
 use WWW::PipeViewer::RegularExpressions;
-
-use List::Util qw(uniq);
 
 require Storable;
 
@@ -194,16 +191,16 @@ my %CONFIG = (
     split_videos => 1,
 
     # YouTube options
-    dash            => 1,        # may load slow
-    maxResults      => 20,
-    hfr             => 1,        # true to prefer high frame rate (HFR) videos
-    resolution      => 'best',
-    videoDuration   => undef,
+    dash          => 1,        # may load slow
+    maxResults    => 20,
+    hfr           => 1,        # true to prefer high frame rate (HFR) videos
+    resolution    => 'best',
+    videoDuration => undef,
 
     features => undef,
-    order  => undef,
-    date   => undef,
-    region => undef,
+    order    => undef,
+    date     => undef,
+    region   => undef,
 
     # Comments order
     comments_order => 'top',    # valid values: top, new
@@ -468,9 +465,14 @@ our @FEATURES;
 sub toggle_features {
     my $enabled = shift @_;
     if ($enabled) {
-        @FEATURES = sort(uniq(@FEATURES, @_));
-    } else {
-        @FEATURES = grep { my $feat = $_; ! grep $feat eq $_, @_ } @FEATURES;
+        @FEATURES = sort(do {
+                my %seen;
+                grep { !$seen{$_}++ } (@FEATURES, @_);
+            }
+        );
+    }
+    else {
+        @FEATURES = sort(grep { my $feat = $_; !grep $feat eq $_, @_ } @FEATURES);
     }
 }
 
@@ -503,12 +505,13 @@ sub load_config {
 
     toggle_features 1, @{$CONFIG->{features}};
     my @feature_options = qw(
-        videoCaption     1                 subtitles
-        videoCaption     true              subtitles
-        videoDefinition  high              hd
-        videoDimension   3d                3d
-        videoLicense     creative_commons  creative_commons
+      videoCaption     1                 subtitles
+      videoCaption     true              subtitles
+      videoDefinition  high              hd
+      videoDimension   3d                3d
+      videoLicense     creative_commons  creative_commons
     );
+
     while (scalar @feature_options) {
         (my $option_name, my $option_value, my $feature, @feature_options) = @feature_options;
         if (($CONFIG->{$option_name} // '') eq $option_value) {
@@ -1216,25 +1219,26 @@ sub apply_configuration {
     }
 
     my @feature_options = qw(
-        360              1                 360
-        hdr              1                 hdr
-        live             1                 live
-        vr180            1                 vr180
-        videoCaption     1                 subtitles
-        videoDimension   3d                3d
-        videoLicense     creative_commons  creative_commons
+      360              1                 360
+      hdr              1                 hdr
+      live             1                 live
+      vr180            1                 vr180
+      videoCaption     1                 subtitles
+      videoDimension   3d                3d
+      videoLicense     creative_commons  creative_commons
     );
+
     while (scalar @feature_options) {
         (my $option_name, my $option_value, my $feature, @feature_options) = @feature_options;
         if (defined $opt->{$option_name}) {
-            toggle_features $opt->{$option_name} eq $option_value, $feature;
+            toggle_features($opt->{$option_name} eq $option_value, $feature);
         }
     }
 
     if (defined $opt->{videoDefinition}) {
         my $vd = $opt->{videoDefinition};
-        toggle_features $vd eq 'hd', 'hd';
-        toggle_features $vd eq '4k', '4k';
+        toggle_features($vd eq 'hd', 'hd');
+        toggle_features($vd eq '4k', '4k');
     }
 
     if (scalar @FEATURES) {
@@ -5094,15 +5098,16 @@ The keys for each player are:
 =head2 features
 
 A list of video features, return only videos with the specified features:
-- live: live stream
-- 4k: 4K resolution
-- hd: HD resolution (>=720p)
-- subtitles: video has subtitles/closed-captions
-- creative_commons: Creative Commons license
-- 360: 360° field of view
-- vr180: stereoscopic widh a 180° field of view
-- 3d: 3D
-- hdr: high dynamic range
+
+    - live              Live stream
+    - 4k                4K resolution
+    - hd                HD resolution (>=720p)
+    - subtitles         Video has subtitles/closed-captions
+    - creative_commons  Creative Commons license
+    - 360               360° field of view
+    - vr180             Stereoscopic widh a 180° field of view
+    - 3d                3D
+    - hdr               High dynamic range
 
 =head2 videoDuration
 

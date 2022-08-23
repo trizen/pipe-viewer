@@ -15,6 +15,7 @@ lib/WWW/PipeViewer/ParseJSON.pm
 lib/WWW/PipeViewer/ParseXML.pm
 lib/WWW/PipeViewer/PlaylistItems.pm
 lib/WWW/PipeViewer/Playlists.pm
+lib/WWW/PipeViewer/Proto.pm
 lib/WWW/PipeViewer/RegularExpressions.pm
 lib/WWW/PipeViewer/Search.pm
 lib/WWW/PipeViewer/Subscriptions.pm
