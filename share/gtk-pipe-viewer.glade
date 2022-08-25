@@ -586,7 +586,7 @@ Author: Trizen https://github.com/trizen
                       <object class="GtkTreeViewColumn" id="treeviewcolumn2">
                         <property name="visible">False</property>
                         <property name="resizable">True</property>
-                        <property name="title" translatable="yes">Thumbnails</property>
+                        <property name="title" translatable="yes">Thumbnail</property>
                         <property name="clickable">True</property>
                         <property name="reorderable">True</property>
                         <child>
