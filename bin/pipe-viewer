@@ -962,16 +962,6 @@ sub tricks {
  > Arguments that require an ID/URL, you can specify more than one,
    separated by whitespace (quoted), or separated by commas.
 
--> My channel
- > By using the string "mine" where a channel ID is required, "mine" will be
-   automatically replaced with your channel ID. (requires authentication)
-
-   Examples:
-        $execname --uploads=mine
-        $execname --likes=mine
-        $execname --favorites=mine
-        $execname --playlists=mine
-
 -> More STDIN help:
  > ":r", ":return" will return to the previous page of results.
    For example, if you search for playlists, then select a playlist
@@ -4830,6 +4820,10 @@ Enable debug/verbose mode, which will print some extra information.
 
 Valid values: 0, 1, 2, 3.
 
+=head2 downloads_dir
+
+Directory where to download files and where to save converted files.
+
 =head2 download_and_play
 
 Play downloaded videos.
@@ -4844,10 +4838,6 @@ Download videos with `yt-dlp` or `youtube-dl`.
 
 By enabling this option and setting the value of C<ytdl_cmd> to C<"yt-dlp">, download speed will be greatly improved.
 
-=head2 downloads_dir
-
-Directory where to download files and where to save converted files.
-
 =head2 env_proxy
 
 Load proxy settings from C<*_proxy> environment variables (if any).
@@ -4855,6 +4845,20 @@ Load proxy settings from C<*_proxy> environment variables (if any).
 =head2 fat32safe
 
 When downloading a video, make the filename compatible with the FAT32 filesystem.
+
+=head2 features
+
+A list of video features, return only videos with the specified features:
+
+    - live              Live stream
+    - 4k                4K resolution
+    - hd                HD resolution (>=720p)
+    - subtitles         Video has subtitles/closed-captions
+    - creative_commons  Creative Commons license
+    - 360               360° field of view
+    - vr180             Stereoscopic widh a 180° field of view
+    - 3d                3D
+    - hdr               High dynamic range
 
 =head2 ffmpeg_cmd
 
@@ -5006,12 +5010,6 @@ Prefer invidious instances over parsing the YouTube website directly.
 
 ISO 3166 country code (default: "US").
 
-=head2 watch_history
-
-Set to C<1> to remember and highlight watched videos across multiple sessions.
-
-The video IDs are saved in the filename specified by C<watch_history_file>.
-
 =head2 remove_played_file
 
 When C<download_and_play> is enabled, remove the file after playing it.
@@ -5095,20 +5093,6 @@ The keys for each player are:
     novideo    # the no-video mode option
     srt        # option specifying the *SUB* file
 
-=head2 features
-
-A list of video features, return only videos with the specified features:
-
-    - live              Live stream
-    - 4k                4K resolution
-    - hd                HD resolution (>=720p)
-    - subtitles         Video has subtitles/closed-captions
-    - creative_commons  Creative Commons license
-    - 360               360° field of view
-    - vr180             Stereoscopic widh a 180° field of view
-    - 3d                3D
-    - hdr               High dynamic range
-
 =head2 videoDuration
 
 Retrieve only short or long videos in search results.
@@ -5117,9 +5101,13 @@ Valid values: "any", "short" (under 4 minutes), "average" (4-20 minutes), and "l
 
 =head2 watch_history
 
-Remember watched videos. Watched videos can be listed with:
+Set to C<1> to remember and highlight watched videos across multiple sessions.
+
+Watched videos can be listed with:
 
     pipe-viewer -wv
+
+The video IDs are saved in the filename specified by C<watch_history_file>.
 
 =head2 watch_history_file
 
