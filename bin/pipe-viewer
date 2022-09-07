@@ -115,7 +115,6 @@ my $local_playlists_dir = catdir($config_dir,      'playlists');
 my $config_file              = catfile($config_dir, "$execname.conf");
 my $saved_channels_file      = catfile($config_dir, 'users.txt');
 my $subscribed_channels_file = catfile($config_dir, 'subscribed_channels.txt');
-my $authentication_file      = catfile($config_dir, 'reg.dat');
 my $history_file             = catfile($config_dir, 'cli-history.txt');
 my $watched_file             = catfile($config_dir, 'watched.txt');
 
@@ -391,7 +390,6 @@ CHANNELS_HELP
 my $comments_help = <<"COMMENTS_HELP" . $general_help;
 
 # Comments
-:c(omment)        : send a comment to this video
 COMMENTS_HELP
 
 my $complete_help = <<"STDIN_HELP";
@@ -1266,14 +1264,6 @@ sub apply_configuration {
         }
     }
 
-    if (delete $opt->{authenticate}) {
-        authenticate();
-    }
-
-    if (delete $opt->{logout}) {
-        logout();
-    }
-
     # ... OTHER OPTIONS ... #
     if (defined $opt->{extract_info_file}) {
         open my $fh, '>:utf8', delete($opt->{extract_info_file});
@@ -1310,16 +1300,6 @@ sub apply_configuration {
 
     if (defined $opt->{favorite_video}) {
         favorite_videos(split(/[,\s]+/, delete $opt->{favorite_video}));
-    }
-
-    if (defined $opt->{playlist_save}) {
-        my @ids = split(/[,\s]+/, delete $opt->{playlist_save});
-        if (defined $opt->{playlist_id}) {
-            save_to_playlist(get_valid_playlist_id(delete $opt->{playlist_id}) // (return), @ids);
-        }
-        else {
-            select_and_save_to_playlist(@ids);
-        }
     }
 
     if (defined $opt->{like_video}) {
@@ -1563,9 +1543,6 @@ sub parse_arguments {
         # English-UK friendly
         'favorite|favourite|favorite-video|favourite-video|fav=s' => \$opt{favorite_video},
 
-        #'login|authenticate' => \$opt{authenticate},
-        #'logout'             => \$opt{logout},
-
         'related-videos|rv=s'         => \$opt{related_videos},
         'popular-videos|popular|pv:s' => \$opt{popular_videos},
 
@@ -1672,7 +1649,6 @@ sub parse_arguments {
         'results=i'                         => \$opt{maxResults},
         'shuffle|s!'                        => \$opt{shuffle},
         'pos|position=i'                    => \$opt{position},
-        'ps|playlist-save=s'                => \$opt{playlist_save},
 
         'ytdl!'      => \$opt{ytdl},
         'ytdl-cmd=s' => \$opt{ytdl_cmd},
@@ -1993,68 +1969,6 @@ sub get_user_input {
     return @{$keywords};
 }
 
-sub logout {
-
-    unlink $authentication_file
-      or warn "[!] Can't unlink: `$authentication_file' -> $!";
-
-    $yv_obj->set_access_token();
-    $yv_obj->set_refresh_token();
-
-    return 1;
-}
-
-sub authenticate {
-    my $get_code_url = $yv_obj->get_accounts_oauth_url() // return;
-
-    print <<"INFO";
-
-:: Get the authentication code: $get_code_url
-
-                            |
-... and paste it below.    \\|/
-                            `
-INFO
-
-    my $code = $term->readline(colored(q{Code: }, 'bold')) || return;
-
-    my $info = $yv_obj->oauth_login($code) // do {
-        warn "[WARNING] Can't log in... That's all I know...\n";
-        return;
-    };
-
-    if (defined $info->{access_token}) {
-
-        $yv_obj->set_access_token($info->{access_token})   // return;
-        $yv_obj->set_refresh_token($info->{refresh_token}) // return;
-
-        my $remember_me = ask_yn(prompt  => colored("\nRemember me", 'bold'),
-                                 default => 'y');
-
-        if ($remember_me) {
-            $yv_obj->set_authentication_file($authentication_file);
-            $yv_obj->save_authentication_tokens()
-              or warn "[!] Can't store the authentication tokens: $!";
-        }
-        else {
-            $yv_obj->set_authentication_file();
-        }
-
-        return 1;
-    }
-
-    warn "[WARNING] There was a problem with the authentication...\n";
-    return;
-}
-
-sub authenticated {
-    if (not defined $yv_obj->get_access_token) {
-        warn_needs_auth();
-        return;
-    }
-    return 1;
-}
-
 sub favorite_videos {
     my (@videos) = @_;
 
@@ -2062,54 +1976,6 @@ sub favorite_videos {
         prepend_video_data_to_file($video_data, $favorite_videos_data_file);
     }
 
-    return 1;
-}
-
-sub select_and_save_to_playlist {
-    return if not authenticated();
-
-    my $request    = $yv_obj->my_playlists() // return;
-    my $playlistID = print_playlists($request, return_playlist_id => 1);
-
-    if (defined($playlistID)) {
-        return save_to_playlist($playlistID, @_);
-    }
-
-    warn_no_thing_selected('playlist');
-    return;
-
-}
-
-sub save_to_playlist {
-    my ($playlistID, @videoIDs) = @_;
-
-    return if not authenticated();
-
-    foreach my $id (@videoIDs) {
-
-        my $videoID = get_valid_video_id($id) // next;
-        my $pos     = $opt{position};                    # position in the playlist
-
-        if (!defined($pos) or $pos < 0) {
-            local $yv_obj->{maxResults} = 1;
-
-            my $info          = $yv_obj->videos_from_playlist_id($playlistID);
-            my $total_results = $info->{results}{pageInfo}{totalResults};
-
-            say "\n:: Total number of videos in the playlist: $total_results";
-            $pos //= 0;
-            $pos += $total_results || 0;
-            say ":: Saving video at position: $pos";
-        }
-
-        if ($yv_obj->add_video_to_playlist($playlistID, $videoID, $pos)) {
-            printf(":: Video %s has been successfully added to playlistID: %s\n",
-                   sprintf($CONFIG{youtube_video_url}, $videoID), $playlistID);
-        }
-        else {
-            warn_cant_do("add to playlist", $videoID);
-        }
-    }
     return 1;
 }
 
@@ -2287,12 +2153,6 @@ sub general_options {
     elsif ($option =~ /^(?:R|refresh)\z/ and defined($url)) {
         @{$results} = @{$yv_obj->_get_results($url)->{results}};
     }
-    elsif ($option eq 'login') {
-        authenticate();
-    }
-    elsif ($option eq 'logout') {
-        logout();
-    }
     elsif ($option =~ /^(?:reset|reload|restart)\z/) {
         @ARGV = ();
         do $0;
@@ -2362,10 +2222,6 @@ sub warn_first_page {
 
 sub warn_no_thing_selected {
     warn colored("\n[!] No $_[0] selected!", 'bold red') . "\n";
-}
-
-sub warn_needs_auth {
-    warn colored("\n[!] This functionality needs authentication!", 'bold red') . "\n";
 }
 
 # ... GET INPUT SUBS ... #
@@ -2837,27 +2693,6 @@ sub print_comments {
             elsif ($opt =~ /^(?:h|help)\z/) {
                 print $comments_help;
                 press_enter_to_continue();
-            }
-            elsif ($opt =~ /^(?:c|comment)\z/) {
-                if (authenticated()) {
-                    require File::Temp;
-                    my ($fh, $filename) = File::Temp::tempfile();
-                    $yv_obj->proxy_system($ENV{EDITOR} // 'nano', $filename);
-                    if ($?) {
-                        warn colored("\n[!] Editor exited with a non-zero code. Unable to continue!", 'bold red') . "\n";
-                    }
-                    else {
-                        my $comment = do { local (@ARGV, $/) = $filename; <> };
-                        $comment =~ s/[^\s[:^cntrl:]]+//g;    # remove control characters
-
-                        if (length($comment) and $yv_obj->comment_to_video_id($comment, $videoID)) {
-                            print "\n:: Comment posted!\n";
-                        }
-                        else {
-                            warn colored("\n[!] Your comment has NOT been posted!", 'bold red') . "\n";
-                        }
-                    }
-                }
             }
             elsif ($opt =~ /^(?:r|return)\z/) {
                 return;
