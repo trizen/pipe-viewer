@@ -2691,7 +2691,12 @@ sub get_pixbuf_thumbnail_from_content {
     }
 
     my $pixbuf;
+
     if (defined $thumbnail) {
+
+        # Add/update thumbnails' cache entry.
+        add_thumbnail_to_cache($url, $thumbnail);
+
         my $pixbufloader = 'Gtk3::Gdk::PixbufLoader'->new;
 
         $pixbufloader->signal_connect(
@@ -2707,15 +2712,6 @@ sub get_pixbuf_thumbnail_from_content {
             $pixbufloader->close;
             $pixbuf = $pixbufloader->get_pixbuf;
         };
-    }
-
-    if (defined($pixbuf) and !get_thumbnail_from_cache($url)) {
-
-        my $buffer = eval { pack('C*', @{$pixbuf->save_to_buffer($CONFIG{cache_thumbnails_format})}) };
-
-        if (defined($buffer)) {
-            add_thumbnail_to_cache($url, $buffer);
-        }
     }
 
     $pixbuf //= $default_thumb;
