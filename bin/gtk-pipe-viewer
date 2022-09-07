@@ -372,7 +372,7 @@ my %objects = (
     '__MAIN__'          => \my $mainw,
     'users_list_window' => \my $users_list_window,
     'help_window'       => \my $help_window,
-    'prefernces_window' => \my $prefernces_window,
+    'preferences_window'=> \my $preferences_window,
     'errors_window'     => \my $errors_window,
     'details_window'    => \my $details_window,
     'aboutdialog1'      => \my $about_window,
@@ -489,6 +489,8 @@ my $webp_supported = any { $_->name eq 'webp' } Gtk3::Gdk::Pixbuf::get_formats;
 # Setting application title and icon
 $mainw->set_title("$appname $version");
 $mainw->set_icon($app_icon_pixbuf);
+$about_window->set_program_name("$appname $version");
+$about_window->set_logo($app_icon_pixbuf);
 
 our $CONFIG;
 require $config_file;    # Load the configuration file
@@ -1669,22 +1671,17 @@ HELP_TEXT
 
 # Main window
 my $accel = Gtk3::AccelGroup->new;
-$accel->connect(ord('h'), ['control-mask'], ['visible'], \&show_help_window);
 $accel->connect(ord('e'), ['control-mask'], ['visible'], \&enqueue_video);
-$accel->connect(ord('p'), ['control-mask'], ['visible'], \&show_preferences_window);
 $accel->connect(ord('q'), ['control-mask'], ['visible'], \&on_mainw_destroy);
-$accel->connect(ord('u'), ['control-mask'], ['visible'], \&show_users_list_window);
 $accel->connect(ord('y'), ['control-mask'], ['visible'], \&run_cli_pipe_viewer);
 $accel->connect(ord('d'), ['control-mask'], ['visible'], \&show_details_window);
 
 #$accel->connect(ord('c'), ['control-mask'], ['visible'], \&show_comments_window);
-$accel->connect(ord('n'), ['control-mask'], ['visible'], \&display_subscription_videos);
 $accel->connect(ord('s'), ['control-mask'], ['visible'], \&add_user_to_favorites);
 $accel->connect(ord('r'), ['control-mask'], ['visible'], \&show_related_videos);
 $accel->connect(ord('g'), ['control-mask'], ['visible'], \&show_user_favorite_videos);
 $accel->connect(ord('m'), ['control-mask'], ['visible'], \&show_videos_from_selected_author);
 $accel->connect(ord('k'), ['control-mask'], ['visible'], \&show_playlists_from_selected_author);
-$accel->connect(ord('w'), ['control-mask'], ['visible'], \&display_watched_videos);
 $accel->connect(0xffff,   ['lock-mask'],    ['visible'], \&delete_selected_row);
 $accel->connect(0xffc8,   ['lock-mask'],    ['visible'], \&maximize_unmaximize_mainw);
 $mainw->add_accel_group($accel);
@@ -1705,27 +1702,19 @@ $mainw->signal_connect(
     }
 );
 
-# Other windows (ESC key to close them)
-$accel = Gtk3::AccelGroup->new;
-$accel->connect(0xff1b, ['lock-mask'], ['visible'], \&hide_users_list_window);
-$users_list_window->add_accel_group($accel);
+# ---------------- Generic GTK signal handlers ---------------- #
 
-$accel = Gtk3::AccelGroup->new;
-$accel->connect(0xff1b, ['lock-mask'], ['visible'], \&hide_feeds_window);
-$feeds_window->add_accel_group($accel);
+sub gtk_widget_show {
+    my $widget = $_[-1] // $_[0];
+    $widget->show;
+    return 1;
+}
 
-$accel = Gtk3::AccelGroup->new;
-$accel->connect(0xff1b,   ['lock-mask'],    ['visible'], \&hide_preferences_window);
-$accel->connect(ord('s'), ['control-mask'], ['visible'], \&save_configuration);
-$prefernces_window->add_accel_group($accel);
-
-$accel = Gtk3::AccelGroup->new;
-$accel->connect(0xff1b, ['lock-mask'], ['visible'], \&hide_help_window);
-$help_window->add_accel_group($accel);
-
-$accel = Gtk3::AccelGroup->new;
-$accel->connect(0xff1b, ['lock-mask'], ['visible'], \&hide_details_window);
-$details_window->add_accel_group($accel);
+sub gtk_widget_hide {
+    my $widget = $_[-1] // $_[0];
+    $widget->hide;
+    return 1;
+}
 
 # ------------------ Showing/Hidding windows ------------------ #
 
@@ -1735,60 +1724,6 @@ sub maximize_unmaximize_mainw {
     $maximized++ % 2
       ? $mainw->unfullscreen
       : $mainw->fullscreen;
-}
-
-# Users list window
-sub show_users_list_window {
-    $users_list_window->show;
-    return 1;
-}
-
-sub hide_users_list_window {
-    $users_list_window->hide;
-    return 1;
-}
-
-# Help window
-sub show_help_window {
-    $help_window->show;
-    return 1;
-}
-
-sub hide_help_window {
-    $help_window->hide;
-    return 1;
-}
-
-# Warnings window
-
-sub show_warnings_window {
-    $warnings_window->show;
-    return 1;
-}
-
-sub hide_warnings_window {
-    $warnings_window->hide;
-    return 1;
-}
-
-# About Window
-sub show_about_window {
-    $about_window->set_program_name("$appname $version");
-    $about_window->set_logo($app_icon_pixbuf);
-    $about_window->set_resizable(1);
-    $about_window->show;
-    return 1;
-}
-
-sub hide_about_window {
-    $about_window->hide;
-    return 1;
-}
-
-# Error window
-sub hide_errors_window {
-    $errors_window->hide;
-    return 1;
 }
 
 # Details window
@@ -1804,11 +1739,6 @@ sub show_details_window {
 
     $details_window->show;
     Glib::Idle->add(sub { set_entry_details($code, $iter); return 0 }, [], Glib::G_PRIORITY_LOW);
-    return 1;
-}
-
-sub hide_details_window {
-    $details_window->hide;
     return 1;
 }
 
@@ -1829,6 +1759,8 @@ sub show_comments_window {
     $feeds_title->set_markup("<big>$video_title</big>");
     $feeds_title->set_tooltip_markup("$video_title");
 
+    $feeds_liststore->clear;
+
     $feeds_window->show;
     $feeds_statusbar->pop(0);
 
@@ -1844,12 +1776,6 @@ sub show_comments_window {
     return 1;
 }
 
-sub hide_feeds_window {
-    $feeds_liststore->clear;
-    $feeds_window->hide;
-    return 1;
-}
-
 # Preferences window
 sub show_preferences_window {
     require Data::Dump;
@@ -1859,12 +1785,7 @@ sub show_preferences_window {
     $config_view->set_buffer($config_view_buffer);
     state $font = Pango::FontDescription::from_string('Monospace 8');
     $config_view->modify_font($font);
-    $prefernces_window->show;
-    return 1;
-}
-
-sub hide_preferences_window {
-    $prefernces_window->hide;
+    $preferences_window->show;
     return 1;
 }
 
@@ -1881,7 +1802,7 @@ sub save_configuration {
     dump_configuration();
 
     apply_configuration();
-    hide_preferences_window();
+    $preferences_window->hide;
     return 1;
 }
 
@@ -2286,7 +2207,7 @@ sub videos_from_selected_username {
 }
 
 sub videos_from_saved_channel {
-    hide_users_list_window();
+    $users_list_window->hide;
     videos_from_selected_username();
 }
 
