@@ -374,7 +374,6 @@ my %objects = (
     'help_window'       => \my $help_window,
     'prefernces_window' => \my $prefernces_window,
     'errors_window'     => \my $errors_window,
-    'login_to_youtube'  => \my $login_to_youtube,
     'details_window'    => \my $details_window,
     'aboutdialog1'      => \my $about_window,
     'feeds_window'      => \my $feeds_window,
@@ -1641,7 +1640,6 @@ set_text(
 # Key binds
 
     CTRL+H : help window
-    CTRL+L : login window
     CTRL+P : preferences window
     CTRL+Y : start CLI Pipe Viewer
     CTRL+E : enqueue the selected video
@@ -1674,7 +1672,6 @@ HELP_TEXT
 my $accel = Gtk3::AccelGroup->new;
 $accel->connect(ord('h'), ['control-mask'], ['visible'], \&show_help_window);
 $accel->connect(ord('e'), ['control-mask'], ['visible'], \&enqueue_video);
-$accel->connect(ord('l'), ['control-mask'], ['visible'], \&show_login_to_youtube_window);
 $accel->connect(ord('p'), ['control-mask'], ['visible'], \&show_preferences_window);
 $accel->connect(ord('q'), ['control-mask'], ['visible'], \&on_mainw_destroy);
 $accel->connect(ord('u'), ['control-mask'], ['visible'], \&show_users_list_window);
@@ -1792,17 +1789,6 @@ sub hide_about_window {
 # Error window
 sub hide_errors_window {
     $errors_window->hide;
-    return 1;
-}
-
-# Login window
-sub show_login_to_youtube_window {
-    $login_to_youtube->show;
-    return 1;
-}
-
-sub hide_login_to_youtube_window {
-    $login_to_youtube->hide;
     return 1;
 }
 
