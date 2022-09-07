@@ -1282,7 +1282,7 @@ Unless the author name is valid, this field is ignored.</property>
                                                         <property name="numeric">True</property>
                                                         <property name="update-policy">if-valid</property>
                                                         <property name="value">1</property>
-                                                        <signal name="activate" handler="search" swapped="no"/>
+                                                        <signal name="activate" handler="search" after="yes" swapped="no"/>
                                                         <signal name="value-changed" handler="spin_results_per_page_changed" swapped="no"/>
                                                       </object>
                                                     </child>
@@ -1332,7 +1332,7 @@ Unless the author name is valid, this field is ignored.</property>
                                                         <property name="numeric">True</property>
                                                         <property name="update-policy">if-valid</property>
                                                         <property name="value">1</property>
-                                                        <signal name="activate" handler="search" swapped="no"/>
+                                                        <signal name="activate" handler="search" after="yes" swapped="no"/>
                                                         <signal name="value-changed" handler="spin_start_with_page_changed" swapped="no"/>
                                                       </object>
                                                     </child>
