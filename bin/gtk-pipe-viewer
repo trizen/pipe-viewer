@@ -393,7 +393,6 @@ my %objects = (
     'warnings_textview'      => \my $warnings_textview,
     'errors_textview'        => \my $errors_textview,
     'search_entry'           => \my $search_entry,
-    'statusbar1'             => \my $statusbar,
     'treeviewcolumn2'        => \my $thumbs_column,
     'textview2'              => \my $textview_help,
     'from_author_entry'      => \my $from_author_entry,
