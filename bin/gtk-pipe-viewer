@@ -2684,8 +2684,16 @@ sub get_pixbuf_thumbnail_from_content {
     if (defined $thumbnail) {
         my $pixbufloader = 'Gtk3::Gdk::PixbufLoader'->new;
 
+        $pixbufloader->signal_connect(
+            'size-prepared' => sub {
+            my ($loader, $width, $height) = @_;
+            my $scale = min($xsize / $width, $ysize / $height);
+            if ($scale < 1.0) {
+                $loader->set_size($width * $scale, $height * $scale);
+            }
+        });
+
         eval {
-            $pixbufloader->set_size($xsize, $ysize);
             $pixbufloader->write($thumbnail);
             $pixbufloader->close;
             $pixbuf = $pixbufloader->get_pixbuf;
