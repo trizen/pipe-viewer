@@ -780,6 +780,9 @@ usage: $execname [options] ([url] | [keywords])
  * Channels
    -sc --channels     : search for YouTube channels
 
+ * Movies
+   -sm --movies       : search for YouTube movies
+
  * Comments
    --comments=s         : display comments for a video by ID or URL
    --comments-order=s   : change the order of YouTube comments
@@ -1364,6 +1367,10 @@ sub apply_configuration {
         print_playlists($yv_obj->search_playlists([@{$keywords}]));
     }
 
+    if (delete $opt->{search_movies}) {
+        print_videos($yv_obj->search_movies([@{$keywords}]));
+    }
+
     if (delete $opt->{categories}) {
         print_categories($yv_obj->video_categories);
     }
@@ -1541,6 +1548,7 @@ sub parse_arguments {
         'search-videos|search|sv!'     => \$opt{search_videos},
         'search-channels|channels|sc!' => \$opt{search_channels},
         'search-playlists|sp|p!'       => \$opt{search_playlists},
+        'search-movie|movies|sm!'      => \$opt{search_movies},
 
         'uploads|U|user|user-videos|uv|u=s' => \$opt{uploads},
         'favorites|F|user-favorites|uf:s'   => \$opt{favorites},
