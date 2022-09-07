@@ -780,11 +780,6 @@ sub get_comment_content {
     $info->{content} // $info->{text};
 }
 
-sub get_id {
-    my ($self, $info) = @_;
-    $info->{videoId};
-}
-
 sub calculate_rating {
     my ($self, $info) = @_;
 
