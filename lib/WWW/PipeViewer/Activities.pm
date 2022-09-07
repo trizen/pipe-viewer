@@ -32,10 +32,6 @@ Get activities for channel ID.
 sub activities {
     my ($self, $channel_id) = @_;
 
-    if ($channel_id eq 'mine') {
-        return $self->my_activities;
-    }
-
     if ($channel_id !~ /^UC/) {
         $channel_id = $self->channel_id_from_username($channel_id) // $channel_id;
     }
@@ -52,18 +48,6 @@ Get activities for username.
 sub activities_from_username {
     my ($self, $username) = @_;
     return $self->activities($username);
-}
-
-=head2 my_activities()
-
-Get authenticated user's activities.
-
-=cut
-
-sub my_activities {
-    my ($self) = @_;
-    $self->get_access_token() // return;
-    $self->_get_results($self->_make_activities_url(mine => 'true'));
 }
 
 =head1 AUTHOR
