@@ -28,36 +28,6 @@ sub _make_playlistItems_url {
                            );
 }
 
-=head2 add_video_to_playlist($playlistID, $videoID; $position=1)
-
-Add a video to given playlist ID, at position 1 (by default)
-
-=cut
-
-sub add_video_to_playlist {
-    my ($self, $playlist_id, $video_id, $position) = @_;
-
-    $self->get_access_token() // return;
-
-    $playlist_id // return;
-    $video_id    // return;
-    $position //= 0;
-
-    my $hash = {
-                "snippet" => {
-                              "playlistId" => $playlist_id,
-                              "resourceId" => {
-                                               "videoId" => $video_id,
-                                               "kind"    => "youtube#video"
-                                              },
-                              "position" => $position,
-                             }
-               };
-
-    my $url = $self->_make_playlistItems_url(pageToken => undef);
-    $self->post_as_json($url, $hash);
-}
-
 =head2 favorite_video($videoID)
 
 Favorite a video. Returns true on success.
