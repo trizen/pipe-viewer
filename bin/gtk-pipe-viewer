@@ -4274,7 +4274,7 @@ EOT
     $linkbutton->set_uri($url);
 
     # Getting thumbs (start, middle, end).
-    foreach my $nr (1..3) {
+    foreach my $nr ($opt{extra_info} ? () : 1..3) {
 
         my ($url, $xsize, $ysize) = get_thumbnail_info($info);
         my $widget = $gui->get_object("image$nr");
