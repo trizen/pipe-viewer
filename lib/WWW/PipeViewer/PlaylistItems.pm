@@ -28,50 +28,6 @@ sub _make_playlistItems_url {
                            );
 }
 
-=head2 add_video_to_playlist($playlistID, $videoID; $position=1)
-
-Add a video to given playlist ID, at position 1 (by default)
-
-=cut
-
-sub add_video_to_playlist {
-    my ($self, $playlist_id, $video_id, $position) = @_;
-
-    $self->get_access_token() // return;
-
-    $playlist_id // return;
-    $video_id    // return;
-    $position //= 0;
-
-    my $hash = {
-                "snippet" => {
-                              "playlistId" => $playlist_id,
-                              "resourceId" => {
-                                               "videoId" => $video_id,
-                                               "kind"    => "youtube#video"
-                                              },
-                              "position" => $position,
-                             }
-               };
-
-    my $url = $self->_make_playlistItems_url(pageToken => undef);
-    $self->post_as_json($url, $hash);
-}
-
-=head2 favorite_video($videoID)
-
-Favorite a video. Returns true on success.
-
-=cut
-
-sub favorite_video {
-    my ($self, $video_id) = @_;
-    $video_id // return;
-    $self->get_access_token() // return;
-    my $playlist_id = $self->get_playlist_id('favorites', mine => 'true') // return;
-    $self->add_video_to_playlist($playlist_id, $video_id);
-}
-
 =head2 videos_from_playlist_id($playlist_id)
 
 Get videos from a specific playlistID.
