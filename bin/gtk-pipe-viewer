@@ -2378,7 +2378,7 @@ sub get_code {
             if ($type eq 'playlist') {
                 list_playlist($code);
             }
-            elsif ($type eq 'channel' or $type eq 'subscription') {
+            elsif ($type eq 'channel') {
                 uploads('channel', $code);
             }
             elsif ($type eq 'next_page' and $code ne '') {
@@ -2821,9 +2821,6 @@ sub display_results {
         elsif ($yv_utils->is_channel($item)) {
             add_channel_entry($item);
         }
-        elsif ($yv_utils->is_subscription($item)) {
-            add_subscription_entry($item);
-        }
         elsif ($yv_utils->is_video($item)) {
 
             # Store the video title to history (when `save_titles_to_history` is true)
@@ -2899,46 +2896,6 @@ sub set_thumbnail {
         [$entry, $liststore, $iter],
         Glib::G_PRIORITY_LOW
     );
-}
-
-sub add_subscription_entry {
-    my ($subscription) = @_;
-
-    my $iter            = $liststore->append;
-    my $title           = $yv_utils->get_title($subscription);
-    my $channel_id      = $yv_utils->get_channel_id($subscription);
-    my $description     = $yv_utils->get_description($subscription);
-    my $row_description = make_row_description($description);
-
-    set_entry_tooltip($iter, $title, $description);
-
-    my $title_label =
-        '<big><b>'
-      . encode_entities($title)
-      . "</b></big>\n\n"
-      . "$symbols{author}\t "
-      . encode_entities($channel_id) . "\n"
-      . "$symbols{published}\t "
-      . ($yv_utils->get_publication_date($subscription) // 'unknown')
-      . "\n\n<i>"
-      . encode_entities($row_description) . '</i>';
-
-    my $type_label = "$symbols{type}\t " . 'Subscription' . "\n";
-
-    $liststore->set(
-                    $iter,
-                    0 => $title_label,
-                    2 => $type_label,
-                    3 => $channel_id,
-                    4 => encode_entities($description),
-                    6 => $channel_id,
-                    7 => 'subscription',
-                    8 => $yv_obj->make_json_string($subscription),
-                   );
-
-    if ($CONFIG{show_thumbs}) {
-        set_thumbnail($subscription, $liststore, $iter);
-    }
 }
 
 sub reflow_text {
@@ -3526,10 +3483,10 @@ sub make_youtube_url {
     my ($type, $code) = @_;
 
     my $format = (
-                    ($type eq 'subscription' || $type eq 'channel') ? $CONFIG{youtube_channel_url}
-                  : $type eq 'video'                                ? $CONFIG{youtube_video_url}
-                  : $type eq 'playlist'                             ? $CONFIG{youtube_playlist_url}
-                  :                                                   ()
+                    $type eq 'channel'  ? $CONFIG{youtube_channel_url}
+                  : $type eq 'video'    ? $CONFIG{youtube_video_url}
+                  : $type eq 'playlist' ? $CONFIG{youtube_playlist_url}
+                  :                     ()
                  );
 
     if (defined $format) {
@@ -3894,7 +3851,7 @@ sub set_entry_details {
     # Setting title
     my $title = $yv_utils->get_title($info);
 
-    if ($type eq 'channel' or $type eq 'subscription') {
+    if ($type eq 'channel') {
         $title = $yv_utils->get_channel_title($info);
     }
 
@@ -3954,7 +3911,7 @@ EOT
                              $yv_utils->get_playlist_id($info) // 'unknown',
                             );
     }
-    elsif ($type eq 'channel' or $type eq 'subscription') {
+    elsif ($type eq 'channel') {
 
         my $details_format = <<"EOT";
 ‎$symbols{author}\t%s
