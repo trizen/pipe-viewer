@@ -381,7 +381,6 @@ my %objects = (
 
     # Others
     'treeview1'              => \my $users_treeview,
-    'feeds_statusbar'        => \my $feeds_statusbar,
     'treeview2'              => \my $treeview,
     'treeview3'              => \my $cat_treeview,
     'feeds_treeview'         => \my $feeds_treeview,
@@ -1762,7 +1761,6 @@ sub show_comments_window {
     $feeds_liststore->clear;
 
     $feeds_window->show;
-    $feeds_statusbar->pop(0);
 
     Glib::Idle->add(
         sub {
@@ -3676,16 +3674,6 @@ sub show_related_videos {
     else {
         die "No related video for videoID: <$video_id>\n";
     }
-}
-
-sub send_comment_to_video {
-    my $videoID = get_selected_entry_code(type => 'video') // return;
-    my $comment = get_text($gui->get_object('comment_textview'));
-
-    $feeds_statusbar->push(0,
-                           length($comment) && $yv_obj->comment_to_video_id($comment, $videoID)
-                           ? 'Video comment has been posted!'
-                           : 'Error!');
 }
 
 sub wrap_text {
