@@ -159,34 +159,6 @@ sub comments_from_video_id {
     $self->_get_results($self->_make_feed_url("comments/$video_id", sort_by => $self->get_comments_order));
 }
 
-=head2 comment_to_video_id($comment, $videoID)
-
-Send a comment to a video ID.
-
-=cut
-
-sub comment_to_video_id {
-    my ($self, $comment, $video_id) = @_;
-
-    my $url = $self->_simple_feeds_url('commentThreads', part => 'snippet');
-
-    my $hash = {
-        "snippet" => {
-
-            "topLevelComment" => {
-                                  "snippet" => {
-                                                "textOriginal" => $comment,
-                                               }
-                                 },
-            "videoId" => $video_id,
-
-            #"channelId"    => $channel_id,
-                     },
-               };
-
-    $self->post_as_json($url, $hash);
-}
-
 =head1 AUTHOR
 
 Trizen, C<< <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d> >>
