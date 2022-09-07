@@ -309,7 +309,8 @@ Author: Trizen https://github.com/trizen
                         <property name="can-focus">False</property>
                         <property name="tooltip-text" translatable="yes">See your list of saved channels</property>
                         <property name="use-stock">False</property>
-                        <signal name="activate" handler="show_users_list_window" swapped="no"/>
+                        <signal name="activate" handler="gtk_widget_show" object="users_list_window" swapped="no"/>
+                        <accelerator key="u" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </object>
                     </child>
                     <child>
@@ -321,6 +322,7 @@ Author: Trizen https://github.com/trizen
                         <property name="image">image9</property>
                         <property name="use-stock">False</property>
                         <signal name="activate" handler="display_watched_videos" swapped="no"/>
+                        <accelerator key="w" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </object>
                     </child>
                     <child>
@@ -333,6 +335,7 @@ Author: Trizen https://github.com/trizen
                         <property name="image">image10</property>
                         <property name="use-stock">False</property>
                         <signal name="activate" handler="display_subscription_videos" swapped="no"/>
+                        <accelerator key="n" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </object>
                     </child>
                     <child>
@@ -355,6 +358,7 @@ Author: Trizen https://github.com/trizen
                         <property name="use-underline">True</property>
                         <property name="use-stock">True</property>
                         <signal name="activate" handler="show_preferences_window" swapped="no"/>
+                        <accelerator key="p" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </object>
                     </child>
                     <child>
@@ -443,7 +447,8 @@ Author: Trizen https://github.com/trizen
                         <property name="tooltip-text" translatable="yes">Show a help window. (CTRL+H)</property>
                         <property name="use-underline">True</property>
                         <property name="use-stock">True</property>
-                        <signal name="activate" handler="show_help_window" swapped="no"/>
+                        <signal name="activate" handler="gtk_widget_show" object="help_window" swapped="no"/>
+                        <accelerator key="h" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </object>
                     </child>
                     <child>
@@ -465,7 +470,7 @@ Author: Trizen https://github.com/trizen
                         <property name="tooltip-text" translatable="yes">Show the warnings window</property>
                         <property name="image">image76</property>
                         <property name="use-stock">False</property>
-                        <signal name="activate" handler="show_warnings_window" swapped="no"/>
+                        <signal name="activate" handler="gtk_widget_show" object="warnings_window" swapped="no"/>
                       </object>
                     </child>
                     <child>
@@ -475,7 +480,7 @@ Author: Trizen https://github.com/trizen
                         <property name="can-focus">False</property>
                         <property name="use-underline">True</property>
                         <property name="use-stock">True</property>
-                        <signal name="activate" handler="show_about_window" swapped="no"/>
+                        <signal name="activate" handler="gtk_widget_show" object="aboutdialog1" swapped="no"/>
                       </object>
                     </child>
                   </object>
@@ -1749,9 +1754,8 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
     <property name="artists">PosixRU (main logo) https://zenway.ru/page/gtk-youtube-viewer</property>
     <property name="logo-icon-name">image-missing</property>
     <property name="license-type">artistic</property>
-    <signal name="delete-event" handler="hide_about_window" swapped="no"/>
-    <signal name="destroy" handler="hide_about_window" swapped="no"/>
-    <signal name="response" handler="hide_about_window" swapped="no"/>
+    <signal name="delete-event" handler="gtk_widget_hide" swapped="no"/>
+    <signal name="response" handler="gtk_widget_hide" swapped="no"/>
     <child internal-child="vbox">
       <object class="GtkBox" id="dialog-vbox3">
         <property name="can-focus">False</property>
@@ -1773,29 +1777,79 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
       </object>
     </child>
   </object>
-  <object class="GtkWindow" id="details_window">
+  <object class="GtkDialog" id="details_window">
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">Extra details</property>
     <property name="modal">True</property>
     <property name="window-position">center-on-parent</property>
     <property name="default-width">800</property>
     <property name="default-height">600</property>
-    <property name="destroy-with-parent">True</property>
-    <property name="gravity">static</property>
+    <property name="type-hint">dialog</property>
     <property name="transient-for">__MAIN__</property>
     <property name="has-resize-grip">True</property>
-    <signal name="delete-event" handler="hide_details_window" swapped="no"/>
-    <signal name="destroy" handler="hide_details_window" swapped="no"/>
-    <child>
-      <object class="GtkBox" id="vbox4">
-        <property name="visible">True</property>
+    <signal name="delete-event" handler="gtk_widget_hide" swapped="no"/>
+    <signal name="response" handler="gtk_widget_hide" swapped="no"/>
+    <child internal-child="vbox">
+      <object class="GtkBox">
         <property name="can-focus">False</property>
-        <property name="margin-start">4</property>
-        <property name="margin-end">4</property>
-        <property name="margin-top">4</property>
-        <property name="margin-bottom">4</property>
         <property name="orientation">vertical</property>
-        <property name="spacing">4</property>
+        <property name="spacing">2</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can-focus">False</property>
+            <property name="layout-style">end</property>
+            <child>
+              <object class="GtkButton" id="play">
+                <property name="label">gtk-media-play</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="use-stock">True</property>
+                <signal name="clicked" handler="get_code" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="download">
+                <property name="label">Download</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="image">download_icon3</property>
+                <signal name="clicked" handler="download_video" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="close">
+                <property name="label">gtk-close</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="use-stock">True</property>
+                <signal name="clicked" handler="gtk_widget_hide" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
         <child>
           <object class="GtkLabel" id="video_title_label">
             <property name="visible">True</property>
@@ -1817,17 +1871,6 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
             <property name="expand">False</property>
             <property name="fill">True</property>
             <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkSeparator" id="hseparator3">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
           </packing>
         </child>
         <child>
@@ -2025,58 +2068,9 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
           </packing>
         </child>
         <child>
-          <object class="GtkButtonBox" id="hbuttonbox2">
+          <object class="GtkSeparator" id="hseparator3">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
-            <property name="spacing">8</property>
-            <property name="homogeneous">True</property>
-            <property name="layout-style">center</property>
-            <child>
-              <object class="GtkButton" id="play">
-                <property name="label">gtk-media-play</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="has-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="use-stock">True</property>
-                <signal name="clicked" handler="get_code" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="download">
-                <property name="label">Download</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="image">download_icon3</property>
-                <signal name="clicked" handler="download_video" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="close">
-                <property name="label">gtk-close</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="use-stock">True</property>
-                <signal name="clicked" handler="hide_details_window" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">2</property>
-              </packing>
-            </child>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -2086,6 +2080,9 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
         </child>
       </object>
     </child>
+    <action-widgets>
+      <action-widget response="-7">close</action-widget>
+    </action-widgets>
   </object>
   <object class="GtkDialog" id="errors_window">
     <property name="can-focus">False</property>
@@ -2097,10 +2094,8 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
     <property name="default-height">200</property>
     <property name="type-hint">dialog</property>
     <property name="transient-for">__MAIN__</property>
-    <signal name="close" handler="hide_errors_window" swapped="no"/>
-    <signal name="delete-event" handler="hide_errors_window" swapped="no"/>
-    <signal name="destroy" handler="hide_errors_window" swapped="no"/>
-    <signal name="response" handler="hide_errors_window" swapped="no"/>
+    <signal name="delete-event" handler="gtk_widget_hide" swapped="no"/>
+    <signal name="response" handler="gtk_widget_hide" swapped="no"/>
     <child internal-child="vbox">
       <object class="GtkBox" id="dialog-vbox2">
         <property name="visible">True</property>
@@ -2113,13 +2108,12 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
             <property name="layout-style">end</property>
             <child>
               <object class="GtkButton" id="button3">
-                <property name="label">gtk-ok</property>
+                <property name="label">gtk-close</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="has-focus">True</property>
                 <property name="receives-default">True</property>
                 <property name="use-stock">True</property>
-                <signal name="clicked" handler="hide_errors_window" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -2196,25 +2190,97 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
       </object>
     </child>
     <action-widgets>
-      <action-widget response="0">button3</action-widget>
+      <action-widget response="-1">button3</action-widget>
     </action-widgets>
   </object>
-  <object class="GtkWindow" id="feeds_window">
+  <object class="GtkDialog" id="feeds_window">
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">YouTube comments</property>
     <property name="modal">True</property>
     <property name="window-position">center-on-parent</property>
-    <property name="default-width">450</property>
-    <property name="default-height">400</property>
-    <property name="destroy-with-parent">True</property>
+    <property name="default-width">680</property>
+    <property name="default-height">680</property>
+    <property name="type-hint">dialog</property>
     <property name="transient-for">__MAIN__</property>
-    <signal name="delete-event" handler="hide_feeds_window" swapped="no"/>
-    <signal name="destroy" handler="hide_feeds_window" swapped="no"/>
-    <child>
+    <signal name="delete-event" handler="gtk_widget_hide" swapped="no"/>
+    <signal name="response" handler="gtk_widget_hide" swapped="no"/>
+    <child internal-child="vbox">
       <object class="GtkBox">
-        <property name="visible">True</property>
         <property name="can-focus">False</property>
         <property name="orientation">vertical</property>
+        <property name="spacing">2</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can-focus">False</property>
+            <property name="layout-style">end</property>
+            <child>
+              <object class="GtkButton">
+                <property name="label" translatable="yes">Send</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="image">image8</property>
+                <signal name="clicked" handler="send_comment_to_video" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton">
+                <property name="label">gtk-refresh</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="use-stock">True</property>
+                <signal name="clicked" handler="set_comments" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="button12">
+                <property name="label">gtk-close</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="use-stock">True</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="pack-type">end</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkStatusbar" id="feeds_statusbar">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="margin-top">6</property>
+            <property name="margin-bottom">6</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">2</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="pack-type">end</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
         <child>
           <object class="GtkLabel" id="feeds_title">
             <property name="visible">True</property>
@@ -2229,7 +2295,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">0</property>
+            <property name="position">1</property>
           </packing>
         </child>
         <child>
@@ -2247,6 +2313,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="model">liststore11</property>
+                    <property name="search-column">0</property>
                     <signal name="row-activated" handler="comments_row_activated" swapped="no"/>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
@@ -2295,7 +2362,6 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                               <object class="GtkTextView" id="comment_textview">
                                 <property name="visible">True</property>
                                 <property name="can-focus">True</property>
-                                <property name="has-focus">True</property>
                                 <property name="wrap-mode">word</property>
                               </object>
                             </child>
@@ -2325,126 +2391,33 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
           <packing>
             <property name="expand">True</property>
             <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkButtonBox">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="layout-style">end</property>
-            <child>
-              <object class="GtkButton">
-                <property name="label" translatable="yes">Send</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="image">image8</property>
-                <signal name="clicked" handler="send_comment_to_video" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton">
-                <property name="label">gtk-refresh</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="use-stock">True</property>
-                <signal name="clicked" handler="set_comments" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton">
-                <property name="label">gtk-close</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="use-stock">True</property>
-                <signal name="clicked" handler="hide_feeds_window" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">2</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
             <property name="position">2</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkStatusbar" id="feeds_statusbar">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="margin-left">10</property>
-            <property name="margin-right">10</property>
-            <property name="margin-top">6</property>
-            <property name="margin-bottom">6</property>
-            <property name="orientation">vertical</property>
-            <property name="spacing">2</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">3</property>
           </packing>
         </child>
       </object>
     </child>
+    <action-widgets>
+      <action-widget response="-7">button12</action-widget>
+    </action-widgets>
   </object>
-  <object class="GtkWindow" id="help_window">
+  <object class="GtkDialog" id="help_window">
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">Help</property>
     <property name="window-position">center-on-parent</property>
     <property name="default-width">480</property>
-    <property name="default-height">400</property>
+    <property name="default-height">460</property>
+    <property name="type-hint">dialog</property>
     <property name="transient-for">__MAIN__</property>
-    <signal name="delete-event" handler="hide_help_window" swapped="no"/>
-    <signal name="destroy" handler="hide_help_window" swapped="no"/>
-    <child>
-      <object class="GtkBox" id="vbox251">
-        <property name="visible">True</property>
+    <signal name="delete-event" handler="gtk_widget_hide" swapped="no"/>
+    <signal name="response" handler="gtk_widget_hide" swapped="no"/>
+    <child internal-child="vbox">
+      <object class="GtkBox">
         <property name="can-focus">False</property>
         <property name="orientation">vertical</property>
-        <child>
-          <object class="GtkScrolledWindow" id="scrolledwindow3">
-            <property name="visible">True</property>
-            <property name="can-focus">True</property>
-            <child>
-              <object class="GtkTextView" id="textview2">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="pixels-below-lines">1</property>
-                <property name="indent">3</property>
-              </object>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">True</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkButtonBox" id="hbuttonbox4">
-            <property name="visible">True</property>
+        <property name="spacing">2</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
             <property name="can-focus">False</property>
-            <property name="spacing">5</property>
-            <property name="homogeneous">True</property>
             <property name="layout-style">end</property>
             <child>
               <object class="GtkButton" id="button19">
@@ -2453,7 +2426,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                 <property name="can-focus">True</property>
                 <property name="receives-default">True</property>
                 <property name="use-stock">True</property>
-                <signal name="clicked" handler="show_about_window" swapped="no"/>
+                <signal name="clicked" handler="gtk_widget_show" object="aboutdialog1" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -2466,9 +2439,9 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                 <property name="label">gtk-close</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="has-focus">True</property>
                 <property name="receives-default">True</property>
                 <property name="use-stock">True</property>
-                <signal name="clicked" handler="hide_help_window" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -2481,27 +2454,94 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
           <packing>
             <property name="expand">False</property>
             <property name="fill">False</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScrolledWindow" id="scrolledwindow3">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <child>
+              <object class="GtkTextView" id="textview2">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="pixels-below-lines">1</property>
+                <property name="editable">False</property>
+                <property name="indent">3</property>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
             <property name="position">1</property>
           </packing>
         </child>
       </object>
     </child>
+    <action-widgets>
+      <action-widget response="-7">button28</action-widget>
+    </action-widgets>
   </object>
-  <object class="GtkWindow" id="prefernces_window">
+  <object class="GtkDialog" id="preferences_window">
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">Preferences</property>
+    <property name="modal">True</property>
     <property name="window-position">center-on-parent</property>
     <property name="default-width">600</property>
     <property name="default-height">480</property>
+    <property name="type-hint">dialog</property>
     <property name="transient-for">__MAIN__</property>
-    <signal name="delete-event" handler="hide_preferences_window" swapped="no"/>
-    <signal name="destroy" handler="hide_preferences_window" swapped="no"/>
-    <child>
-      <object class="GtkBox" id="vbox6">
-        <property name="visible">True</property>
+    <signal name="delete-event" handler="gtk_widget_hide" swapped="no"/>
+    <signal name="response" handler="gtk_widget_hide" swapped="no"/>
+    <child internal-child="vbox">
+      <object class="GtkBox">
         <property name="can-focus">False</property>
         <property name="orientation">vertical</property>
         <property name="spacing">2</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can-focus">False</property>
+            <property name="layout-style">end</property>
+            <child>
+              <object class="GtkButton" id="button1">
+                <property name="label">gtk-apply</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="use-stock">True</property>
+                <signal name="clicked" handler="save_configuration" swapped="no"/>
+                <accelerator key="s" signal="activate" modifiers="GDK_CONTROL_MASK"/>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="button2">
+                <property name="label">gtk-close</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="use-stock">True</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="pack-type">end</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
         <child>
           <object class="GtkScrolledWindow" id="scrolledwindow5">
             <property name="visible">True</property>
@@ -2520,79 +2560,42 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
           <packing>
             <property name="expand">True</property>
             <property name="fill">True</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkButtonBox" id="hbuttonbox5">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="spacing">5</property>
-            <property name="layout-style">end</property>
-            <child>
-              <object class="GtkButton" id="button1">
-                <property name="label">gtk-apply</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="use-stock">True</property>
-                <signal name="clicked" handler="save_configuration" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="button2">
-                <property name="label">gtk-close</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="use-stock">True</property>
-                <signal name="clicked" handler="hide_preferences_window" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="pack-type">end</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
             <property name="position">1</property>
           </packing>
         </child>
       </object>
     </child>
+    <action-widgets>
+      <action-widget response="-7">button2</action-widget>
+    </action-widgets>
   </object>
-  <object class="GtkWindow" id="users_list_window">
+  <object class="GtkDialog" id="users_list_window">
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">Saved channels</property>
     <property name="window-position">center-on-parent</property>
     <property name="default-width">400</property>
     <property name="default-height">300</property>
+    <property name="type-hint">dialog</property>
     <property name="transient-for">__MAIN__</property>
-    <signal name="delete-event" handler="hide_users_list_window" swapped="no"/>
-    <signal name="destroy" handler="hide_users_list_window" swapped="no"/>
-    <child>
-      <object class="GtkBox" id="vbox21">
-        <property name="visible">True</property>
+    <signal name="delete-event" handler="gtk_widget_hide" swapped="no"/>
+    <signal name="response" handler="gtk_widget_hide" swapped="no"/>
+    <child internal-child="vbox">
+      <object class="GtkBox">
         <property name="can-focus">False</property>
         <property name="orientation">vertical</property>
-        <child>
-          <object class="GtkBox" id="vbox14">
-            <property name="visible">True</property>
+        <property name="spacing">2</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
             <property name="can-focus">False</property>
-            <property name="orientation">vertical</property>
+            <property name="layout-style">end</property>
             <child>
-              <object class="GtkLabel" id="username_file_label">
+              <object class="GtkButton" id="button14">
+                <property name="label">gtk-ok</property>
                 <property name="visible">True</property>
-                <property name="can-focus">False</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="use-stock">True</property>
+                <signal name="clicked" handler="videos_from_saved_channel" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -2601,84 +2604,16 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
               </packing>
             </child>
             <child>
-              <object class="GtkBox" id="hbox15">
+              <object class="GtkButton" id="button21">
+                <property name="label">gtk-close</property>
                 <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <child>
-                  <object class="GtkLabel" id="label22">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">Channel name:</property>
-                  </object>
-                  <packing>
-                    <property name="expand">True</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkEntry" id="channel_name_save">
-                    <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="invisible-char">•</property>
-                    <property name="primary-icon-activatable">False</property>
-                    <property name="secondary-icon-activatable">False</property>
-                    <signal name="activate" handler="save_channel" swapped="no"/>
-                    <signal name="button-press-event" handler="clear_text" swapped="no"/>
-                  </object>
-                  <packing>
-                    <property name="expand">True</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkLabel" id="add_user_label">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">Channel ID:</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">False</property>
-                    <property name="position">2</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkEntry" id="channel_id_save">
-                    <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="invisible-char">•</property>
-                    <property name="primary-icon-activatable">False</property>
-                    <property name="secondary-icon-activatable">False</property>
-                    <signal name="activate" handler="save_channel" swapped="no"/>
-                    <signal name="button-press-event" handler="clear_text" swapped="no"/>
-                  </object>
-                  <packing>
-                    <property name="expand">True</property>
-                    <property name="fill">True</property>
-                    <property name="position">3</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkButton" id="save_channel">
-                    <property name="label">gtk-add</property>
-                    <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="receives-default">True</property>
-                    <property name="use-stock">True</property>
-                    <signal name="clicked" handler="save_channel" swapped="no"/>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">False</property>
-                    <property name="position">5</property>
-                  </packing>
-                </child>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="use-stock">True</property>
               </object>
               <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
                 <property name="position">1</property>
               </packing>
             </child>
@@ -2686,6 +2621,89 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
           <packing>
             <property name="expand">False</property>
             <property name="fill">False</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox" id="hbox15">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="spacing">4</property>
+            <child>
+              <object class="GtkLabel" id="label22">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Channel name:</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry" id="channel_name_save">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="invisible-char">•</property>
+                <property name="primary-icon-activatable">False</property>
+                <property name="secondary-icon-activatable">False</property>
+                <signal name="activate" handler="save_channel" swapped="no"/>
+                <signal name="button-press-event" handler="clear_text" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="add_user_label">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Channel ID:</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry" id="channel_id_save">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="invisible-char">•</property>
+                <property name="primary-icon-activatable">False</property>
+                <property name="secondary-icon-activatable">False</property>
+                <signal name="activate" handler="save_channel" swapped="no"/>
+                <signal name="button-press-event" handler="clear_text" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">3</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="save_channel">
+                <property name="label">gtk-add</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="use-stock">True</property>
+                <signal name="clicked" handler="save_channel" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
+                <property name="position">5</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
             <property name="position">0</property>
           </packing>
         </child>
@@ -2714,6 +2732,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="model">liststore2</property>
+                    <property name="search-column">0</property>
                     <signal name="row-activated" handler="videos_from_saved_channel" swapped="no"/>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
@@ -2756,51 +2775,11 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
             <property name="position">1</property>
           </packing>
         </child>
-        <child>
-          <object class="GtkButtonBox" id="hbuttonbox3">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="spacing">5</property>
-            <property name="layout-style">end</property>
-            <child>
-              <object class="GtkButton" id="button14">
-                <property name="label">gtk-ok</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="use-stock">True</property>
-                <signal name="clicked" handler="videos_from_saved_channel" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="button21">
-                <property name="label">gtk-close</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="use-stock">True</property>
-                <signal name="clicked" handler="hide_users_list_window" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">2</property>
-          </packing>
-        </child>
       </object>
     </child>
+    <action-widgets>
+      <action-widget response="-7">button21</action-widget>
+    </action-widgets>
   </object>
   <object class="GtkDialog" id="warnings_window">
     <property name="can-focus">False</property>
@@ -2811,8 +2790,8 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
     <property name="default-height">300</property>
     <property name="type-hint">dialog</property>
     <property name="transient-for">__MAIN__</property>
-    <signal name="delete-event" handler="hide_warnings_window" swapped="no"/>
-    <signal name="destroy" handler="hide_warnings_window" swapped="no"/>
+    <signal name="delete-event" handler="gtk_widget_hide" swapped="no"/>
+    <signal name="response" handler="gtk_widget_hide" swapped="no"/>
     <child internal-child="vbox">
       <object class="GtkBox" id="dialog-vbox5">
         <property name="visible">True</property>
@@ -2831,7 +2810,6 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                 <property name="has-focus">True</property>
                 <property name="receives-default">True</property>
                 <property name="use-stock">True</property>
-                <signal name="clicked" handler="hide_warnings_window" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -2908,7 +2886,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
       </object>
     </child>
     <action-widgets>
-      <action-widget response="0">button26</action-widget>
+      <action-widget response="-7">button26</action-widget>
     </action-widgets>
   </object>
 </interface>
