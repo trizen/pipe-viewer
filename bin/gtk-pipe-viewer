@@ -223,6 +223,7 @@ my %CONFIG = (
     maxResults       => 10,
     hfr              => 1,             # true to prefer high frame rate (HFR) videos
     resolution       => 'best',
+    audio_quality    => 'best',
     videoDuration    => undef,
     features         => undef,
     search_for       => 'video',
@@ -1029,7 +1030,8 @@ sub apply_configuration {
     apply_combobox_configuration($order_combobox,            "order");
     apply_combobox_configuration($published_within_combobox, "date");
 
-    foreach my $pair (pairs(
+    foreach my $pair (
+        pairs(
 #<<<
             'live'            , 'Live',
             '4k'              , '4K',
@@ -1041,7 +1043,8 @@ sub apply_configuration {
             '3d'              , '3D',
             'hdr'             , 'HDR',
 #>>>
-    )) {
+        )
+      ) {
         my ($feat, $label) = @$pair;
         my $button = Gtk3::CheckButton->new_with_label($label);
         $features_flowbox->add($button);
@@ -3546,9 +3549,10 @@ sub get_streaming_url {
         hfr        => $CONFIG{hfr},
         ignore_av1 => $CONFIG{ignore_av1},
 
-        split      => $CONFIG{split_videos},
-        prefer_m4a => $CONFIG{prefer_m4a},
-        dash       => $CONFIG{dash},
+        split         => $CONFIG{split_videos},
+        prefer_m4a    => $CONFIG{prefer_m4a},
+        audio_quality => $CONFIG{audio_quality},
+        dash          => $CONFIG{dash},
 
         ignored_projections => $CONFIG{ignored_projections},
     );
