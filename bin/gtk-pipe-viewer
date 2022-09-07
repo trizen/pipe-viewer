@@ -3007,84 +3007,10 @@ sub display_results {
         add_results_to_history($results) if not $from_history;
     }
 
-    #~ if (not $from_history) {
-
-    #~ foreach my $entry (@$items) {
-    #~ if ($yv_utils->is_activity($entry)) {
-    #~ my $type = $entry->{snippet}{type};
-
-    #~ if ($type eq 'upload') {
-    #~ $entry->{kind} = 'youtube#video';
-    #~ $entry->{id}   = $entry->{contentDetails}{upload}{videoId};
-    #~ }
-
-    #~ if ($type eq 'playlistItem') {
-    #~ $entry->{kind} = 'youtube#video';
-    #~ $entry->{id}   = $entry->{contentDetails}{playlistItem}{resourceId}{videoId};
-    #~ }
-
-    #~ if ($type eq 'subscription') {
-    #~ $entry->{kind}               = 'youtube#channel';
-    #~ $entry->{snippet}{title}     = $entry->{snippet}{channelTitle};
-    #~ $entry->{snippet}{channelId} = $entry->{contentDetails}{subscription}{resourceId}{channelId};
-    #~ }
-
-    #~ if ($type eq 'bulletin' and $entry->{contentDetails}{bulletin}{resourceId}{kind} eq 'youtube#video') {
-    #~ $entry->{kind} = 'youtube#video';
-    #~ $entry->{id}   = $entry->{contentDetails}{bulletin}{resourceId}{videoId};
-    #~ }
-    #~ }
-    #~ }
-
-    #~ my @video_ids;
-    #~ my @playlist_ids;
-
-    #~ foreach my $i (0 .. $#{$items}) {
-    #~ my $item = $items->[$i];
-
-    #~ if ($yv_utils->is_playlist($item)) {
-    #~ push @playlist_ids, $yv_utils->get_playlist_id($item);
-    #~ }
-    #~ elsif ($yv_utils->is_video($item)) {
-    #~ push @video_ids, $yv_utils->get_video_id($item);
-    #~ }
-    #~ }
-
-    #~ my %id_lookup;
-
-    #~ if (@video_ids) {
-    #~ my $content_details = $yv_obj->video_details(join(',', @video_ids), VIDEO_PART);
-    #~ my $video_details   = $content_details->{results}{items};
-
-    #~ foreach my $i (0 .. $#video_ids) {
-    #~ $id_lookup{$video_ids[$i]} = $video_details->[$i];
-    #~ }
-    #~ }
-
-    #~ if (@playlist_ids) {
-    #~ my $content_details  = $yv_obj->playlist_from_id(join(',', @playlist_ids), 'contentDetails');
-    #~ my $playlist_details = $content_details->{results}{items};
-
-    #~ foreach my $i (0 .. $#playlist_ids) {
-    #~ $id_lookup{$playlist_ids[$i]} = $playlist_details->[$i];
-    #~ }
-    #~ }
-
-    #~ $info->{__extra_info__} = \%id_lookup;
-    #~ }
-
     foreach my $i (0 .. $#{$items}) {
         my $item = $items->[$i];
 
         if ($yv_utils->is_playlist($item)) {
-
-            #~ my $playlist_id = $yv_utils->get_playlist_id($item) || next;
-
-            #~ if (exists($info->{__extra_info__}{$playlist_id})) {
-            #~ @{$item}{qw(contentDetails)} =
-            #~ @{$info->{__extra_info__}{$playlist_id}}{qw(contentDetails)};
-            #~ }
-
             add_playlist_entry($item);
         }
         elsif ($yv_utils->is_channel($item)) {
@@ -3094,22 +3020,6 @@ sub display_results {
             add_subscription_entry($item);
         }
         elsif ($yv_utils->is_video($item)) {
-
-            #~ my $video_id = $yv_utils->get_video_id($item) || next;
-
-            #~ if (exists($info->{__extra_info__}{$video_id})) {
-            #~ @{$item}{qw(id contentDetails statistics snippet)} =
-            #~ @{$info->{__extra_info__}{$video_id}}{qw(id contentDetails statistics snippet)};
-            #~ }
-
-            # Filter out private or deleted videos
-            #$yv_utils->get_video_id($item) || next;
-
-            # Filter out videos with time '00:00'
-            #$yv_utils->get_time($item) eq '00:00' and next;
-
-            # Mark as video
-            #$item->{__is_video__} = 1;
 
             # Store the video title to history (when `save_titles_to_history` is true)
             if ($CONFIG{save_titles_to_history}) {
