@@ -4,7 +4,6 @@ Build.PL
 Changes
 lib/WWW/PipeViewer.pm
 lib/WWW/PipeViewer/Activities.pm
-lib/WWW/PipeViewer/Authentication.pm
 lib/WWW/PipeViewer/Channels.pm
 lib/WWW/PipeViewer/CommentThreads.pm
 lib/WWW/PipeViewer/GetCaption.pm

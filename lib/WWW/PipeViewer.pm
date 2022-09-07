@@ -30,7 +30,6 @@ use parent qw(
   WWW::PipeViewer::Activities
   WWW::PipeViewer::PlaylistItems
   WWW::PipeViewer::CommentThreads
-  WWW::PipeViewer::Authentication
   WWW::PipeViewer::VideoCategories
 );
 
@@ -111,16 +110,7 @@ my %valid_options = (
     force_fallback             => {valid => [1, 0], default => 0},
     bypass_age_gate_with_proxy => {valid => [1, 0], default => 0},
 
-    # API/OAuth
-    key           => {valid => qr/^.{15}/, default => undef},
-    client_id     => {valid => qr/^.{15}/, default => undef},
-    client_secret => {valid => qr/^.{15}/, default => undef},
-    redirect_uri  => {valid => qr/^.{15}/, default => undef},
-    access_token  => {valid => qr/^.{15}/, default => undef},
-    refresh_token => {valid => qr/^.{15}/, default => undef},
-
-    authentication_file => {valid => qr/^./, default => undef},
-    api_host            => {valid => qr/\w/, default => "auto"},
+    api_host => {valid => qr/\w/, default => "auto"},
 
 #<<<
     # No input value allowed
@@ -391,33 +381,6 @@ sub set_lwp_useragent {
     return $agent;
 }
 
-=head2 prepare_access_token()
-
-Returns a string. used as header, with the access token.
-
-=cut
-
-sub prepare_access_token {
-    my ($self) = @_;
-
-    if (defined(my $auth = $self->get_access_token)) {
-        return "Bearer $auth";
-    }
-
-    return;
-}
-
-sub _auth_lwp_header {
-    my ($self) = @_;
-
-    my %lwp_header;
-    if (defined $self->get_access_token) {
-        $lwp_header{'Authorization'} = $self->prepare_access_token;
-    }
-
-    return %lwp_header;
-}
-
 sub _warn_reponse_error {
     my ($resp, $url) = @_;
     warn sprintf("[%s] Error occurred on URL: %s\n", $resp->status_line, $url);
@@ -453,8 +416,6 @@ sub lwp_get {
     # Fix YouTube thumbnails for results from invidious instances
     $url =~ s{^https?://[^/]+(/vi/.*\.jpg)\z}{https://i.ytimg.com$1};
 
-    my %lwp_header = ($opt{simple} ? () : $self->_auth_lwp_header);
-
     my $response = do {
         my $r;
 
@@ -467,13 +428,13 @@ sub lwp_get {
                 else {
                     say ":: Setting proxy for onion websites..." if $self->get_debug;
                     $self->{lwp}->proxy(['http', 'https'], 'socks://localhost:9050');
-                    $r = $self->{lwp}->get($url, %lwp_header);
+                    $r = $self->{lwp}->get($url);
                     $self->{lwp}->proxy(['http', 'https'], undef);
                 }
             }
         }
 
-        $r // $self->{lwp}->get($url, %lwp_header);
+        $r // $self->{lwp}->get($url);
     };
 
     if ($response->is_success) {
@@ -742,7 +703,7 @@ sub get_api_url {
 
 sub _simple_feeds_url {
     my ($self, $path, %args) = @_;
-    $self->get_api_url . $path . '?' . $self->list_to_url_arguments(key => $self->get_key, %args);
+    $self->get_api_url . $path . '?' . $self->list_to_url_arguments(%args);
 }
 
 =head2 default_arguments(%args)
@@ -756,7 +717,6 @@ sub default_arguments {
 
     my %defaults = (
 
-        #key         => $self->get_key,
         #part        => 'snippet',
         #prettyPrint => 'false',
         #maxResults  => $self->get_maxResults,
@@ -1184,7 +1144,6 @@ sub _get_youtubei_content {
                             },
               );
 
-    local $self->{access_token} = undef;
     my $content = $self->post_as_json($url, $endpoint eq 'next' ? \%web : \%android);
 
     return $content;
@@ -1493,10 +1452,6 @@ sub _prepare_request {
     my ($self, $req, $length) = @_;
 
     $req->header('Content-Length' => $length) if ($length);
-
-    if (defined $self->get_access_token) {
-        $req->header('Authorization' => $self->prepare_access_token);
-    }
 
     return 1;
 }
