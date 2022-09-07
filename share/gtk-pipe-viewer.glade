@@ -222,6 +222,10 @@ Author: Trizen https://github.com/trizen
       <column type="gchararray"/>
       <!-- column-name tooltip -->
       <column type="gchararray"/>
+      <!-- column-name pic_width -->
+      <column type="guint"/>
+      <!-- column-name pic_height -->
+      <column type="guint"/>
     </columns>
   </object>
   <object class="GtkListStore" id="liststore11">
@@ -592,6 +596,8 @@ Author: Trizen https://github.com/trizen
                         <child>
                           <object class="GtkCellRendererPixbuf" id="cellrendererpixbuf1"/>
                           <attributes>
+                            <attribute name="width">10</attribute>
+                            <attribute name="height">11</attribute>
                             <attribute name="pixbuf">1</attribute>
                           </attributes>
                         </child>
@@ -2075,50 +2081,40 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
     <property name="title" translatable="yes">Extra details</property>
     <property name="modal">True</property>
     <property name="window-position">center-on-parent</property>
-    <property name="default-height">400</property>
+    <property name="default-width">800</property>
+    <property name="default-height">600</property>
     <property name="destroy-with-parent">True</property>
     <property name="gravity">static</property>
     <property name="transient-for">__MAIN__</property>
+    <property name="has-resize-grip">True</property>
     <signal name="delete-event" handler="hide_details_window" swapped="no"/>
     <signal name="destroy" handler="hide_details_window" swapped="no"/>
     <child>
       <object class="GtkBox" id="vbox4">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
+        <property name="margin-start">4</property>
+        <property name="margin-end">4</property>
+        <property name="margin-top">4</property>
+        <property name="margin-bottom">4</property>
         <property name="orientation">vertical</property>
+        <property name="spacing">4</property>
         <child>
-          <object class="GtkBox" id="vbox">
+          <object class="GtkLabel" id="video_title_label">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
-            <property name="orientation">vertical</property>
-            <child>
-              <object class="GtkLabel" id="video_title_label">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Details window label</property>
-                <property name="use-markup">True</property>
-                <property name="justify">fill</property>
-                <property name="selectable">True</property>
-                <property name="ellipsize">end</property>
-                <property name="track-visited-links">False</property>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkSeparator" id="hseparator3">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
+            <property name="margin-left">4</property>
+            <property name="margin-right">4</property>
+            <property name="margin-start">4</property>
+            <property name="margin-end">4</property>
+            <property name="margin-top">4</property>
+            <property name="margin-bottom">4</property>
+            <property name="label" translatable="yes">Details window label</property>
+            <property name="use-markup">True</property>
+            <property name="justify">fill</property>
+            <property name="selectable">True</property>
+            <property name="ellipsize">end</property>
+            <property name="track-visited-links">False</property>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -2127,33 +2123,50 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
           </packing>
         </child>
         <child>
-          <object class="GtkBox" id="vbox13">
+          <object class="GtkSeparator" id="hseparator3">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
-            <property name="orientation">vertical</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkPaned" id="vpaned1">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
             <child>
-              <object class="GtkBox" id="vbox18">
+              <object class="GtkScrolledWindow" id="scrolledwindow14">
+                <property name="width-request">320</property>
+                <property name="height-request">540</property>
                 <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="orientation">vertical</property>
+                <property name="can-focus">True</property>
+                <property name="margin-right">4</property>
+                <property name="margin-end">4</property>
+                <property name="margin-bottom">4</property>
                 <child>
-                  <object class="GtkBox" id="vbox24">
+                  <object class="GtkViewport">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="orientation">vertical</property>
+                    <property name="shadow-type">none</property>
                     <child>
-                      <object class="GtkBox" id="hbox16">
+                      <object class="GtkBox" id="vbox252">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
+                        <property name="halign">center</property>
+                        <property name="valign">center</property>
+                        <property name="orientation">vertical</property>
                         <child>
                           <object class="GtkImage" id="image1">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
                           </object>
                           <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
+                            <property name="expand">False</property>
+                            <property name="fill">False</property>
+                            <property name="position">1</property>
                           </packing>
                         </child>
                         <child>
@@ -2162,9 +2175,9 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                             <property name="can-focus">False</property>
                           </object>
                           <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
-                            <property name="position">1</property>
+                            <property name="expand">False</property>
+                            <property name="fill">False</property>
+                            <property name="position">2</property>
                           </packing>
                         </child>
                         <child>
@@ -2173,128 +2186,35 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                             <property name="can-focus">False</property>
                           </object>
                           <packing>
-                            <property name="expand">True</property>
-                            <property name="fill">True</property>
+                            <property name="expand">False</property>
+                            <property name="fill">False</property>
                             <property name="position">2</property>
                           </packing>
                         </child>
                       </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkSeparator" id="hseparator2">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">1</property>
-                      </packing>
                     </child>
                   </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkPaned" id="vpaned1">
-                    <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="orientation">vertical</property>
-                    <child>
-                      <object class="GtkLabel" id="video_details_label">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="use-markup">True</property>
-                        <property name="wrap">True</property>
-                        <property name="selectable">True</property>
-                        <property name="ellipsize">end</property>
-                      </object>
-                      <packing>
-                        <property name="resize">False</property>
-                        <property name="shrink">True</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkFrame" id="frame3">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="label-xalign">0</property>
-                        <property name="shadow-type">out</property>
-                        <child>
-                          <object class="GtkAlignment" id="alignment3">
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="left-padding">12</property>
-                            <child>
-                              <object class="GtkScrolledWindow" id="scrolledwindow4">
-                                <property name="visible">True</property>
-                                <property name="can-focus">True</property>
-                                <child>
-                                  <object class="GtkTextView" id="description_textview">
-                                    <property name="visible">True</property>
-                                    <property name="can-focus">True</property>
-                                    <property name="pixels-below-lines">2</property>
-                                    <property name="wrap-mode">word</property>
-                                    <property name="accepts-tab">False</property>
-                                  </object>
-                                </child>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                        <child type="label">
-                          <object class="GtkLabel" id="label8">
-                            <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="label" translatable="yes">Description</property>
-                            <attributes>
-                              <attribute name="style" value="normal"/>
-                              <attribute name="weight" value="bold"/>
-                              <attribute name="variant" value="normal"/>
-                              <attribute name="stretch" value="ultra-condensed"/>
-                              <attribute name="scale" value="1.3"/>
-                            </attributes>
-                          </object>
-                        </child>
-                      </object>
-                      <packing>
-                        <property name="resize">True</property>
-                        <property name="shrink">True</property>
-                      </packing>
-                    </child>
-                  </object>
-                  <packing>
-                    <property name="expand">True</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
                 </child>
               </object>
               <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
+                <property name="resize">False</property>
+                <property name="shrink">True</property>
               </packing>
             </child>
             <child>
-              <object class="GtkButtonBox" id="hbuttonbox10">
+              <object class="GtkBox">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="layout-style">center</property>
+                <property name="orientation">vertical</property>
                 <child>
-                  <object class="GtkLinkButton" id="linkbutton1">
+                  <object class="GtkLabel" id="video_details_label">
                     <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="receives-default">True</property>
-                    <property name="relief">none</property>
+                    <property name="can-focus">False</property>
+                    <property name="use-markup">True</property>
+                    <property name="wrap">True</property>
+                    <property name="selectable">True</property>
+                    <property name="ellipsize">end</property>
+                    <property name="width-chars">35</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -2302,24 +2222,118 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                     <property name="position">0</property>
                   </packing>
                 </child>
+                <child>
+                  <object class="GtkSeparator">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkFrame" id="frame3">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="margin-left">4</property>
+                    <property name="margin-right">4</property>
+                    <property name="margin-start">4</property>
+                    <property name="margin-end">4</property>
+                    <property name="margin-top">4</property>
+                    <property name="margin-bottom">4</property>
+                    <property name="label-xalign">0</property>
+                    <property name="shadow-type">out</property>
+                    <child>
+                      <object class="GtkScrolledWindow" id="scrolledwindow4">
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="margin-left">8</property>
+                        <property name="margin-right">8</property>
+                        <property name="margin-start">8</property>
+                        <property name="margin-end">8</property>
+                        <property name="margin-top">4</property>
+                        <property name="margin-bottom">4</property>
+                        <child>
+                          <object class="GtkTextView" id="description_textview">
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                            <property name="pixels-below-lines">2</property>
+                            <property name="wrap-mode">word</property>
+                            <property name="left-margin">4</property>
+                            <property name="right-margin">4</property>
+                            <property name="accepts-tab">False</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child type="label">
+                      <object class="GtkLabel" id="label8">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Description</property>
+                        <attributes>
+                          <attribute name="style" value="normal"/>
+                          <attribute name="weight" value="bold"/>
+                          <attribute name="variant" value="normal"/>
+                          <attribute name="stretch" value="ultra-condensed"/>
+                          <attribute name="scale" value="1.3"/>
+                        </attributes>
+                      </object>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">3</property>
+                  </packing>
+                </child>
               </object>
               <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
-                <property name="position">1</property>
+                <property name="resize">True</property>
+                <property name="shrink">True</property>
               </packing>
             </child>
           </object>
           <packing>
             <property name="expand">True</property>
             <property name="fill">True</property>
-            <property name="position">1</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButtonBox" id="hbuttonbox10">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="layout-style">center</property>
+            <child>
+              <object class="GtkLinkButton" id="linkbutton1">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="relief">none</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">3</property>
           </packing>
         </child>
         <child>
           <object class="GtkButtonBox" id="hbuttonbox2">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="spacing">8</property>
+            <property name="homogeneous">True</property>
+            <property name="layout-style">center</property>
             <child>
               <object class="GtkButton" id="play">
                 <property name="label">gtk-media-play</property>
@@ -2369,8 +2383,8 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
           </object>
           <packing>
             <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">2</property>
+            <property name="fill">True</property>
+            <property name="position">4</property>
           </packing>
         </child>
       </object>

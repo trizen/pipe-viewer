@@ -318,8 +318,8 @@ sub set_lwp_useragent {
                  # don't cache if "cache-control" specifies "max-age=0", "no-store" or "no-cache"
                  or (($response->header('cache-control') // '') =~ /\b(?:max-age=0|no-store|no-cache)\b/)
 
-                 # don't cache video or audio files
-                 or (($response->header('content-type') // '') =~ /\b(?:video|audio)\b/);
+                 # don't cache media content
+                 or (($response->header('content-type') // '') =~ /\b(?:audio|image|video)\b/);
            },
 
            recache_if => sub {

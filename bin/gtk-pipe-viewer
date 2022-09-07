@@ -202,6 +202,7 @@ my %CONFIG = (
     # GUI options
     clear_text_entries_on_click => 0,
     show_thumbs                 => 1,
+    thumbnail_size              => '224x126',
     clear_search_list           => 1,
     default_notebook_page       => 1,
     mainw_size                  => '700x400',
@@ -238,7 +239,6 @@ my %CONFIG = (
     api_host => "auto",
 
     # URI options
-    thumbnail_type       => 'medium',
     youtube_video_url    => 'https://www.youtube.com/watch?v=%s',
     youtube_playlist_url => 'https://www.youtube.com/playlist?list=%s',
     youtube_channel_url  => 'https://www.youtube.com/channel/%s',
@@ -493,6 +493,8 @@ my $feed_icon_pixbuf      = 'Gtk3::Gdk::Pixbuf'->new_from_file_at_size(catfile($
 my $feed_icon_gray_pixbuf = 'Gtk3::Gdk::Pixbuf'->new_from_file_at_size(catfile($icons_path, "feed_gray.png"),     16,  16);
 my $default_thumb         = 'Gtk3::Gdk::Pixbuf'->new_from_file_at_size(catfile($icons_path, "default_thumb.jpg"), 160, 90);
 
+my $webp_supported = any { $_->name eq 'webp' } Gtk3::Gdk::Pixbuf::get_formats;
+
 # Setting application title and icon
 $mainw->set_title("$appname $version");
 $mainw->set_icon($app_icon_pixbuf);
@@ -589,6 +591,9 @@ foreach my $path ($CONFIG{cache_dir}) {
     eval { File::Path::make_path($path) }
       or warn "[!] Can't create path <<$path>>: $!";
 }
+
+# Expected thumbnail size
+my @THUMBNAILS_SIZE = split(/x/i, $CONFIG{thumbnail_size}, 2);
 
 {
     my $split_string = sub {
@@ -2653,27 +2658,6 @@ sub append_next_page {
     return $iter;
 }
 
-sub determine_image_format {
-    #
-    ## Code from: https://metacpan.org/release/Image-Info/source/lib/Image/Info.pm
-    #
-
-    local ($_) = @_;
-    return "JPEG" if /^\xFF\xD8/;
-    return "PNG"  if /^\x89PNG\x0d\x0a\x1a\x0a/;
-    return "GIF"  if /^GIF8[79]a/;
-    return "TIFF" if /^MM\x00\x2a/;
-    return "TIFF" if /^II\x2a\x00/;
-    return "BMP"  if /^BM/;
-    return "ICO"  if /^\000\000\001\000/;
-    return "PPM"  if /^P[1-6]/;
-    return "XPM"  if /(^\/\* XPM \*\/)|(static\s+char\s+\*\w+\[\]\s*=\s*{\s*"\d+)/;
-    return "XBM"  if /^(?:\/\*.*\*\/\n)?#define\s/;
-    return "SVG"  if /^(<\?xml|[\012\015\t ]*<svg\b)/;
-    return "WEBP" if /^RIFF.{4}WEBP/s;
-    return undef;
-}
-
 sub lwp_get {
     my ($url) = @_;
 
@@ -2684,11 +2668,18 @@ sub lwp_get {
     return $data;
 }
 
+sub fit_to_dimensions {
+    my ($width, $height, $max_width, $max_height) = @_;
+    my $scale = min($max_width / $width, $max_height / $height);
+    if ($scale < 1.0) {
+        $width *= $scale;
+        $height *= $scale;
+    }
+    return ($width, $height);
+}
+
 sub get_pixbuf_thumbnail_from_content {
     my ($thumbnail, $url, $xsize, $ysize) = @_;
-
-    $xsize //= 160;
-    $ysize //= 90;
 
     $thumbnail // return $default_thumb;
 
@@ -2702,33 +2693,27 @@ sub get_pixbuf_thumbnail_from_content {
     }
 
     my $pixbuf;
-    if (defined $thumbnail) {
-        my $type = determine_image_format($thumbnail);
 
-        my $pixbufloader;
-        if (defined($type)) {
-            $pixbufloader = eval { 'Gtk3::Gdk::PixbufLoader'->new_with_type(lc($type)) };
-        }
-        if (not defined $pixbufloader) {
-            $pixbufloader = 'Gtk3::Gdk::PixbufLoader'->new;
-        }
+    if (defined $thumbnail) {
+
+        # Add/update thumbnails' cache entry.
+        add_thumbnail_to_cache($url, $thumbnail);
+
+        my $pixbufloader = 'Gtk3::Gdk::PixbufLoader'->new;
+
+        $pixbufloader->signal_connect(
+            'size-prepared' => sub {
+            my ($loader, $width, $height) = @_;
+            my ($fit_width, $fit_height) = fit_to_dimensions($width, $height, $xsize, $ysize);
+            my $resized = $fit_width != $width || $fit_height != $height;
+            $loader->set_size($fit_width, $fit_height) if $resized;
+        });
 
         eval {
-            $pixbufloader->set_size($xsize, $ysize);
-            ## $pixbufloader->write($thumbnail);      # Gtk3 bug?
-            $pixbufloader->write([unpack 'C*', $thumbnail]);
-            $pixbuf = $pixbufloader->get_pixbuf;
+            $pixbufloader->write($thumbnail);
             $pixbufloader->close;
+            $pixbuf = $pixbufloader->get_pixbuf;
         };
-    }
-
-    if (defined($pixbuf) and !get_thumbnail_from_cache($url)) {
-
-        my $buffer = eval { pack('C*', @{$pixbuf->save_to_buffer($CONFIG{cache_thumbnails_format})}) };
-
-        if (defined($buffer)) {
-            add_thumbnail_to_cache($url, $buffer);
-        }
     }
 
     $pixbuf //= $default_thumb;
@@ -2780,18 +2765,6 @@ sub get_pixbuf_thumbnail_from_url {
     }
 
     my $pixbuf = get_pixbuf_thumbnail_from_content($thumbnail, $url, $xsize, $ysize);
-
-    return $pixbuf;
-}
-
-sub get_pixbuf_thumbnail_from_entry {
-    my ($entry) = @_;
-
-    my $thumbnail_url  = $yv_utils->get_thumbnail_url($entry, $CONFIG{thumbnail_type});
-    my $thumbnail_data = $entry->{_thumbnail_data} // get_thumbnail_from_cache($thumbnail_url) // lwp_get($thumbnail_url);
-
-    my $square_format = $yv_utils->is_channel($entry) || $yv_utils->is_subscription($entry);
-    my $pixbuf        = get_pixbuf_thumbnail_from_content($thumbnail_data, $thumbnail_url, ($square_format ? (160, 160) : ()));
 
     return $pixbuf;
 }
@@ -3172,15 +3145,39 @@ sub set_entry_tooltip {
     $liststore->set($iter, [9], ["<b>" . encode_entities($title) . "</b>" . "\n\n" . encode_entities($description)]);
 }
 
+sub get_thumbnail_info {
+    my ($entry, $xsize, $ysize) = @_;
+
+    unless ($xsize && $ysize) {
+        ($xsize, $ysize) = @THUMBNAILS_SIZE;
+    }
+    my $thumb = $yv_utils->get_thumbnail($entry, $xsize, $ysize);
+
+    ($xsize, $ysize) = fit_to_dimensions($thumb->{width}, $thumb->{height}, $xsize, $ysize);
+
+    my $url = $thumb->{url};
+
+    if (defined $url) {
+        # Clean URL of trackers and other junk
+        $url =~ s/\.(?:jpg|png|webp)\K\?.*//;
+
+        # Prefer JPEG format over WebP if the later is not supported.
+        $url =~ s/\.webp\z/.jpg/ && $url =~ s{/vi_webp/}{/vi/} unless $webp_supported;
+    }
+
+    return ($url, $xsize, $ysize);
+}
+
 sub set_thumbnail {
     my ($entry, $liststore, $iter) = @_;
 
-    $liststore->set($iter, [1], [$default_thumb]);
+    my ($url, $xsize, $ysize) = get_thumbnail_info($entry);
+    $liststore->set($iter, [1, 10, 11], [$default_thumb, $xsize, $ysize]);
 
     Glib::Idle->add(
         sub {
             my ($entry, $liststore, $iter) = @{$_[0]};
-            my $pixbuf = get_pixbuf_thumbnail_from_entry($entry);
+            my $pixbuf = get_pixbuf_thumbnail_from_url($url, $xsize, $ysize);
             $liststore->set($iter, [1], [$pixbuf]);
             return 0;
         },
@@ -4278,47 +4275,34 @@ EOT
     $linkbutton->set_label($url);
     $linkbutton->set_uri($url);
 
-    my %thumbs = (
-                  start  => 1,
-                  middle => 2,
-                  end    => 3,
-                 );
+    if ($opt{extra_info}) {
 
-    # Getting thumbs
-    foreach my $nr (keys %thumbs) {
+        # Getting thumbs (start, middle, end).
+        foreach my $nr (1..3) {
 
-        $gui->get_object("image$thumbs{$nr}")->set_from_pixbuf($default_thumb);
+            my ($url, $xsize, $ysize) = get_thumbnail_info($info, 320, 180);
+            my $widget = $gui->get_object("image$nr");
+            $widget->set_size_request($xsize, $ysize);
+            $widget->set_from_pixbuf($default_thumb);
 
-        Glib::Idle->add(
-            sub {
-                my ($nr) = @{$_[0]};
+            if ($url =~ /_live\.\w+\z/) {
+                ## no extra thumbnails available while video is LIVE
+            }
+            else {
+                $url =~ s{/(\w*)default\.(\w+)\z}{/$1$nr.$2};
+            }
 
-                my $url = $yv_utils->get_thumbnail_url($info, $nr);
-
-                #~ my $thumbnail = $info->{snippet}{thumbnails}{medium};
-                #~ my $url       = $thumbnail->{url};
-
-                if ($url =~ /_live\.\w+\z/) {
-                    ## no extra thumbnails available while video is LIVE
-                }
-                else {
-                    $url =~ s{/\w+\.(\w+)\z}{/mq$thumbs{$nr}.$1};
-                }
-
-                my ($size_x, $size_y) = (160, 90);
-
-                if ($type eq 'subscription' or $type eq 'channel') {
-                    ($size_x, $size_y) = (120, 120);
-                }
-
-                my $pixbuf = get_pixbuf_thumbnail_from_url($url, $size_x, $size_y);
-                $gui->get_object("image$thumbs{$nr}")->set_from_pixbuf($pixbuf);
-
-                return 0;
-            },
-            [$nr],
-            Glib::G_PRIORITY_LOW
-        );
+            Glib::Idle->add(
+                sub {
+                    my ($widget, $url, $xsize, $ysize) = @{$_[0]};
+                    my $pixbuf = get_pixbuf_thumbnail_from_url($url, $xsize, $ysize);
+                    $widget->set_from_pixbuf($pixbuf);
+                    return 0;
+                },
+                [$widget, $url, $xsize, $ysize],
+                Glib::G_PRIORITY_LOW
+            );
+        }
     }
 
     # Setting textview description
