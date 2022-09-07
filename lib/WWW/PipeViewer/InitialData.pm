@@ -69,54 +69,6 @@ sub _human_number_to_int {
     return 0;
 }
 
-sub _thumbnail_quality {
-    my ($width) = @_;
-
-    $width // return 'medium';
-
-    if ($width == 1280) {
-        return "maxres";
-    }
-
-    if ($width == 640) {
-        return "sddefault";
-    }
-
-    if ($width == 480) {
-        return 'high';
-    }
-
-    if ($width == 320) {
-        return 'medium';
-    }
-
-    if ($width == 120) {
-        return 'default';
-    }
-
-    if ($width <= 120) {
-        return 'small';
-    }
-
-    if ($width <= 176) {
-        return 'medium';
-    }
-
-    if ($width <= 480) {
-        return 'high';
-    }
-
-    if ($width <= 640) {
-        return 'sddefault';
-    }
-
-    if ($width <= 1280) {
-        return "maxres";
-    }
-
-    return 'medium';
-}
-
 sub _fix_url_protocol {
     my ($url) = @_;
 
@@ -163,8 +115,7 @@ sub _extract_youtube_mix {
 
     $mix{playlistId} = eval { $info->{navigationEndpoint}{watchEndpoint}{playlistId} } || return;
 
-    $mix{playlistThumbnail} = eval { _fix_url_protocol($header->{avatar}{thumbnails}[0]{url}) }
-      // eval { _fix_url_protocol($info->{heroImage}{collageHeroImageRenderer}{leftThumbnail}{thumbnails}[0]{url}) };
+    $mix{playlistThumbnails} = _extract_thumbnails($header->{avatar}{thumbnails} // $info->{heroImage}{collageHeroImageRenderer}{leftThumbnail}{thumbnails});
 
     $mix{description} = _extract_description({title => $info});
 
@@ -225,26 +176,10 @@ sub _extract_thumbnails {
         [
          map {
              my %thumb = %$_;
-             $thumb{quality} = _thumbnail_quality($thumb{width});
-             $thumb{url}     = _fix_url_protocol($thumb{url});
+             $thumb{url} = _fix_url_protocol($thumb{url});
              \%thumb;
-         } @{$info->{thumbnail}{thumbnails}}
+         } @{$info}
         ]
-    };
-}
-
-sub _extract_playlist_thumbnail {
-    my ($info) = @_;
-    eval {
-        _fix_url_protocol(
-                         (
-                          grep { _thumbnail_quality($_->{width}) =~ /medium|high/ }
-                            @{$info->{thumbnailRenderer}{playlistVideoThumbnailRenderer}{thumbnail}{thumbnails}}
-                         )[0]{url} // $info->{thumbnailRenderer}{playlistVideoThumbnailRenderer}{thumbnail}{thumbnails}[0]{url}
-        );
-    } // eval {
-        _fix_url_protocol((grep { _thumbnail_quality($_->{width}) =~ /medium|high/ } @{$info->{thumbnail}{thumbnails}})[0]{url}
-                          // $info->{thumbnail}{thumbnails}[0]{url});
     };
 }
 
@@ -313,7 +248,7 @@ sub _extract_itemSection_entry {
         $video{authorId}        = _extract_channel_id($info);
         $video{publishedText}   = _extract_published_text($info);
         $video{viewCountText}   = _extract_view_count_text($info);
-        $video{videoThumbnails} = _extract_thumbnails($info);
+        $video{videoThumbnails} = _extract_thumbnails($info->{thumbnail}{thumbnails});
         $video{description}     = _extract_description($info);
         $video{viewCount}       = _extract_view_count($info);
 
@@ -334,13 +269,13 @@ sub _extract_itemSection_entry {
 
         $playlist{type} = 'playlist';
 
-        $playlist{title}             = _extract_title($info)       // return;
-        $playlist{playlistId}        = _extract_playlist_id($info) // return;
-        $playlist{author}            = _extract_author_name($info);
-        $playlist{authorId}          = _extract_channel_id($info);
-        $playlist{videoCount}        = _extract_video_count($info);
-        $playlist{playlistThumbnail} = _extract_playlist_thumbnail($info);
-        $playlist{description}       = _extract_description($info);
+        $playlist{title}              = _extract_title($info)       // return;
+        $playlist{playlistId}         = _extract_playlist_id($info) // return;
+        $playlist{author}             = _extract_author_name($info);
+        $playlist{authorId}           = _extract_channel_id($info);
+        $playlist{videoCount}         = _extract_video_count($info);
+        $playlist{playlistThumbnails} = _extract_thumbnails($info->{thumbnailRenderer}{playlistVideoThumbnailRenderer}{thumbnail}{thumbnails} // $info->{thumbnail}{thumbnails});
+        $playlist{description}        = _extract_description($info);
 
         return \%playlist;
     }
@@ -357,7 +292,7 @@ sub _extract_itemSection_entry {
         $channel{authorId}         = _extract_channel_id($info) // return;
         $channel{subCount}         = _extract_subscriber_count($info);
         $channel{videoCount}       = _extract_video_count($info);
-        $channel{authorThumbnails} = _extract_thumbnails($info);
+        $channel{authorThumbnails} = _extract_thumbnails($info->{thumbnail}{thumbnails});
         $channel{description}      = _extract_description($info);
 
         return \%channel;

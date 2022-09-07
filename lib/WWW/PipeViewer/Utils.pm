@@ -4,6 +4,8 @@ use utf8;
 use 5.014;
 use warnings;
 
+use List::Util qw(first);
+
 =head1 NAME
 
 WWW::PipeViewer::Utils - Various utils.
@@ -621,15 +623,34 @@ sub local_playlist_snippet {
         $video_count = scalar(@$entries);
     }
 
+    my @thumbnails;
+
+    if (defined($video_id)) {
+        my @video_thumbs = qw(
+                  default  120  90
+                mqdefault  320 180
+                hqdefault  480 360
+                sddefault  640 480
+            maxresdefault 1280 720
+        );
+        while (scalar @video_thumbs) {
+            (my $quality, my $width, my $height, @video_thumbs) = @video_thumbs;
+            push @thumbnails, scalar {
+                "url" => "https://i.ytimg.com/vi/$video_id/$quality.jpg",
+                'width' => $width, 'height' => $height,
+            };
+        }
+    }
+
     scalar {
-            author            => "local",
-            authorId          => "local",
-            description       => $title,
-            playlistId        => $id,
-            playlistThumbnail => (defined($video_id) ? "https://i.ytimg.com/vi/$video_id/mqdefault.jpg" : undef),
-            title             => $title,
-            type              => "playlist",
-            videoCount        => $video_count,
+            author             => "local",
+            authorId           => "local",
+            description        => $title,
+            playlistId         => $id,
+            playlistThumbnails => \@thumbnails,
+            title              => $title,
+            type               => "playlist",
+            videoCount         => $video_count,
            };
 }
 
@@ -657,80 +678,59 @@ sub get_title {
     $info->{title};
 }
 
-=head2 get_thumbnail_url($info;$type='default')
+=head2 get_thumbnail($info;$xsize,$ysize)
 
-Get thumbnail URL.
+Get smallest thumbnail of at least ${xsize}x${ysize}.
 
 =cut
 
-sub get_thumbnail_url {
-    my ($self, $info, $type) = @_;
+sub get_thumbnail {
+    my ($self, $info, $xsize, $ysize) = @_;
 
     if (exists $info->{videoId}) {
         $info->{type} = 'video';
     }
 
+    my $available_thumbs;
+
     if ($info->{type} eq 'playlist') {
-        return $info->{playlistThumbnail};
+        $available_thumbs = $info->{playlistThumbnails} // eval {
+            # Old extraction format.
+            my %thumb = (
+                'url' => $info->{playlistThumbnail},
+                'width' => 320, 'height' => 180,
+            );
+            [\%thumb];
+        };
     }
 
     if ($info->{type} eq 'channel') {
-        ref($info->{authorThumbnails}) eq 'ARRAY' or return '';
-
-        foreach my $thumbnail (map { ref($_) eq 'ARRAY' ? @{$_} : $_ } @{$info->{authorThumbnails}}) {
-            if (exists $thumbnail->{quality} and $thumbnail->{quality} eq $type) {
-                return $thumbnail->{url};
-            }
-        }
-
-        return eval { $info->{authorThumbnails}[0]{url} } // '';
+        $available_thumbs = $info->{authorThumbnails};
     }
 
-    ref($info->{videoThumbnails}) eq 'ARRAY' or return '';
-
-    my @thumbs = map  { ref($_) eq 'ARRAY' ? @{$_} : $_ } @{$info->{videoThumbnails}};
-    my @wanted = grep { $_->{quality} eq $type } grep { ref($_) eq 'HASH' } @thumbs;
-
-    my %types = (
-                 low      => '',
-                 high     => 'hq',
-                 medium   => 'mq',
-                 standard => 'sd',
-                );
-
-    if (exists $types{$type}) {
-
-        my $type_prefix = $types{$type};
-        my @selected    = grep { $_->{url} =~ m{/${type_prefix}default\.\w} } @thumbs;
-
-        if (@selected) {
-            @wanted = @selected;
-        }
-        else {
-            $_->{url} =~ s{/\K\w*?(?=default\.\w)}{$type_prefix} for @thumbs;
-            @wanted = @thumbs;
-        }
+    if ($info->{type} eq 'video') {
+        $available_thumbs = $info->{videoThumbnails};
     }
 
-    my $url;
+    ref($available_thumbs) eq 'ARRAY' or return '';
 
-    if (@wanted) {
-        $url = eval { $wanted[0]{url} } // return '';
-    }
-    else {
-        ## warn "[!] Couldn't find thumbnail of type <<$type>>...";
-        $url = eval { $thumbs[0]{url} } // return '';
-    }
+    # Sort available thumbnails by size (height first, then width).
+    my @by_increasing_size = sort {
+        ($a->{height} // 0) <=> ($b->{height} // 0) ||
+        ($a->{width} // 0) <=> ($b->{width} // 0)
+    } map {
+        ref($_) eq 'ARRAY' ? @{$_} : $_
+    } @{$available_thumbs};
 
-    # Clean URL of trackers and other junk
-    $url =~ s/\.(?:jpg|png|webp)\K\?.*//;
+    # Choose smallest size equal or above requested.
+    my $choice = first {
+        ($_->{width} // 0) >= $xsize &&
+        ($_->{height} // 0) >= $ysize
+    } @by_increasing_size;
+    # Fall back to the best available quality.
+    $choice //= $by_increasing_size[-1];
 
-    # Prefer JPEG over WEBP (otherwise, it fails when webp-pixbuf-loader is not installed - #50)
-    if ($url =~ s/\.webp\z/.jpg/) {
-        $url =~ s{/vi_webp/}{/vi/};
-    }
-
-    return $url;
+    return $choice;
 }
 
 sub get_channel_title {
