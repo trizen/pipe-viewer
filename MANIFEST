@@ -18,7 +18,6 @@ lib/WWW/PipeViewer/Playlists.pm
 lib/WWW/PipeViewer/Proto.pm
 lib/WWW/PipeViewer/RegularExpressions.pm
 lib/WWW/PipeViewer/Search.pm
-lib/WWW/PipeViewer/Subscriptions.pm
 lib/WWW/PipeViewer/Utils.pm
 lib/WWW/PipeViewer/VideoCategories.pm
 lib/WWW/PipeViewer/Videos.pm

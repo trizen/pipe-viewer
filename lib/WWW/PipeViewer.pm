@@ -28,7 +28,6 @@ use parent qw(
   WWW::PipeViewer::Playlists
   WWW::PipeViewer::ParseJSON
   WWW::PipeViewer::Activities
-  WWW::PipeViewer::Subscriptions
   WWW::PipeViewer::PlaylistItems
   WWW::PipeViewer::CommentThreads
   WWW::PipeViewer::Authentication
