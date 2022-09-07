@@ -170,11 +170,6 @@ Author: Trizen https://github.com/trizen
     <property name="can-focus">False</property>
     <property name="icon-name">go-up</property>
   </object>
-  <object class="GtkImage" id="image6">
-    <property name="visible">True</property>
-    <property name="can-focus">False</property>
-    <property name="icon-name">dialog-password</property>
-  </object>
   <object class="GtkImage" id="image7">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
@@ -349,16 +344,6 @@ Author: Trizen https://github.com/trizen
                         <property name="image">terminal_icon2</property>
                         <property name="use-stock">False</property>
                         <signal name="activate" handler="run_cli_pipe_viewer" swapped="no"/>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkImageMenuItem" id="menuitem3">
-                        <property name="label" translatable="yes">Login to YouTube</property>
-                        <property name="can-focus">False</property>
-                        <property name="tooltip-text" translatable="yes">Login to YouTube using OAuth 2.0 authentication.</property>
-                        <property name="image">image6</property>
-                        <property name="use-stock">False</property>
-                        <signal name="activate" handler="show_login_to_youtube_window" swapped="no"/>
                       </object>
                     </child>
                     <child>
@@ -669,288 +654,8 @@ Author: Trizen https://github.com/trizen
                                 <property name="can-focus">True</property>
                                 <property name="scrollable">True</property>
                                 <child>
-                                  <object class="GtkScrolledWindow" id="subsc_scrollwindow">
-                                    <property name="can-focus">True</property>
-                                    <property name="margin-top">4</property>
-                                    <property name="hscrollbar-policy">never</property>
-                                    <child>
-                                      <object class="GtkViewport" id="viewport2">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <child>
-                                          <object class="GtkBox" id="vbox23">
-                                            <property name="visible">True</property>
-                                            <property name="can-focus">False</property>
-                                            <property name="orientation">vertical</property>
-                                            <child>
-                                              <object class="GtkButtonBox" id="vbuttonbox5">
-                                                <property name="visible">True</property>
-                                                <property name="can-focus">False</property>
-                                                <property name="orientation">vertical</property>
-                                                <child>
-                                                  <object class="GtkButton" id="button6">
-                                                    <property name="label">Subscriptions</property>
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">True</property>
-                                                    <property name="receives-default">True</property>
-                                                    <property name="image">image53</property>
-                                                    <property name="image-position">top</property>
-                                                    <signal name="clicked" handler="subscriptions_button" swapped="no"/>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">False</property>
-                                                    <property name="position">0</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
-                                                  <object class="GtkButton" id="button22">
-                                                    <property name="label" translatable="yes">Favorites</property>
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">True</property>
-                                                    <property name="receives-default">True</property>
-                                                    <property name="image">image51</property>
-                                                    <property name="image-position">top</property>
-                                                    <signal name="clicked" handler="favorites_button" swapped="no"/>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">False</property>
-                                                    <property name="position">1</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
-                                                  <object class="GtkButton" id="button25">
-                                                    <property name="label" translatable="yes">Liked videos</property>
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">True</property>
-                                                    <property name="receives-default">True</property>
-                                                    <property name="image">image59</property>
-                                                    <property name="image-position">top</property>
-                                                    <signal name="clicked" handler="likes_button" swapped="no"/>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">False</property>
-                                                    <property name="position">2</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
-                                                  <object class="GtkButton" id="button9">
-                                                    <property name="label" translatable="yes">Disliked videos</property>
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">True</property>
-                                                    <property name="receives-default">True</property>
-                                                    <property name="image">image54</property>
-                                                    <property name="image-position">top</property>
-                                                    <signal name="clicked" handler="dislikes_button" swapped="no"/>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">False</property>
-                                                    <property name="position">3</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
-                                                  <object class="GtkButton" id="uploads_button">
-                                                    <property name="label" translatable="yes">Uploads</property>
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">True</property>
-                                                    <property name="receives-default">True</property>
-                                                    <property name="image">icon_from_pixbuf</property>
-                                                    <property name="image-position">top</property>
-                                                    <signal name="clicked" handler="uploads_button" swapped="no"/>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">False</property>
-                                                    <property name="position">4</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
-                                                  <object class="GtkButton" id="button11">
-                                                    <property name="label" translatable="yes">Activity</property>
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">True</property>
-                                                    <property name="receives-default">True</property>
-                                                    <property name="image">image7</property>
-                                                    <property name="image-position">top</property>
-                                                    <signal name="clicked" handler="activity_button" swapped="no"/>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">False</property>
-                                                    <property name="position">5</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
-                                                  <object class="GtkButton" id="button10">
-                                                    <property name="label" translatable="yes">Playlists</property>
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">True</property>
-                                                    <property name="receives-default">True</property>
-                                                    <property name="image">image5</property>
-                                                    <property name="image-position">top</property>
-                                                    <signal name="clicked" handler="playlists_button" swapped="no"/>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">False</property>
-                                                    <property name="position">6</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
-                                                  <object class="GtkButton" id="button7">
-                                                    <property name="label" translatable="yes">Log out</property>
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">True</property>
-                                                    <property name="receives-default">True</property>
-                                                    <property name="image">image52</property>
-                                                    <property name="image-position">top</property>
-                                                    <signal name="clicked" handler="log_out" swapped="no"/>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">False</property>
-                                                    <property name="position">7</property>
-                                                  </packing>
-                                                </child>
-                                              </object>
-                                              <packing>
-                                                <property name="expand">False</property>
-                                                <property name="fill">False</property>
-                                                <property name="padding">50</property>
-                                                <property name="position">0</property>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkFrame" id="frame12">
-                                                <property name="visible">True</property>
-                                                <property name="can-focus">False</property>
-                                                <property name="label-xalign">0</property>
-                                                <property name="shadow-type">none</property>
-                                                <child>
-                                                  <object class="GtkAlignment" id="alignment28">
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">False</property>
-                                                    <property name="left-padding">12</property>
-                                                    <child>
-                                                      <object class="GtkComboBoxText" id="comboboxtext13">
-                                                        <property name="visible">True</property>
-                                                        <property name="can-focus">False</property>
-                                                        <items>
-                                                          <item translatable="yes">relevance</item>
-                                                          <item translatable="yes">unread</item>
-                                                          <item translatable="yes">alphabetical</item>
-                                                        </items>
-                                                        <signal name="changed" handler="combobox_subscriptions_order_changed" swapped="no"/>
-                                                      </object>
-                                                    </child>
-                                                  </object>
-                                                </child>
-                                                <child type="label">
-                                                  <object class="GtkLabel" id="label38">
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">False</property>
-                                                    <property name="label" translatable="yes">&lt;b&gt;Subscriptions order:&lt;/b&gt;</property>
-                                                    <property name="use-markup">True</property>
-                                                  </object>
-                                                </child>
-                                              </object>
-                                              <packing>
-                                                <property name="expand">False</property>
-                                                <property name="fill">False</property>
-                                                <property name="pack-type">end</property>
-                                                <property name="position">1</property>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkFrame" id="frame7">
-                                                <property name="visible">True</property>
-                                                <property name="can-focus">False</property>
-                                                <property name="label-xalign">0</property>
-                                                <property name="shadow-type">none</property>
-                                                <child>
-                                                  <object class="GtkAlignment" id="alignment7">
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">False</property>
-                                                    <property name="xalign">0</property>
-                                                    <property name="yalign">0</property>
-                                                    <property name="left-padding">9</property>
-                                                    <child>
-                                                      <object class="GtkBox" id="hbox9">
-                                                        <property name="visible">True</property>
-                                                        <property name="can-focus">False</property>
-                                                        <child>
-                                                          <object class="GtkEntry" id="panel_user_entry">
-                                                            <property name="can-focus">True</property>
-                                                            <property name="invisible-char">•</property>
-                                                            <property name="width-chars">15</property>
-                                                            <property name="primary-icon-activatable">False</property>
-                                                            <property name="secondary-icon-activatable">False</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="expand">True</property>
-                                                            <property name="fill">True</property>
-                                                            <property name="position">0</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkComboBoxText" id="comboboxtext6">
-                                                            <property name="visible">True</property>
-                                                            <property name="can-focus">False</property>
-                                                            <property name="active">0</property>
-                                                            <items>
-                                                            <item translatable="yes">myself</item>
-                                                            <item translatable="yes">username</item>
-                                                            <item translatable="yes">channel ID</item>
-                                                            </items>
-                                                            <signal name="changed" handler="combobox_panel_account_changed" swapped="no"/>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="expand">False</property>
-                                                            <property name="fill">False</property>
-                                                            <property name="pack-type">end</property>
-                                                            <property name="position">1</property>
-                                                          </packing>
-                                                        </child>
-                                                      </object>
-                                                    </child>
-                                                  </object>
-                                                </child>
-                                                <child type="label">
-                                                  <object class="GtkLabel" id="label14">
-                                                    <property name="visible">True</property>
-                                                    <property name="can-focus">False</property>
-                                                    <property name="label" translatable="yes">&lt;b&gt;Account:&lt;/b&gt;</property>
-                                                    <property name="use-markup">True</property>
-                                                  </object>
-                                                </child>
-                                              </object>
-                                              <packing>
-                                                <property name="expand">False</property>
-                                                <property name="fill">False</property>
-                                                <property name="pack-type">end</property>
-                                                <property name="position">2</property>
-                                              </packing>
-                                            </child>
-                                          </object>
-                                        </child>
-                                      </object>
-                                    </child>
-                                  </object>
-                                </child>
-                                <child type="tab">
-                                  <object class="GtkLabel" id="subsc_label">
-                                    <property name="can-focus">False</property>
-                                    <property name="label" translatable="yes">My panel</property>
-                                  </object>
-                                  <packing>
-                                    <property name="tab-fill">False</property>
-                                  </packing>
-                                </child>
-                                <child>
                                   <object class="GtkScrolledWindow" id="scrolledwindow13">
+                                    <property name="name">settings</property>
                                     <property name="visible">True</property>
                                     <property name="can-focus">True</property>
                                     <property name="margin-top">4</property>
@@ -1545,7 +1250,6 @@ When the specified resolution is not found, the best available resolution is use
                                   </object>
                                   <packing>
                                     <property name="menu-label">Search options</property>
-                                    <property name="position">1</property>
                                   </packing>
                                 </child>
                                 <child type="tab">
@@ -1556,12 +1260,12 @@ When the specified resolution is not found, the best available resolution is use
                                     <property name="track-visited-links">False</property>
                                   </object>
                                   <packing>
-                                    <property name="position">1</property>
                                     <property name="tab-fill">False</property>
                                   </packing>
                                 </child>
                                 <child>
                                   <object class="GtkBox" id="vbox8">
+                                    <property name="name">channel</property>
                                     <property name="visible">True</property>
                                     <property name="can-focus">False</property>
                                     <property name="margin-top">4</property>
@@ -1822,7 +1526,7 @@ When the specified resolution is not found, the best available resolution is use
                                     </child>
                                   </object>
                                   <packing>
-                                    <property name="position">2</property>
+                                    <property name="position">1</property>
                                   </packing>
                                 </child>
                                 <child type="tab">
@@ -1832,12 +1536,13 @@ When the specified resolution is not found, the best available resolution is use
                                     <property name="label" translatable="yes">Channel</property>
                                   </object>
                                   <packing>
-                                    <property name="position">2</property>
+                                    <property name="position">1</property>
                                     <property name="tab-fill">False</property>
                                   </packing>
                                 </child>
                                 <child>
                                   <object class="GtkScrolledWindow" id="scrolledwindow8">
+                                    <property name="name">categories</property>
                                     <property name="visible">True</property>
                                     <property name="can-focus">True</property>
                                     <property name="margin-top">4</property>
@@ -1886,7 +1591,7 @@ When the specified resolution is not found, the best available resolution is use
                                     </child>
                                   </object>
                                   <packing>
-                                    <property name="position">3</property>
+                                    <property name="position">2</property>
                                   </packing>
                                 </child>
                                 <child type="tab">
@@ -1896,12 +1601,13 @@ When the specified resolution is not found, the best available resolution is use
                                     <property name="label" translatable="yes">Categories</property>
                                   </object>
                                   <packing>
-                                    <property name="position">3</property>
+                                    <property name="position">2</property>
                                     <property name="tab-fill">False</property>
                                   </packing>
                                 </child>
                                 <child>
                                   <object class="GtkScrolledWindow" id="scrolledwindow7">
+                                    <property name="name">playlists</property>
                                     <property name="visible">True</property>
                                     <property name="can-focus">True</property>
                                     <property name="margin-top">4</property>
@@ -1973,7 +1679,7 @@ When the specified resolution is not found, the best available resolution is use
                                     </child>
                                   </object>
                                   <packing>
-                                    <property name="position">4</property>
+                                    <property name="position">3</property>
                                   </packing>
                                 </child>
                                 <child type="tab">
@@ -1983,7 +1689,7 @@ When the specified resolution is not found, the best available resolution is use
                                     <property name="label" translatable="yes">Playlists</property>
                                   </object>
                                   <packing>
-                                    <property name="position">4</property>
+                                    <property name="position">3</property>
                                     <property name="tab-fill">False</property>
                                   </packing>
                                 </child>
@@ -2006,16 +1712,7 @@ When the specified resolution is not found, the best available resolution is use
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkStatusbar" id="statusbar1">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="spacing">2</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">2</property>
-                  </packing>
+                  <placeholder/>
                 </child>
               </object>
               <packing>
@@ -2789,196 +2486,6 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
         </child>
       </object>
     </child>
-  </object>
-  <object class="GtkDialog" id="login_to_youtube">
-    <property name="can-focus">False</property>
-    <property name="border-width">5</property>
-    <property name="title" translatable="yes">Login to YouTube</property>
-    <property name="type-hint">dialog</property>
-    <property name="transient-for">__MAIN__</property>
-    <signal name="close" handler="hide_login_to_youtube_window" swapped="no"/>
-    <signal name="delete-event" handler="hide_login_to_youtube_window" swapped="no"/>
-    <signal name="destroy" handler="hide_login_to_youtube_window" swapped="no"/>
-    <signal name="response" handler="hide_login_to_youtube_window" swapped="no"/>
-    <child internal-child="vbox">
-      <object class="GtkBox" id="dialog-vbox4">
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <property name="spacing">2</property>
-        <child internal-child="action_area">
-          <object class="GtkButtonBox" id="dialog-action_area4">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <child>
-              <object class="GtkButton" id="button5">
-                <property name="label">gtk-ok</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="use-stock">True</property>
-                <signal name="clicked" handler="authenticate" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="button4">
-                <property name="label">gtk-cancel</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="use-stock">True</property>
-                <signal name="clicked" handler="hide_login_to_youtube_window" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="pack-type">end</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel" id="label11">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="label" translatable="yes">Connect to your YouTube account</property>
-            <attributes>
-              <attribute name="weight" value="bold"/>
-              <attribute name="scale" value="2"/>
-            </attributes>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkBox" id="vbox7">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="orientation">vertical</property>
-            <child>
-              <object class="GtkFrame" id="frame5">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="label-xalign">0</property>
-                <property name="shadow-type">none</property>
-                <child>
-                  <object class="GtkButtonBox" id="hbuttonbox9">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="layout-style">start</property>
-                    <child>
-                      <object class="GtkLinkButton" id="get_auth_link_button">
-                        <property name="label" translatable="yes">Click here to get the authentication code!</property>
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">True</property>
-                        <property name="relief">half</property>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">False</property>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <placeholder/>
-                    </child>
-                  </object>
-                </child>
-                <child type="label">
-                  <object class="GtkLabel" id="label12">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">&lt;b&gt;OAuth 2.0 authentication&lt;/b&gt;</property>
-                    <property name="use-markup">True</property>
-                  </object>
-                </child>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="padding">7</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkFrame" id="frame6">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="label-xalign">0</property>
-                <property name="shadow-type">none</property>
-                <child>
-                  <object class="GtkAlignment" id="alignment6">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="left-padding">12</property>
-                    <child>
-                      <object class="GtkEntry" id="auth_token_entry">
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="invisible-char">•</property>
-                        <property name="primary-icon-activatable">False</property>
-                        <property name="secondary-icon-activatable">False</property>
-                      </object>
-                    </child>
-                  </object>
-                </child>
-                <child type="label">
-                  <object class="GtkLabel" id="label13">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">&lt;b&gt;Authentication code:&lt;/b&gt;</property>
-                    <property name="use-markup">True</property>
-                  </object>
-                </child>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkCheckButton" id="login_check_button">
-                <property name="label" translatable="yes">Remember me</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">False</property>
-                <property name="active">True</property>
-                <property name="draw-indicator">True</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
-                <property name="position">2</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">False</property>
-            <property name="position">2</property>
-          </packing>
-        </child>
-      </object>
-    </child>
-    <action-widgets>
-      <action-widget response="0">button5</action-widget>
-      <action-widget response="0">button4</action-widget>
-    </action-widgets>
   </object>
   <object class="GtkWindow" id="prefernces_window">
     <property name="can-focus">False</property>

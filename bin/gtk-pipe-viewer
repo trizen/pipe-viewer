@@ -177,9 +177,7 @@ my %symbols = (
 my %CONFIG = (
 
     # Combobox values
-    active_panel_account_combobox       => 0,
     active_channel_type_combobox        => 0,
-    active_subscriptions_order_combobox => 0,
 
     video_players => {
                       vlc => {
@@ -204,7 +202,7 @@ my %CONFIG = (
     show_thumbs                 => 1,
     thumbnail_size              => '224x126',
     clear_search_list           => 1,
-    default_notebook_page       => 1,
+    default_notebook_page       => 'settings',
     mainw_size                  => '700x400',
     mainw_maximized             => 0,
     mainw_fullscreen            => 0,
@@ -376,7 +374,6 @@ my %objects = (
     'help_window'       => \my $help_window,
     'prefernces_window' => \my $prefernces_window,
     'errors_window'     => \my $errors_window,
-    'login_to_youtube'  => \my $login_to_youtube,
     'details_window'    => \my $details_window,
     'aboutdialog1'      => \my $about_window,
     'feeds_window'      => \my $feeds_window,
@@ -396,7 +393,6 @@ my %objects = (
     'warnings_textview'      => \my $warnings_textview,
     'errors_textview'        => \my $errors_textview,
     'search_entry'           => \my $search_entry,
-    'statusbar1'             => \my $statusbar,
     'treeviewcolumn2'        => \my $thumbs_column,
     'textview2'              => \my $textview_help,
     'from_author_entry'      => \my $from_author_entry,
@@ -404,9 +400,6 @@ my %objects = (
     'comboboxtext9'          => \my $resolution_combobox,
     'comboboxtext8'          => \my $duration_combobox,
     'comboboxtext1'          => \my $published_within_combobox,
-    'comboboxtext13'         => \my $subscriptions_order_combobox,
-    'panel_user_entry'       => \my $panel_user_entry,
-    'comboboxtext6'          => \my $panel_account_type_combobox,
     'comboboxtext2'          => \my $order_combobox,
     'comboboxtext7'          => \my $channel_type_combobox,
     'comboboxtext10'         => \my $search_for_combobox,
@@ -519,6 +512,21 @@ if (!exists $CONFIG->{resolution} && exists $CONFIG->{active_resolution_combobox
     $CONFIG->{resolution} = $CONFIG->{active_resolution_combobox};
 }
 delete $CONFIG->{active_resolution_combobox};
+
+# Backward compatibility with old config format.
+{
+    my $default_notebook_page = $CONFIG->{default_notebook_page};
+    if (defined $default_notebook_page && looks_like_number($default_notebook_page)) {
+        my %index_to_page_name = (
+            1 => 'settings',
+            2 => 'channel',
+            3 => 'categories',
+            4 => 'playlists',
+        );
+        $default_notebook_page = $index_to_page_name{$default_notebook_page} // 'settings';
+        $CONFIG->{default_notebook_page} = $default_notebook_page;
+    }
+}
 
 # Features handling.
 my @FEATURES;
@@ -954,15 +962,6 @@ my $yv_obj = WWW::PipeViewer->new(
                                   timeout     => $CONFIG{timeout},
                                  );
 
-#$yv_obj->load_authentication_tokens();
-
-if (defined $yv_obj->get_access_token()) {
-    show_user_panel();
-}
-else {
-    $statusbar->push(1, 'Not logged in.');
-}
-
 require WWW::PipeViewer::Utils;
 my $yv_utils = WWW::PipeViewer::Utils->new(thousand_separator => $CONFIG{thousand_separator},
                                            youtube_url_format => $CONFIG{youtube_video_url},);
@@ -1010,9 +1009,7 @@ sub apply_configuration {
     $dash_checkbutton->set_active($CONFIG{dash});
 
     $clear_list_checkbutton->set_active($CONFIG{clear_search_list});
-    $panel_account_type_combobox->set_active($CONFIG{active_panel_account_combobox});
     $channel_type_combobox->set_active($CONFIG{active_channel_type_combobox});
-    $subscriptions_order_combobox->set_active($CONFIG{active_subscriptions_order_combobox});
 
     foreach my $option_name (
                              qw(
@@ -1156,8 +1153,6 @@ sub new_image_from_pixbuf {
 # Setting application icons
 {
     $gui->get_object('username_list')->set_image(new_image_from_pixbuf('icon_from_pixbuf', $user_icon_pixbuf));
-    $gui->get_object('uploads_button')->set_image(new_image_from_pixbuf('icon_from_pixbuf', $user_icon_pixbuf));
-    $gui->get_object('button6')->set_image(new_image_from_pixbuf('icon_from_pixbuf', $feed_icon_pixbuf));
 }
 
 # Treeview signals
@@ -1644,7 +1639,6 @@ set_text(
 # Key binds
 
     CTRL+H : help window
-    CTRL+L : login window
     CTRL+P : preferences window
     CTRL+Y : start CLI Pipe Viewer
     CTRL+E : enqueue the selected video
@@ -1677,7 +1671,6 @@ HELP_TEXT
 my $accel = Gtk3::AccelGroup->new;
 $accel->connect(ord('h'), ['control-mask'], ['visible'], \&show_help_window);
 $accel->connect(ord('e'), ['control-mask'], ['visible'], \&enqueue_video);
-$accel->connect(ord('l'), ['control-mask'], ['visible'], \&show_login_to_youtube_window);
 $accel->connect(ord('p'), ['control-mask'], ['visible'], \&show_preferences_window);
 $accel->connect(ord('q'), ['control-mask'], ['visible'], \&on_mainw_destroy);
 $accel->connect(ord('u'), ['control-mask'], ['visible'], \&show_users_list_window);
@@ -1733,14 +1726,6 @@ $help_window->add_accel_group($accel);
 $accel = Gtk3::AccelGroup->new;
 $accel->connect(0xff1b, ['lock-mask'], ['visible'], \&hide_details_window);
 $details_window->add_accel_group($accel);
-
-# ------------------ Authentication ------------------ #
-
-sub show_user_panel {
-    change_subscription_page(1);
-    $statusbar->push(1, "Logged in.");
-    return 1;
-}
 
 # ------------------ Showing/Hidding windows ------------------ #
 
@@ -1803,17 +1788,6 @@ sub hide_about_window {
 # Error window
 sub hide_errors_window {
     $errors_window->hide;
-    return 1;
-}
-
-# Login window
-sub show_login_to_youtube_window {
-    $login_to_youtube->show;
-    return 1;
-}
-
-sub hide_login_to_youtube_window {
-    $login_to_youtube->hide;
     return 1;
 }
 
@@ -1943,22 +1917,6 @@ sub combobox_resolution_changed {
 
 sub combobox_duration_changed {
     combobox_changed($duration_combobox, "videoDuration", 1);
-}
-
-sub combobox_subscriptions_order_changed {
-    $CONFIG{active_subscriptions_order_combobox} = $subscriptions_order_combobox->get_active;
-    $yv_obj->set_subscriptions_order($subscriptions_order_combobox->get_active_text);
-}
-
-sub combobox_panel_account_changed {
-    my $text = $panel_account_type_combobox->get_active_text;
-    $CONFIG{active_panel_account_combobox} = $panel_account_type_combobox->get_active;
-    if ($text =~ /^(mine|myself)/i) {
-        $panel_user_entry->hide;
-    }
-    else {
-        $panel_user_entry->show;
-    }
 }
 
 sub combobox_channel_type_changed {
@@ -2332,60 +2290,6 @@ sub videos_from_saved_channel {
     videos_from_selected_username();
 }
 
-# ----- My panel settings ----- #
-
-sub change_subscription_page {
-    my ($value) = @_;
-    foreach my $object (qw(subsc_scrollwindow subsc_label)) {
-        $value
-          ? $gui->get_object($object)->show
-          : $gui->get_object($object)->hide;
-    }
-    return 1;
-}
-
-sub subscriptions_button {
-    my $type     = $panel_account_type_combobox->get_active_text;
-    my $username = $panel_user_entry->get_text;
-    subscriptions($type, $username);
-}
-
-sub favorites_button {
-    my $type     = $panel_account_type_combobox->get_active_text;
-    my $username = $panel_user_entry->get_text;
-    favorites($type, $username);
-}
-
-sub uploads_button {
-    my $type     = $panel_account_type_combobox->get_active_text;
-    my $username = $panel_user_entry->get_text;
-    uploads($type, $username);
-}
-
-sub likes_button {
-    my $type     = $panel_account_type_combobox->get_active_text;
-    my $username = $panel_user_entry->get_text;
-    likes($type, $username);
-}
-
-sub dislikes_button {
-    my $type     = $panel_account_type_combobox->get_active_text;
-    my $username = $panel_user_entry->get_text;
-    dislikes($type, $username);
-}
-
-sub playlists_button {
-    my $type     = $panel_account_type_combobox->get_active_text;
-    my $username = $panel_user_entry->get_text;
-    playlists($type, $username);
-}
-
-sub activity_button {
-    my $type     = $panel_account_type_combobox->get_active_text;
-    my $username = $panel_user_entry->get_text;
-    activities($type, $username);
-}
-
 sub popular_uploads {
     my ($type, $channel) = @_;
 
@@ -2419,24 +2323,6 @@ sub popular_uploads {
             }
             elsif ($type =~ /^channel/i and $channel ne 'mine' and $channel =~ /^\S+\z/) {
                 $method = $name . '_from_username';
-            }
-
-            if ($type =~ /^(mine|myself)/i) {
-                if ($name eq 'likes') {
-                    $method = 'my_likes';
-                }
-
-                if ($name eq 'playlists') {
-                    $method = 'my_playlists';
-                }
-
-                if ($name eq 'activities') {
-                    $method = 'my_activities';
-                }
-            }
-
-            if ($name eq 'dislikes') {
-                $method = 'my_dislikes';
             }
 
             my $request = $yv_obj->$method(
@@ -4238,7 +4124,16 @@ sub on_mainw_destroy {
     'Gtk3'->main_quit;
 }
 
-$notebook->set_current_page($CONFIG{default_notebook_page});
+{
+    my $default_notebook_page = $CONFIG->{default_notebook_page};
+    for my $index (0..$notebook->get_n_pages-1) {
+        my $page = $notebook->get_nth_page($index);
+        if ($page->get('name') eq $default_notebook_page) {
+            $notebook->set_current_page($index);
+            last;
+        }
+    }
+}
 
 if ($CONFIG{cache_thumbnails} and -f $thumbnails_file) {
     $THUMBNAILS_CACHE = eval { Storable::retrieve($thumbnails_file) } // do {
