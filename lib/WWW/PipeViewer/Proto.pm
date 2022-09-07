@@ -1,9 +1,14 @@
 package WWW::PipeViewer::Proto;
 
+use 5.014;
 use warnings;
 
 require Exporter;
-@ISA = qw(Exporter);
+our @ISA = qw(Exporter);
+our @EXPORT = qw(
+  proto_uint
+  proto_nested
+);
 
 # https://developers.google.com/protocol-buffers/docs/encoding#varints
 sub _encode_varint {
@@ -35,10 +40,5 @@ sub proto_nested {
     my ($field_number, @data_bytes) = @_;
     return _proto_field(2, $field_number, _encode_varint(scalar @data_bytes), @data_bytes);
 }
-
-our @EXPORT = qw(
-  proto_uint
-  proto_nested
-);
 
 # vim: expandtab sw=4 ts=4
