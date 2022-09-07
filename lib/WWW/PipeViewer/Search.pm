@@ -108,6 +108,10 @@ sub search_for {
                        type => 'channel',
                       },
                       {
+                       name => 'movies',
+                       type => 'movie',
+                      },
+                      {
                        name => 'all',
                        type => 'all',
                       }

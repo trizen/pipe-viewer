@@ -987,6 +987,7 @@ Author: Trizen https://github.com/trizen
                                                             <item id="video" translatable="yes">Video</item>
                                                             <item id="playlist" translatable="yes">Playlist</item>
                                                             <item id="channel" translatable="yes">Channel</item>
+                                                            <item id="movie" translatable="yes">Movie</item>
                                                             <item id="all" translatable="yes">All</item>
                                                             </items>
                                                             <signal name="changed" handler="combobox_search_for_changed" swapped="no"/>

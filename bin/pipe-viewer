@@ -773,14 +773,17 @@ usage: $execname [options] ([url] | [keywords])
        --pid=s           : list a playlist of videos by playlist ID
        --pp=s,s          : play the videos from the given playlist IDs
 
-* Trending
+ * Trending
    --trending:s       : show trending videos in a given category
                         valid categories: music gaming news movies popular
 
  * Channels
    -sc --channels     : search for YouTube channels
 
-* Comments
+ * Movies
+   -sm --movies       : search for YouTube movies
+
+ * Comments
    --comments=s         : display comments for a video by ID or URL
    --comments-order=s   : change the order of YouTube comments
                           valid values: relevance, time
@@ -823,7 +826,7 @@ usage: $execname [options] ([url] | [keywords])
    -L  --likes           : show the videos that you liked
    -D  --dislikes        : show the videos that you disliked
 
-* Save local
+ * Save local
    --save=s             : save a given channel ID or username in -lc
    --subscribe=s        : subscribe to a given channel ID or username
    --favorite=s         : favorite a video by URL or ID
@@ -906,7 +909,7 @@ usage: $execname [options] ([url] | [keywords])
        --escape-info!   : quotemeta() the fields of the `--extract`
        --use-colors!    : enable or disable the ANSI colors for text
 
-* Formatting
+ * Formatting
     --custom-layout=s          : custom layout format for videos
     --custom-channel-layout=s  : custom layout format for channels
     --custom-playlist-layout=s : custom layout format for playlists
@@ -1364,6 +1367,10 @@ sub apply_configuration {
         print_playlists($yv_obj->search_playlists([@{$keywords}]));
     }
 
+    if (delete $opt->{search_movies}) {
+        print_videos($yv_obj->search_movies([@{$keywords}]));
+    }
+
     if (delete $opt->{categories}) {
         print_categories($yv_obj->video_categories);
     }
@@ -1541,6 +1548,7 @@ sub parse_arguments {
         'search-videos|search|sv!'     => \$opt{search_videos},
         'search-channels|channels|sc!' => \$opt{search_channels},
         'search-playlists|sp|p!'       => \$opt{search_playlists},
+        'search-movie|movies|sm!'      => \$opt{search_movies},
 
         'uploads|U|user|user-videos|uv|u=s' => \$opt{uploads},
         'favorites|F|user-favorites|uf:s'   => \$opt{favorites},
