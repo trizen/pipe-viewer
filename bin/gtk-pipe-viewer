@@ -202,7 +202,7 @@ my %CONFIG = (
     # GUI options
     clear_text_entries_on_click => 0,
     show_thumbs                 => 1,
-    thumbnail_size              => '160x90',
+    thumbnail_size              => '224x126',
     clear_search_list           => 1,
     default_notebook_page       => 1,
     mainw_size                  => '700x400',
