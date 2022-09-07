@@ -524,35 +524,44 @@ delete $CONFIG->{active_resolution_combobox};
 my @FEATURES;
 
 sub toggle_features {
-    my $enabled = shift @_;
+    my ($enabled, @list) = @_;
+
     if ($enabled) {
         @FEATURES = sort(do {
                 my %seen;
-                grep { !$seen{$_}++ } (@FEATURES, @_);
+                grep { !$seen{$_}++ } (@FEATURES, @list);
             }
         );
     }
     else {
-        @FEATURES = sort(grep { my $feat = $_; !grep $feat eq $_, @_ } @FEATURES);
+        my %enabled;
+        @enabled{@FEATURES} = ();
+        foreach my $feature (@list) {
+            delete($enabled{$feature});
+        }
+        @FEATURES = sort(keys %enabled);
     }
     $CONFIG->{features} = \@FEATURES;
 }
 
-toggle_features 1, @{$CONFIG->{features}};
-my @feature_options = qw(
-  videoCaption     1                 subtitles
-  videoCaption     true              subtitles
-  videoDefinition  high              hd
-  videoDimension   3d                3d
-  videoLicense     creative_commons  creative_commons
-);
+toggle_features(1, @{$CONFIG->{features}});
 
-while (scalar @feature_options) {
-    (my $option_name, my $option_value, my $feature, @feature_options) = @feature_options;
-    if (($CONFIG->{$option_name} // '') eq $option_value) {
-        toggle_features 1, $feature;
+do {
+    my @feature_options = qw(
+      videoCaption     1                 subtitles
+      videoCaption     true              subtitles
+      videoDefinition  high              hd
+      videoDimension   3d                3d
+      videoLicense     creative_commons  creative_commons
+    );
+
+    while (scalar @feature_options) {
+        my ($option_name, $option_value, $feature) = splice(@feature_options, 0, 3);
+        if (($CONFIG->{$option_name} // '') eq $option_value) {
+            toggle_features(1, $feature);
+        }
     }
-}
+};
 
 # Get valid config keys
 my @valid_keys = grep { exists $CONFIG{$_} } keys %{$CONFIG};
@@ -1030,35 +1039,6 @@ sub apply_configuration {
     apply_combobox_configuration($order_combobox,            "order");
     apply_combobox_configuration($published_within_combobox, "date");
 
-    foreach my $pair (
-        pairs(
-#<<<
-            'live'            , 'Live',
-            '4k'              , '4K',
-            'hd'              , 'HD',
-            'subtitles'       , 'Subtitles/CC',
-            'creative_commons', 'Creative Commons',
-            '360'             , '360°',
-            'vr180'           , 'VR180',
-            '3d'              , '3D',
-            'hdr'             , 'HDR',
-#>>>
-        )
-      ) {
-        my ($feat, $label) = @$pair;
-        my $button = Gtk3::CheckButton->new_with_label($label);
-        $features_flowbox->add($button);
-        $button->set_visible(1);
-        $button->signal_connect(
-            'toggled',
-            sub {
-                toggle_features $button->get_active, $feat;
-                $yv_obj->set_features(\@FEATURES);
-            }
-        );
-        $button->set_active(any { $feat eq $_ } @FEATURES);
-    }
-
     # Resize the main window
     $mainw->set_default_size(split(/x/i, $CONFIG{mainw_size}, 2));
 
@@ -1096,6 +1076,35 @@ sub apply_configuration {
 
 # Apply the configuration file
 apply_configuration();
+
+foreach my $pair (
+    pairs(
+#<<<
+            'live'            , 'Live',
+            '4k'              , '4K',
+            'hd'              , 'HD',
+            'subtitles'       , 'Subtitles/CC',
+            'creative_commons', 'Creative Commons',
+            '360'             , '360°',
+            'vr180'           , 'VR180',
+            '3d'              , '3D',
+            'hdr'             , 'HDR',
+#>>>
+    )
+  ) {
+    my ($feat, $label) = @$pair;
+    my $button = Gtk3::CheckButton->new_with_label($label);
+    $features_flowbox->add($button);
+    $button->set_visible(1);
+    $button->signal_connect(
+        'toggled',
+        sub {
+            toggle_features($button->get_active, $feat);
+            $yv_obj->set_features(\@FEATURES);
+        }
+    );
+    $button->set_active(any { $feat eq $_ } @FEATURES);
+}
 
 # YouTube usernames
 set_usernames();

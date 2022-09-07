@@ -198,7 +198,7 @@ my %CONFIG = (
     audio_quality => 'best',
     videoDuration => undef,
 
-    features => undef,
+    features => [],
     order    => undef,
     date     => undef,
     region   => undef,
@@ -464,16 +464,22 @@ our $CONFIG;
 our @FEATURES;
 
 sub toggle_features {
-    my $enabled = shift @_;
+    my ($enabled, @list) = @_;
+
     if ($enabled) {
         @FEATURES = sort(do {
                 my %seen;
-                grep { !$seen{$_}++ } (@FEATURES, @_);
+                grep { !$seen{$_}++ } (@FEATURES, @list);
             }
         );
     }
     else {
-        @FEATURES = sort(grep { my $feat = $_; !grep $feat eq $_, @_ } @FEATURES);
+        my %enabled;
+        @enabled{@FEATURES} = ();
+        foreach my $feature (@list) {
+            delete($enabled{$feature});
+        }
+        @FEATURES = sort(keys %enabled);
     }
 }
 
@@ -504,22 +510,25 @@ sub load_config {
         $update_config = 1;
     }
 
-    toggle_features 1, @{$CONFIG->{features}};
-    my @feature_options = qw(
-      videoCaption     1                 subtitles
-      videoCaption     true              subtitles
-      videoDefinition  high              hd
-      videoDimension   3d                3d
-      videoLicense     creative_commons  creative_commons
-    );
+    toggle_features(1, @{$CONFIG->{features} // []});
 
-    while (scalar @feature_options) {
-        (my $option_name, my $option_value, my $feature, @feature_options) = @feature_options;
-        if (($CONFIG->{$option_name} // '') eq $option_value) {
-            toggle_features 1, $feature;
-            $update_config = 1;
+    do {
+        my @feature_options = qw(
+          videoCaption     1                 subtitles
+          videoCaption     true              subtitles
+          videoDefinition  high              hd
+          videoDimension   3d                3d
+          videoLicense     creative_commons  creative_commons
+        );
+
+        while (scalar @feature_options) {
+            my ($option_name, $option_value, $feature) = splice(@feature_options, 0, 3);
+            if (($CONFIG->{$option_name} // '') eq $option_value) {
+                toggle_features(1, $feature);
+            }
         }
-    }
+    };
+
     $CONFIG->{features} = \@FEATURES;
 
     # Get valid config keys
@@ -1220,7 +1229,7 @@ sub apply_configuration {
     );
 
     while (scalar @feature_options) {
-        (my $option_name, my $option_value, my $feature, @feature_options) = @feature_options;
+        my ($option_name, $option_value, $feature) = splice(@feature_options, 0, 3);
         if (defined $opt->{$option_name}) {
             toggle_features($opt->{$option_name} eq $option_value, $feature);
         }
@@ -4236,65 +4245,10 @@ sub print_videos {
         return;
     }
 
-    #my $videos = $info->{items} // [];
-
-    #~ foreach my $entry (@$videos) {
-    #~ if ($yv_utils->is_activity($entry)) {
-    #~ my $type = $entry->{snippet}{type};
-
-    #~ if ($type eq 'upload') {
-    #~ $entry->{kind} = 'youtube#video';
-    #~ $entry->{id}   = $entry->{contentDetails}{upload}{videoId};
-    #~ }
-
-    #~ if ($type eq 'playlistItem') {
-    #~ $entry->{kind} = 'youtube#video';
-    #~ $entry->{id}   = $entry->{contentDetails}{playlistItem}{resourceId}{videoId};
-    #~ }
-
-    #~ if ($type eq 'bulletin' and $entry->{contentDetails}{bulletin}{resourceId}{kind} eq 'youtube#video') {
-    #~ $entry->{kind} = 'youtube#video';
-    #~ $entry->{id}   = $entry->{contentDetails}{bulletin}{resourceId}{videoId};
-    #~ }
-    #~ }
-    #~ }
-
-#<<<
-    #~ @$videos = grep {
-            #~ ref($_) eq 'HASH' && ref($_->{id}) eq 'HASH'
-                #~ ? (exists($_->{id}{kind})
-                    #~ ? $_->{id}{kind} eq 'youtube#video'
-                    #~ : 0)
-                #~ : 1
-    #~ } @$videos;
-#>>>
-
     if ($opt{shuffle}) {
         require List::Util;
         $videos = [List::Util::shuffle(@{$videos})];
     }
-
-    #~ if (@{$videos} and not $results->{has_extra_info}) {
-
-    #~ my @video_ids       = grep { defined } map { $yv_utils->get_video_id($_) } @{$videos};
-    #~ my $content_details = $yv_obj->video_details(join(',', @video_ids), VIDEO_PART);
-    #~ my $video_details   = $content_details->{results}{items};
-
-    #~ foreach my $i (0 .. $#{$videos}) {
-    #~ @{$videos->[$i]}{qw(id contentDetails statistics snippet)} =
-    #~ @{$video_details->[$i]}{qw(id contentDetails statistics snippet)};
-    #~ }
-
-    #~ $results->{has_extra_info} = 1;
-    #~ }
-
-#<<<
-    # Filter out private or deleted videos
-    #~ @$videos = grep {
-           #~ $yv_utils->get_video_id($_)
-       #~ and $yv_utils->get_time($_) ne '00:00'
-    #~ } @$videos;
-#>>>
 
     my @formatted;
 

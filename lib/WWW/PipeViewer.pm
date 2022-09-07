@@ -4,7 +4,6 @@ use utf8;
 use 5.016;
 use warnings;
 
-use List::Util qw(all any);
 use Memoize;
 use Memoize::Expire;
 
@@ -73,13 +72,14 @@ my %valid_options = (
     videoDuration => {valid => [qw(short average long)], default => undef},
     features      => {
         valid => sub {
-            my ($value)   = @_;
+            my ($array_ref) = @_;
             my @supported = qw(360 3d 4k subtitles creative_commons hd hdr live vr180);
-            my $valid     = all {
-                my $feat = $_;
-                any { $feat eq $_ } @supported
-            } @$value;
-            return $valid;
+            my %lookup;
+            @lookup{@supported} = ();
+            foreach my $item (@$array_ref) {
+                exists($lookup{$item}) or return 0;
+            }
+            return 1;
         },
         default => undef
     },

@@ -192,6 +192,7 @@ sub _find_streaming_url {
                       best   => 320,
                       medium => 128,
                       low    => 50,
+                      worst  => 50,
                      );
 
     foreach my $itag (@{$args{itags}->{$resolution}}) {
