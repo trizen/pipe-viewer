@@ -3146,9 +3146,11 @@ sub set_entry_tooltip {
 }
 
 sub get_thumbnail_info {
-    my ($entry) = @_;
+    my ($entry, $xsize, $ysize) = @_;
 
-    my ($xsize, $ysize) = @THUMBNAILS_SIZE;
+    unless ($xsize && $ysize) {
+        ($xsize, $ysize) = @THUMBNAILS_SIZE;
+    }
     my $thumb = $yv_utils->get_thumbnail($entry, $xsize, $ysize);
 
     ($xsize, $ysize) = fit_to_dimensions($thumb->{width}, $thumb->{height}, $xsize, $ysize);
@@ -4273,31 +4275,34 @@ EOT
     $linkbutton->set_label($url);
     $linkbutton->set_uri($url);
 
-    # Getting thumbs (start, middle, end).
-    foreach my $nr ($opt{extra_info} ? () : 1..3) {
+    if ($opt{extra_info}) {
 
-        my ($url, $xsize, $ysize) = get_thumbnail_info($info);
-        my $widget = $gui->get_object("image$nr");
-        $widget->set_size_request($xsize, $ysize);
-        $widget->set_from_pixbuf($default_thumb);
+        # Getting thumbs (start, middle, end).
+        foreach my $nr (1..3) {
 
-        if ($url =~ /_live\.\w+\z/) {
-            ## no extra thumbnails available while video is LIVE
+            my ($url, $xsize, $ysize) = get_thumbnail_info($info, 320, 180);
+            my $widget = $gui->get_object("image$nr");
+            $widget->set_size_request($xsize, $ysize);
+            $widget->set_from_pixbuf($default_thumb);
+
+            if ($url =~ /_live\.\w+\z/) {
+                ## no extra thumbnails available while video is LIVE
+            }
+            else {
+                $url =~ s{/(\w*)default\.(\w+)\z}{/$1$nr.$2};
+            }
+
+            Glib::Idle->add(
+                sub {
+                    my ($widget, $url, $xsize, $ysize) = @{$_[0]};
+                    my $pixbuf = get_pixbuf_thumbnail_from_url($url, $xsize, $ysize);
+                    $widget->set_from_pixbuf($pixbuf);
+                    return 0;
+                },
+                [$widget, $url, $xsize, $ysize],
+                Glib::G_PRIORITY_LOW
+            );
         }
-        else {
-            $url =~ s{/(\w*)default\.(\w+)\z}{/$1$nr.$2};
-        }
-
-        Glib::Idle->add(
-            sub {
-                my ($widget, $url, $xsize, $ysize) = @{$_[0]};
-                my $pixbuf = get_pixbuf_thumbnail_from_url($url, $xsize, $ysize);
-                $widget->set_from_pixbuf($pixbuf);
-                return 0;
-            },
-            [$widget, $url, $xsize, $ysize],
-            Glib::G_PRIORITY_LOW
-        );
     }
 
     # Setting textview description
