@@ -2325,24 +2325,6 @@ sub popular_uploads {
                 $method = $name . '_from_username';
             }
 
-            if ($type =~ /^(mine|myself)/i) {
-                if ($name eq 'likes') {
-                    $method = 'my_likes';
-                }
-
-                if ($name eq 'playlists') {
-                    $method = 'my_playlists';
-                }
-
-                if ($name eq 'activities') {
-                    $method = 'my_activities';
-                }
-            }
-
-            if ($name eq 'dislikes') {
-                $method = 'my_dislikes';
-            }
-
             my $request = $yv_obj->$method(
                                            ($type =~ /^(user|channel)/i and $channel =~ /^\S+\z/)
                                            ? $channel
