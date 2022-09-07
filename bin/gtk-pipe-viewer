@@ -204,7 +204,7 @@ my %CONFIG = (
     show_thumbs                 => 1,
     thumbnail_size              => '224x126',
     clear_search_list           => 1,
-    default_notebook_page       => 1,
+    default_notebook_page       => 'settings',
     mainw_size                  => '700x400',
     mainw_maximized             => 0,
     mainw_fullscreen            => 0,
@@ -519,6 +519,21 @@ if (!exists $CONFIG->{resolution} && exists $CONFIG->{active_resolution_combobox
     $CONFIG->{resolution} = $CONFIG->{active_resolution_combobox};
 }
 delete $CONFIG->{active_resolution_combobox};
+
+# Backward compatibility with old config format.
+{
+    my $default_notebook_page = $CONFIG->{default_notebook_page};
+    if (defined $default_notebook_page && looks_like_number($default_notebook_page)) {
+        my %index_to_page_name = (
+            1 => 'settings',
+            2 => 'channel',
+            3 => 'categories',
+            4 => 'playlists',
+        );
+        $default_notebook_page = $index_to_page_name{$default_notebook_page} // 'settings';
+        $CONFIG->{default_notebook_page} = $default_notebook_page;
+    }
+}
 
 # Features handling.
 my @FEATURES;
@@ -4238,7 +4253,16 @@ sub on_mainw_destroy {
     'Gtk3'->main_quit;
 }
 
-$notebook->set_current_page($CONFIG{default_notebook_page});
+{
+    my $default_notebook_page = $CONFIG->{default_notebook_page};
+    for my $index (0..$notebook->get_n_pages-1) {
+        my $page = $notebook->get_nth_page($index);
+        if ($page->get('name') eq $default_notebook_page) {
+            $notebook->set_current_page($index);
+            last;
+        }
+    }
+}
 
 if ($CONFIG{cache_thumbnails} and -f $thumbnails_file) {
     $THUMBNAILS_CACHE = eval { Storable::retrieve($thumbnails_file) } // do {

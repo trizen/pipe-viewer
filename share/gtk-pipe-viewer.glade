@@ -951,6 +951,7 @@ Author: Trizen https://github.com/trizen
                                 </child>
                                 <child>
                                   <object class="GtkScrolledWindow" id="scrolledwindow13">
+                                    <property name="name">settings</property>
                                     <property name="visible">True</property>
                                     <property name="can-focus">True</property>
                                     <property name="margin-top">4</property>
@@ -1562,6 +1563,7 @@ When the specified resolution is not found, the best available resolution is use
                                 </child>
                                 <child>
                                   <object class="GtkBox" id="vbox8">
+                                    <property name="name">channel</property>
                                     <property name="visible">True</property>
                                     <property name="can-focus">False</property>
                                     <property name="margin-top">4</property>
@@ -1838,6 +1840,7 @@ When the specified resolution is not found, the best available resolution is use
                                 </child>
                                 <child>
                                   <object class="GtkScrolledWindow" id="scrolledwindow8">
+                                    <property name="name">categories</property>
                                     <property name="visible">True</property>
                                     <property name="can-focus">True</property>
                                     <property name="margin-top">4</property>
@@ -1902,6 +1905,7 @@ When the specified resolution is not found, the best available resolution is use
                                 </child>
                                 <child>
                                   <object class="GtkScrolledWindow" id="scrolledwindow7">
+                                    <property name="name">playlists</property>
                                     <property name="visible">True</property>
                                     <property name="can-focus">True</property>
                                     <property name="margin-top">4</property>
