@@ -773,14 +773,14 @@ usage: $execname [options] ([url] | [keywords])
        --pid=s           : list a playlist of videos by playlist ID
        --pp=s,s          : play the videos from the given playlist IDs
 
-* Trending
+ * Trending
    --trending:s       : show trending videos in a given category
                         valid categories: music gaming news movies popular
 
  * Channels
    -sc --channels     : search for YouTube channels
 
-* Comments
+ * Comments
    --comments=s         : display comments for a video by ID or URL
    --comments-order=s   : change the order of YouTube comments
                           valid values: relevance, time
@@ -823,7 +823,7 @@ usage: $execname [options] ([url] | [keywords])
    -L  --likes           : show the videos that you liked
    -D  --dislikes        : show the videos that you disliked
 
-* Save local
+ * Save local
    --save=s             : save a given channel ID or username in -lc
    --subscribe=s        : subscribe to a given channel ID or username
    --favorite=s         : favorite a video by URL or ID
@@ -906,7 +906,7 @@ usage: $execname [options] ([url] | [keywords])
        --escape-info!   : quotemeta() the fields of the `--extract`
        --use-colors!    : enable or disable the ANSI colors for text
 
-* Formatting
+ * Formatting
     --custom-layout=s          : custom layout format for videos
     --custom-channel-layout=s  : custom layout format for channels
     --custom-playlist-layout=s : custom layout format for playlists
