@@ -307,9 +307,7 @@ my %CONFIG = (
 
     entry_completion_limit => 10,
     local_playlist_limit   => -1,
-
-    cache_thumbnails        => 1,
-    cache_thumbnails_format => 'jpeg',
+    cache_thumbnails       => 1,
 
     # Save titles
     save_titles_to_history  => 0,
@@ -2672,7 +2670,7 @@ sub fit_to_dimensions {
     my ($width, $height, $max_width, $max_height) = @_;
     my $scale = min($max_width / $width, $max_height / $height);
     if ($scale < 1.0) {
-        $width *= $scale;
+        $width  *= $scale;
         $height *= $scale;
     }
     return ($width, $height);
@@ -2703,11 +2701,12 @@ sub get_pixbuf_thumbnail_from_content {
 
         $pixbufloader->signal_connect(
             'size-prepared' => sub {
-            my ($loader, $width, $height) = @_;
-            my ($fit_width, $fit_height) = fit_to_dimensions($width, $height, $xsize, $ysize);
-            my $resized = $fit_width != $width || $fit_height != $height;
-            $loader->set_size($fit_width, $fit_height) if $resized;
-        });
+                my ($loader, $width, $height) = @_;
+                my ($fit_width, $fit_height) = fit_to_dimensions($width, $height, $xsize, $ysize);
+                my $resized = $fit_width != $width || $fit_height != $height;
+                $loader->set_size($fit_width, $fit_height) if $resized;
+            }
+        );
 
         eval {
             $pixbufloader->write($thumbnail);
@@ -3158,6 +3157,7 @@ sub get_thumbnail_info {
     my $url = $thumb->{url};
 
     if (defined $url) {
+
         # Clean URL of trackers and other junk
         $url =~ s/\.(?:jpg|png|webp)\K\?.*//;
 
@@ -4278,7 +4278,7 @@ EOT
     if ($opt{extra_info}) {
 
         # Getting thumbs (start, middle, end).
-        foreach my $nr (1..3) {
+        foreach my $nr (1 .. 3) {
 
             my ($url, $xsize, $ysize) = get_thumbnail_info($info, 320, 180);
             my $widget = $gui->get_object("image$nr");
