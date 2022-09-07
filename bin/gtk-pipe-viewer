@@ -3168,7 +3168,7 @@ sub set_thumbnail {
     my ($entry, $liststore, $iter) = @_;
 
     my ($url, $xsize, $ysize) = get_thumbnail_info($entry);
-    $liststore->set($iter, [1], [$default_thumb]);
+    $liststore->set($iter, [1, 10, 11], [$default_thumb, $xsize, $ysize]);
 
     Glib::Idle->add(
         sub {
