@@ -85,8 +85,7 @@ my %valid_options = (
     },
     region => {valid => qr/^[A-Z]{2}\z/i, default => undef},
 
-    comments_order      => {valid => [qw(top new)],                       default => 'top'},
-    subscriptions_order => {valid => [qw(alphabetical relevance unread)], default => undef},
+    comments_order => {valid => [qw(top new)], default => 'top'},
 
     # Misc
     debug       => {valid => [0 .. 3],   default => 0},
