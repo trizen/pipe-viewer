@@ -68,30 +68,6 @@ sub trending_videos_from_category {
     return $self->_get_results($self->_make_feed_url('trending', (defined($category) ? (type => $category) : ())));
 }
 
-=head2 my_likes()
-
-Get the videos liked by the authenticated user.
-
-=cut
-
-sub my_likes {
-    my ($self) = @_;
-    $self->get_access_token() // return;
-    $self->_get_results($self->_make_videos_url(myRating => 'like', pageToken => $self->page_token));
-}
-
-=head2 my_dislikes()
-
-Get the videos disliked by the authenticated user.
-
-=cut
-
-sub my_dislikes {
-    my ($self) = @_;
-    $self->get_access_token() // return;
-    $self->_get_results($self->_make_videos_url(myRating => 'dislike', pageToken => $self->page_token));
-}
-
 =head2 send_rating_to_video($videoID, $rating)
 
 Send rating to a video. $rating can be either 'like' or 'dislike'.
