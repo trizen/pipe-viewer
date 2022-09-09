@@ -565,6 +565,8 @@ do {
 my @valid_keys = grep { exists $CONFIG{$_} } keys %{$CONFIG};
 @CONFIG{@valid_keys} = @{$CONFIG}{@valid_keys};
 
+my $DEBUG = $CONFIG{debug};
+
 # Define the cache directory
 if (not defined $CONFIG{cache_dir}) {
 
@@ -1239,7 +1241,7 @@ sub get_treeview_popup_menu {
                 $item->set_property(tooltip_text => "Save the video in the playlist of favorite videos");
                 $item->signal_connect(
                     activate => sub {
-                        say(":: Favorite video: ", $yv_utils->get_title($video_data)) if $yv_obj->get_debug;
+                        say(":: Favorite video: ", $yv_utils->get_title($video_data)) if $DEBUG;
                         prepend_video_data_to_file($video_data, $favorite_videos_data_file);
                     }
                 );
@@ -1271,7 +1273,7 @@ sub get_treeview_popup_menu {
                 $item->set_property(tooltip_text => "Save video in the playlist of liked videos");
                 $item->signal_connect(
                     activate => sub {
-                        say(":: Liking video: ", $yv_utils->get_title($video_data)) if $yv_obj->get_debug;
+                        say(":: Liking video: ", $yv_utils->get_title($video_data)) if $DEBUG;
                         prepend_video_data_to_file($video_data, $liked_videos_data_file);
                     }
                 );
@@ -1286,7 +1288,7 @@ sub get_treeview_popup_menu {
                 $item->set_property(tooltip_text => "Save video in the playlist of disliked videos");
                 $item->signal_connect(
                     activate => sub {
-                        say(":: Disliking video: ", $yv_utils->get_title($video_data)) if $yv_obj->get_debug;
+                        say(":: Disliking video: ", $yv_utils->get_title($video_data)) if $DEBUG;
                         prepend_video_data_to_file($video_data, $disliked_videos_data_file);
                     }
                 );
@@ -2074,7 +2076,7 @@ sub save_channel {
     die unless $yv_utils->is_channelID($channel_id) and $channel_name =~ /\S/;
 
     if ($args{subscribe} and not exists($subscribed_channels{$channel_id})) {
-        say ":: Subscribed channel: $channel_name [$channel_id]" if $yv_obj->get_debug;
+        say ":: Subscribed channel: $channel_name [$channel_id]" if $DEBUG;
         $subscribed_channels{$channel_id} = $channel_name;
         write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
     }
@@ -2086,7 +2088,7 @@ sub save_channel {
     }
 
     # Save channel to file
-    say ":: Saving channel: $channel_name [$channel_id]" if $yv_obj->get_debug;
+    say ":: Saving channel: $channel_name [$channel_id]" if $DEBUG;
     $channels{$channel_id} = $channel_name;
     write_channels_to_file(\%channels, $CONFIG{saved_channels_file});
     set_usernames();
@@ -2345,7 +2347,7 @@ sub get_code {
                             require MIME::Base64;
                             require IO::Uncompress::RawInflate;
                         };
-                        say STDERR ":: Decompressing JSON data with RawInflate..." if $yv_obj->get_debug;
+                        say STDERR ":: Decompressing JSON data with RawInflate..." if $DEBUG;
                         IO::Uncompress::RawInflate::rawinflate(\MIME::Base64::decode_base64($json_data), \my $buffer)
                           or die "rawinflate failed: $IO::Uncompress::RawInflate::RawInflateError\n";
                         $json_data = $buffer;
@@ -2569,7 +2571,7 @@ sub get_results_from_list {
         };
 
         if ($has_rawdeflate) {
-            say STDERR ":: Compressing JSON data with RawDeflate..." if $yv_obj->get_debug;
+            say STDERR ":: Compressing JSON data with RawDeflate..." if $DEBUG;
             IO::Compress::RawDeflate::rawdeflate(\$json_str, \my $json_raw_deflate)
               or die "rawdeflate failed: $IO::Compress::RawDeflate::RawDeflateError\n";
             $results{continuation} = 'json-deflate ' . MIME::Base64::encode_base64($json_raw_deflate);
@@ -3220,7 +3222,7 @@ sub prepend_video_data_to_file {
     @$videos = grep { !$seen{$yv_utils->get_video_id($_)}++ } @$videos;
 
     if ($CONFIG{local_playlist_limit} > 0 and scalar(@$videos) > $CONFIG{local_playlist_limit}) {
-        if ($yv_obj->get_debug) {
+        if ($DEBUG) {
             say STDERR ":: Resizing the playlist <<$file>> from $#$videos+1 to $CONFIG{local_playlist_limit} entries.";
         }
         $#$videos = $CONFIG{local_playlist_limit} - 1;
@@ -3240,7 +3242,7 @@ sub save_watched_video {
 
     if ($CONFIG{watch_history}) {
 
-        say ":: Saving video <<$video_id>> to watch history..." if ($yv_obj->get_debug);
+        say ":: Saving video <<$video_id>> to watch history..." if $DEBUG;
 
         if (not exists($WATCHED_VIDEOS{$video_id})) {
 
@@ -3277,7 +3279,7 @@ sub play_video {
 
     my $command = get_player_command($streaming, $video);
 
-    if ($yv_obj->get_debug) {
+    if ($DEBUG) {
         say "-> Resolution: $streaming->{resolution}";
         say "-> Video itag: $streaming->{streaming}{itag}";
         say "-> Audio itag: $streaming->{streaming}{__AUDIO__}{itag}" if exists $streaming->{streaming}{__AUDIO__};
@@ -3367,13 +3369,13 @@ sub execute_external_program {
 
     if ($CONFIG{prefer_fork} and defined(my $pid = fork())) {
         if ($pid == 0) {
-            say "** Forking process: $cmd" if $yv_obj->get_debug;
+            say "** Forking process: $cmd" if $DEBUG;
             $yv_obj->proxy_exec($cmd);
         }
         return 0;
     }
     else {
-        say "** Backgrounding process: $cmd" if $yv_obj->get_debug;
+        say "** Backgrounding process: $cmd" if $DEBUG;
         $yv_obj->proxy_system($cmd . ' &');
         return $?;
     }
@@ -3414,7 +3416,7 @@ sub open_external_url {
 
 sub enqueue_video {
     my $video_id = get_selected_entry_code(type => 'video') // return;
-    print "[*] Added: <$video_id>\n" if $yv_obj->get_debug;
+    print "[*] Added: <$video_id>\n" if $DEBUG;
     push @VIDEO_QUEUE, $video_id;
     return 1;
 }
@@ -3465,7 +3467,7 @@ sub execute_cli_pipe_viewer {
                       );
     my $code = execute_external_program($command);
 
-    say $command if $yv_obj->get_debug;
+    say $command if $DEBUG;
 
     if ($code != 0) {
         warn "pipe-viewer - exit code: $code\n";
@@ -3658,7 +3660,7 @@ sub save_session {
     my @left  = @results[max(0, $curr - $max) .. $curr - 1];
     my @right = @results[$curr + 1 .. min($#results, $curr + $max)];
 
-    if ($yv_obj->get_debug) {
+    if ($DEBUG) {
         say "Session total: ", scalar(@results);
         say "Session left : ", scalar(@left);
         say "Session right: ", scalar(@right);
@@ -3678,14 +3680,14 @@ sub save_session {
     # Keep only thumbnails that have been accessed in the past 3 days
     my @keys = grep { time - $THUMBNAILS_CACHE->{$_}{timestamp} <= 259200 } keys %{$THUMBNAILS_CACHE};
 
-    if ($yv_obj->get_debug) {
+    if ($DEBUG) {
         say "[1] Cached thumbnails: ", scalar keys %{$THUMBNAILS_CACHE};
     }
 
     my %common_thumbnails;
     @common_thumbnails{@keys} = @{$THUMBNAILS_CACHE}{@keys};
 
-    if ($yv_obj->get_debug) {
+    if ($DEBUG) {
         say "[2] Cached thumbnails: ", scalar keys %common_thumbnails;
     }
 
