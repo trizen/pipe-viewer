@@ -944,8 +944,9 @@ if (not defined $CONFIG{terminal}) {
 }
 
 my %ResultsHistory = (
-                      current => -1,
-                      results => [],
+                      current  => -1,
+                      results  => [],
+                      position => [],
                      );
 
 # Locate CLI pipe-viewer
@@ -2768,6 +2769,18 @@ sub display_subscription_videos {
     display_results(get_subscription_video_results());
 }
 
+sub save_search_results_position {
+    my $position = $treeview->get_vadjustment->get_value;
+    $ResultsHistory{position}[$ResultsHistory{current}] = $position;
+    return;
+}
+
+sub restore_search_results_position {
+    my $position = $ResultsHistory{position}[$ResultsHistory{current}] // 0;
+    $treeview->get_vadjustment->set_value($position);
+    return;
+}
+
 sub display_results {
     my ($results, $from_history) = @_;
 
@@ -3753,6 +3766,8 @@ sub save_session {
     my $curr        = $ResultsHistory{current};
     my $curr_result = $ResultsHistory{results}[$curr] // return;
 
+    save_search_results_position();
+
     my @results = @{$ResultsHistory{results}};
 
     my $max   = $CONFIG{remember_session_depth};
@@ -3803,6 +3818,7 @@ sub add_results_to_history {
 
 sub display_previous_results {
     if ($ResultsHistory{current} > 0) {
+        save_search_results_position();
         $ResultsHistory{current}--;
         display_relative_results($ResultsHistory{current});
     }
@@ -3810,6 +3826,7 @@ sub display_previous_results {
 
 sub display_next_results {
     if ($ResultsHistory{current} < $#{$ResultsHistory{results}}) {
+        save_search_results_position();
         $ResultsHistory{current}++;
         display_relative_results($ResultsHistory{current});
     }
@@ -3820,6 +3837,19 @@ sub display_relative_results {
     my $results_copy = $ResultsHistory{results}[$nth_item];
     display_results($results_copy, 1);
     set_prev_next_results_sensitivity();
+    # Restore vertical scrolling position: first reset it to zero,
+    # and wait for the `size-allocate` signal before restoring the
+    # final position, as the vertical adjustment is not yet properly
+    # configured for the new list size.
+    $treeview->get_vadjustment->set_value(0);
+    my $connection;
+    $connection = $treeview->signal_connect(
+        'size-allocate',
+        sub {
+            $treeview->signal_handler_disconnect($connection);
+            restore_search_results_position();
+        }
+    );
 }
 
 sub set_prev_next_results_sensitivity {
