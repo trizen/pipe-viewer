@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  pipe-viewer
 #  Fork: 30 October 2020
-#  Edit: 12 August 2022
+#  Edit: 09 September 2022
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -49,7 +49,7 @@ use Cwd qw(abs_path);
 my $DEVEL;
 use if ($DEVEL = -w __FILE__), lib => abs_path(__FILE__ . '/../../lib');
 
-use WWW::PipeViewer v0.2.3;
+use WWW::PipeViewer v0.3.0;
 use WWW::PipeViewer::RegularExpressions;
 
 require Storable;
@@ -342,7 +342,6 @@ my $other_options = <<'OTHER';
 :refresh          : refresh the current list of results
 :dv=i             : display the data structure of result i
 -argv -argv2=v    : apply some arguments (e.g.: -u=google)
-:reset, :reload   : restart the application
 :q, :quit, :exit  : close the application
 OTHER
 
@@ -2151,11 +2150,7 @@ sub general_options {
         }
     }
     elsif ($option =~ /^(?:R|refresh)\z/ and defined($url)) {
-        @{$results} = @{$yv_obj->_get_results($url)->{results}};
-    }
-    elsif ($option =~ /^(?:reset|reload|restart)\z/) {
-        @ARGV = ();
-        do $0;
+        ##@{$results} = @{$yv_obj->_get_results($url)->{results}};
     }
     elsif ($option =~ /^dv${digit_or_equal_re}(.*)/ and ref($results) eq 'ARRAY') {
         if (my @nums = get_valid_numbers($#{$results}, $1)) {
@@ -4207,8 +4202,7 @@ sub print_videos {
 
             # :refresh
             elsif ($opt =~ /^(?:R|refresh)\z/) {
-                @{$videos} = @{$yv_obj->_get_results($url)->{results}};
-                $results->{has_extra_info} = 0;
+                ##@{$videos} = @{$yv_obj->_get_results($url)->{results}};
             }
 
             # :r, :return
