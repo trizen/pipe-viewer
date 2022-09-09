@@ -35,8 +35,11 @@ my $DEVEL;
 use if ($DEVEL = -w __FILE__), lib => abs_path(__FILE__ . '/../../lib');
 
 use WWW::PipeViewer v0.3.1;
+use WWW::PipeViewer::DiskCache;
 use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::RegularExpressions;
+use WWW::PipeViewer::Utils;
+use WWW::PipeViewer::Worker;
 
 use Gtk3                  qw(-init);
 use File::Spec::Functions qw(
@@ -106,7 +109,6 @@ my $saved_channels_file      = catfile($config_dir, 'users.txt');
 my $subscribed_channels_file = catfile($config_dir, 'subscribed_channels.txt');
 my $history_file             = catfile($config_dir, 'gtk-history.txt');
 my $session_file             = catfile($config_dir, 'session.dat');
-my $thumbnails_file          = catfile($config_dir, 'thumbnails.dat');
 my $watched_file             = catfile($config_dir, 'watched.txt');
 
 # Special local playlists
@@ -137,9 +139,6 @@ my @VIDEO_QUEUE;
 
 # Keep track of watched videos
 my %WATCHED_VIDEOS;
-
-# Cache for thumbnails
-my $THUMBNAILS_CACHE = {};
 
 sub which_command {
     my ($cmd) = @_;
@@ -370,6 +369,8 @@ my %objects = (
     'details_window'   => \my $details_window,
     'details_flowbox1' => \my $details_flowbox1,
     'details_flowbox2' => \my $details_flowbox2,
+    'details_spinner'  => \my $details_spinner,
+    'details_title'    => \my $details_title,
 
     # Others
     'treeview1'              => \my $users_treeview,
@@ -404,6 +405,7 @@ my %objects = (
     'feeds_title'            => \my $feeds_title,
     'main-menu-history-menu' => \my $history_menu,
     'features_flowbox'       => \my $features_flowbox,
+    'progressbar'            => \my $progressbar,
               );
 
 while (my ($key, $value) = each %objects) {
@@ -589,6 +591,9 @@ foreach my $path ($CONFIG{cache_dir}) {
     eval { File::Path::make_path($path) }
       or warn "[!] Can't create path <<$path>>: $!";
 }
+
+# Initialize the thumbnails' cache.
+my $THUMBNAILS_CACHE = WWW::PipeViewer::DiskCache->new($CONFIG{cache_dir}, '.thumb');
 
 # Expected thumbnail size
 my @THUMBNAILS_SIZE = split(/x/i, $CONFIG{thumbnail_size}, 2);
@@ -944,24 +949,17 @@ my %ResultsHistory = (
 $CONFIG{pipe_viewer} //= which_command('pipe-viewer') // 'pipe-viewer';
 
 my $yv_obj = WWW::PipeViewer->new(
-                                  escape_utf8 => 1,
-                                  config_dir  => $config_dir,
-                                  ytdl        => $CONFIG{ytdl},
-                                  ytdl_cmd    => $CONFIG{ytdl_cmd},
-                                  env_proxy   => $CONFIG{env_proxy},
-                                  cache_dir   => $CONFIG{cache_dir},
-                                  cookie_file => $CONFIG{cookie_file},
-                                  user_agent  => $CONFIG{user_agent},
-                                  timeout     => $CONFIG{timeout},
-                                 );
+    cache_dir  => $CONFIG{cache_dir},
+    env_proxy  => $CONFIG{env_proxy},
+    http_proxy => $CONFIG{http_proxy},
+);
 
-require WWW::PipeViewer::Utils;
 my $yv_utils = WWW::PipeViewer::Utils->new(
-                                           youtube_video_url_format => $CONFIG{youtube_video_url},
-                                           youtube_channel_url_format => $CONFIG{youtube_channel_url},
-                                           youtube_playlist_url_format => $CONFIG{youtube_playlist_url},
-                                           thousand_separator => $CONFIG{thousand_separator},
-                                           );
+    youtube_video_url_format    => $CONFIG{youtube_video_url},
+    youtube_channel_url_format  => $CONFIG{youtube_channel_url},
+    youtube_playlist_url_format => $CONFIG{youtube_playlist_url},
+    thousand_separator          => $CONFIG{thousand_separator},
+);
 
 # Spin button start with page
 $spin_start_with_page->set_value(1);
@@ -983,17 +981,6 @@ sub apply_combobox_configuration {
     }
 }
 
-sub apply_yt_option {
-    my ($option_name, $value) = @_;
-
-    my $setter    = "set_$option_name";
-    my $set_value = $yv_obj->$setter($value);
-
-    if (defined $value && $value ne ($set_value // '')) {
-        warn "[!] Invalid value <", $value // 'undef', "> for option <$option_name>.\n";
-    }
-}
-
 sub apply_configuration {
 
     # Fullscreen mode
@@ -1006,21 +993,6 @@ sub apply_configuration {
     $dash_checkbutton->set_active($CONFIG{dash});
 
     $clear_list_checkbutton->set_active($CONFIG{clear_search_list});
-
-    foreach my $option_name (
-                             qw(
-                             maxResults
-                             region debug http_proxy user_agent
-                             timeout cookie_file ytdl ytdl_cmd
-                             api_host prefer_mp4 prefer_av1
-                             comments_order prefer_invidious
-                             force_fallback ytdlp_comments
-                             ytdlp_max_comments ytdlp_max_replies
-                             bypass_age_gate_with_proxy
-                             )
-      ) {
-        apply_yt_option($option_name, $CONFIG{$option_name});
-    }
 
     # Maximum number of results per page
     $spin_results->set_value($CONFIG{maxResults});
@@ -1096,7 +1068,6 @@ foreach my $pair (
         'toggled',
         sub {
             toggle_features($button->get_active, $feat);
-            $yv_obj->set_features(\@FEATURES);
         }
     );
     $button->set_active(any { $feat eq $_ } @FEATURES);
@@ -1372,7 +1343,7 @@ sub get_treeview_popup_menu {
         # Most popular uploads from this author
         {
             my $item = 'Gtk3::ImageMenuItem'->new("Popular");
-            $item->signal_connect(activate => sub { popular_uploads('channel', $channel_id) });
+            $item->signal_connect(activate => sub { popular_uploads($channel_id) });
             $item->set_property(tooltip_text => "Show the most popular videos from this author");
             $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-videos-symbolic", q{menu}));
             $item->show;
@@ -1470,22 +1441,7 @@ sub get_treeview_popup_menu {
         # Play as audio
         {
             my $item = 'Gtk3::ImageMenuItem'->new("Play as audio");
-            $item->signal_connect(
-                activate => sub {
-                    my ($id, $iter) = get_selected_entry_code();
-                    my $type = $liststore->get($iter, 7);
-                    if (defined($id) and $type eq 'video') {
-                        if (execute_cli_pipe_viewer("--id=$id --no-video")) {
-                            my $video_data = parse_json_string($liststore->get($iter, 8));
-                            save_watched_video($id, $video_data);
-                            highlight_watched_video($liststore, $iter);
-                        }
-                    }
-                    elsif (defined($id) and $type eq 'playlist') {
-                        execute_cli_pipe_viewer("--pp=$id --no-video");
-                    }
-                }
-            );
+            $item->signal_connect(activate => sub { play_with_cli_pipe_viewer(audio_only => 1) });
             $item->set_property(tooltip_text => "Play as audio in a new terminal");
             $item->set_image('Gtk3::Image'->new_from_icon_name("audio-headphones", q{menu}));
             $item->show;
@@ -1495,7 +1451,7 @@ sub get_treeview_popup_menu {
         # Play with CLI pipe-viewer
         {
             my $item = 'Gtk3::ImageMenuItem'->new("Play in terminal");
-            $item->signal_connect(activate => \&play_selected_video_with_cli_pipe_viewer);
+            $item->signal_connect(activate => sub { play_with_cli_pipe_viewer() });
             $item->set_property(tooltip_text => "Play with pipe-viewer in a new terminal");
             $item->set_image('Gtk3::Image'->new_from_icon_name("computer", q{menu}));
             $item->show;
@@ -1652,6 +1608,144 @@ $mainw->signal_connect(
     }
 );
 
+# ---------------- Worker setup ------------------------------- #
+
+my $worker = WWW::PipeViewer::Worker->new(max(0, $DEBUG - 1));
+
+{
+    my %config = (
+        config_dir  => $config_dir,
+        debug       => $DEBUG,
+        escape_utf8 => 1,
+    );
+
+    foreach my $option_name (qw(
+        api_host bypass_age_gate_with_proxy cache_dir comments_order
+        cookie_file debug env_proxy force_fallback http_proxy prefer_av1
+        prefer_invidious prefer_mp4 region timeout user_agent ytdl ytdl_cmd
+        ytdlp_comments ytdlp_max_comments ytdlp_max_replies
+    )) {
+        $config{$option_name} = $CONFIG{$option_name};
+    }
+
+    $worker->send_request(sub {}, 'setup', \%config);
+    $worker->process_next_reply();
+}
+
+my $worker_watch = Glib::IO->add_watch($worker->fileno(), ['in'], sub {
+    eval { $worker->process_next_reply() };
+    return 1;
+});
+
+# ---------------- Requests handling -------------------------- #
+
+# Request priorities (lower value -> higher priority).
+use constant {
+    REQUEST_PRIORITY_INFO           => 0,
+    REQUEST_PRIORITY_COMMENTS       => 1,
+    REQUEST_PRIORITY_DETAILS        => 1,
+    REQUEST_PRIORITY_DETAILS_THUMBS => 2,
+    REQUEST_PRIORITY_SEARCH         => 3,
+    REQUEST_PRIORITY_RESULTS_THUMBS => 4,
+};
+
+my $search_request;
+my $results_thumbs_request;
+my $details_request;
+my $details_thumbs_request;
+my $comments_request;
+
+my $progress_timer;
+
+sub start_spinning {
+    $progressbar->pulse();
+    $progressbar->set_text('');
+    $progressbar->set_sensitive(1);
+    $progress_timer = Glib::Timeout->add(
+        80,
+        sub {
+            $progressbar->pulse();
+            return 1;
+        }
+    );
+}
+
+sub stop_spinning {
+    if ($progress_timer) {
+        Glib::Source->remove($progress_timer);
+        $progress_timer = undef;
+    }
+    $progressbar->set_fraction(0.0);
+    $progressbar->set_sensitive(0);
+    $progressbar->set_text('');
+}
+
+sub clear_search_requests {
+    $worker->abort_requests($search_request, $results_thumbs_request);
+    $search_request = $results_thumbs_request = undef;
+    stop_spinning();
+    return;
+}
+
+sub send_search_request {
+    my ($error_message, $method, $args, %options) = @_;
+    save_search_results_position();
+    clear_search_requests();
+    start_spinning();
+    $worker->abort_requests($search_request);
+    $search_request = $worker->send_request(
+        sub {
+            my ($result, $request) = @_;
+            $search_request = undef;
+            stop_spinning();
+            die "$error_message\n" unless ($yv_utils->has_entries($result));
+            display_results($result);
+        },
+        $method,
+        $args,
+        %options,
+        priority => REQUEST_PRIORITY_SEARCH,
+    );
+    return;
+}
+
+sub fetch_thumbnails {
+    my ($setter, $thumbnails, $request_ref, %request_options) = @_;
+    $worker->abort_requests($$request_ref);
+    return unless scalar @$thumbnails;
+    # Group by URL, and build request arguments.
+    my %thumbs_by_url;
+    my @request_args;
+    for my $thumb (@$thumbnails) {
+        if ($thumbs_by_url{$thumb->{url}}) {
+            push @{$thumbs_by_url{$thumb->{url}}}, $thumb;
+        }
+        else {
+            $thumbs_by_url{$thumb->{url}} = [$thumb];
+            push @request_args, {
+                url  => $thumb->{url},
+                path => $thumb->{path},
+            };
+        }
+    }
+    # Request missing thumbnails.
+    $$request_ref = $worker->send_request(
+        sub {
+            my ($url, $request) = @_;
+            unless ($request->{keep_alive}) {
+                $$request_ref = undef;
+            }
+            for my $thumb (@{delete $thumbs_by_url{$url}}) {
+                $setter->($thumb);
+            }
+        },
+        'fetch_multiple_thumbnails',
+        \@request_args,
+        %request_options
+    );
+    return;
+}
+
 # ---------------- Generic GTK signal handlers ---------------- #
 
 sub gtk_widget_show {
@@ -1715,6 +1809,23 @@ sub maximize_unmaximize_mainw {
       : $mainw->fullscreen;
 }
 
+sub reset_details_spinner {
+    $details_spinner->stop();
+    $details_spinner->{startcount} = 0;
+    return;
+}
+
+sub start_details_spinner {
+    $details_spinner->start() unless $details_spinner->{startcount}++;
+    return;
+}
+
+sub stop_details_spinner {
+    die unless $details_spinner->{startcount} >= 0;
+    $details_spinner->stop() unless --$details_spinner->{startcount};
+    return;
+}
+
 # Details window
 sub show_details_window {
     my ($code, $iter) = get_selected_entry_code();
@@ -1726,15 +1837,58 @@ sub show_details_window {
         return 1;
     }
 
+    reset_details_spinner();
+    $worker->abort_requests($details_request, $details_thumbs_request);
+    $details_request = $details_thumbs_request = undef;
+    set_entry_details($code, $iter);
     $details_window->show;
-    Glib::Idle->add(sub { set_entry_details($code, $iter); return 0 }, [], Glib::G_PRIORITY_LOW);
+
     return 1;
+}
+
+my $comments_spinner;
+
+sub start_comments_spinner {
+    die if $comments_spinner;
+    my $iter = $feeds_liststore->append;
+    my $timer = Glib::Timeout->add(
+        80,
+        sub {
+            state $pulse = 1;
+            $feeds_liststore->set($iter, [6], [++$pulse]);
+            return 1;
+        },
+    );
+    $feeds_liststore->set($iter, [5, 7], [$timer, 0]);
+    $comments_spinner = $iter;
+    return;
+}
+
+sub stop_comments_spinner {
+    return unless $comments_spinner;
+    Glib::Source->remove($feeds_liststore->get($comments_spinner, 5));
+    $feeds_liststore->remove($comments_spinner);
+    $comments_spinner = undef;
+    return;
 }
 
 sub set_comments {
     my $videoID = get_selected_entry_code(type => 'video') // return;
+    stop_comments_spinner();
     $feeds_liststore->clear;
-    display_comments($yv_obj->comments_from_video_id($videoID));
+    start_comments_spinner();
+    $worker->abort_requests($comments_request);
+    $comments_request = $worker->send_request(
+        sub {
+            my $results = $_[0];
+            stop_comments_spinner();
+            $comments_request = undef;
+            display_comments($results);
+        },
+        'comments_from_video_id',
+        [$videoID],
+        priority => REQUEST_PRIORITY_COMMENTS,
+    );
 }
 
 # Comments window
@@ -1747,19 +1901,8 @@ sub show_comments_window {
 
     $feeds_title->set_markup("<big>$video_title</big>");
     $feeds_title->set_tooltip_markup("$video_title");
-
-    $feeds_liststore->clear;
-
     $feeds_window->show;
-
-    Glib::Idle->add(
-        sub {
-            display_comments($yv_obj->comments_from_video_id($videoID));
-            return 0;
-        },
-        [],
-        Glib::G_PRIORITY_LOW
-    );
+    set_comments();
 
     return 1;
 }
@@ -1804,12 +1947,8 @@ sub delete_selected_row {
 # Combo boxes changes
 
 sub combobox_changed {
-    my ($combo, $option, $update_yt_option) = @_;
-    my $value = $combo->get_active_id;
-    $CONFIG{$option} = $value;
-    if ($update_yt_option) {
-        apply_yt_option($option, $value);
-    }
+    my ($combo, $option) = @_;
+    $CONFIG{$option} = $combo->get_active_id();
 }
 
 sub combobox_search_for_changed {
@@ -1817,7 +1956,7 @@ sub combobox_search_for_changed {
 }
 
 sub combobox_order_changed {
-    combobox_changed($order_combobox, "order", 1);
+    combobox_changed($order_combobox, "order");
 }
 
 sub combobox_resolution_changed {
@@ -1825,21 +1964,16 @@ sub combobox_resolution_changed {
 }
 
 sub combobox_duration_changed {
-    combobox_changed($duration_combobox, "videoDuration", 1);
+    combobox_changed($duration_combobox, "videoDuration");
 }
 
 sub combobox_published_within_changed {
-    combobox_changed($published_within_combobox, "date", 1);
+    combobox_changed($published_within_combobox, "date");
 }
 
 # Spin buttons changes
 sub spin_results_per_page_changed {
-    $yv_obj->set_maxResults($CONFIG{maxResults} = $spin_results->get_value);
-}
-
-# Page number
-sub spin_start_with_page_changed {
-    $yv_obj->set_page($spin_start_with_page->get_value);
+    $CONFIG{maxResults} = $spin_results->get_value();
 }
 
 # Clear search list
@@ -2196,20 +2330,12 @@ sub videos_from_saved_channel {
 }
 
 sub popular_uploads {
-    my ($type, $channel) = @_;
-
-    if ($type =~ /^user/) {
-        $channel = $yv_obj->channel_id_from_username($channel) // die "Invalid username <<$channel>>\n";
-    }
-
-    my $results = $yv_obj->popular_videos($channel);
-
-    if ($yv_utils->has_entries($results)) {
-        display_results($results);
-    }
-    else {
-        die "No popular uploads for channel: <<$channel>>\n";
-    }
+    my ($channel_id) = @_;
+    send_search_request(
+        "No popular uploads for channel: <<$channel_id>>",
+        'popular_videos', [$channel_id]
+    );
+    return;
 }
 
 sub get_selected_entry_code {
@@ -2229,13 +2355,17 @@ sub check_keywords {
     my ($key) = @_;
 
     if ($key =~ /$get_video_id_re/o) {
-        my $info = $yv_obj->video_details($+{video_id});
-        if (ref($info) eq 'HASH' and keys %$info) {
-            play_video($info) || return;
-        }
-        else {
-            return;
-        }
+        $worker->send_request(
+            sub {
+                my ($info) = @_;
+                if (ref($info) eq 'HASH' and keys %$info) {
+                    play_video($info);
+                }
+            },
+            'video_details',
+            [$+{video_id}],
+            priority => REQUEST_PRIORITY_INFO,
+        );
     }
     elsif ($yv_utils->is_channelID($key)) {
         list_channel_videos($key);
@@ -2272,23 +2402,20 @@ sub search {
         append_to_history($keywords, 1);
     }
 
-    # Set the username
-    my $username = $from_author_entry->get_text;
-
-    if ($username =~ /^[\w\-]+\z/) {
-        my $id = $username;
-
-        if (not $yv_utils->is_channelID($id)) {
-            $id = $yv_obj->channel_id_from_username($id) // undef;
+    send_search_request(
+        "No results for: $keywords",
+        'search_for',
+        [$CONFIG{search_for}, $keywords],
+        config => {
+            'channelId'     => $from_author_entry->get_text() || undef,
+            'date'          => $CONFIG{date},
+            'features'      => $CONFIG{features},
+            'maxResults'    => $CONFIG{maxResults},
+            'order'         => $CONFIG{order},
+            'page'          => $spin_start_with_page->get_value(),
+            'videoDuration' => $CONFIG{videoDuration},
         }
-
-        $yv_obj->set_channelId($id);
-    }
-    else {
-        $yv_obj->set_channelId();
-    }
-
-    display_results($yv_obj->search_for($CONFIG{search_for}, $keywords));
+    );
 
     return 1;
 }
@@ -2322,70 +2449,71 @@ sub get_code {
 
     $code // return;
 
-    Glib::Idle->add(
-        sub {
-            my ($code, $iter) = @{$_[0]};
+    my $type = $liststore->get($iter, 7);
 
-            my $type = $liststore->get($iter, 7);
+    if ($type eq 'playlist') {
+        list_playlist($code);
+        return;
+    }
 
-            if ($type eq 'playlist') {
-                list_playlist($code);
-            }
-            elsif ($type eq 'channel') {
-                list_channel_videos($code);
-            }
-            elsif ($type eq 'next_page' and $code ne '') {
+    if ($type eq 'channel') {
+        list_channel_videos($code);
+        return;
+    }
 
-                my $results;
-                my $next_page_token = $liststore->get($iter, 5);
+    if ($type eq 'video') {
+        if ($CONFIG{audio_only}) {
+            execute_cli_pipe_viewer("--id=$code")
+              && highlight_watched_video($liststore, $iter);
+        } else {
+            play_video(parse_json_string($liststore->get($iter, 8)), $iter);
+        }
+        return;
+    }
 
-                if (substr($next_page_token, 0, 4) eq 'json') {
-                    my ($format, $json_data) = split(' ', $next_page_token, 2);
+    if ($type ne 'next_page' or $code eq '') {
+        return;
+    }
 
-                    if ($format eq 'json-deflate') {
-                        state $has_rawinflate = do {
-                            require MIME::Base64;
-                            require IO::Uncompress::RawInflate;
-                        };
-                        say STDERR ":: Decompressing JSON data with RawInflate..." if $DEBUG;
-                        IO::Uncompress::RawInflate::rawinflate(\MIME::Base64::decode_base64($json_data), \my $buffer)
-                          or die "rawinflate failed: $IO::Uncompress::RawInflate::RawInflateError\n";
-                        $json_data = $buffer;
-                    }
+    my $new_results;
+    my $next_page_token = $liststore->get($iter, 5);
 
-                    my $data = parse_json_string($json_data);
-                    $results = get_results_from_list(%$data);
-                }
-                else {
-                    $results = $yv_obj->next_page($code, $next_page_token);
-                }
+    if (substr($next_page_token, 0, 4) eq 'json') {
+        my ($format, $json_data) = split(' ', $next_page_token, 2);
 
-                if ($yv_utils->has_entries($results)) {
-                    my $label = '<big><b>' . ('=' x 20) . '</b></big>';
-                    $liststore->set($iter, 0 => $label, 3 => "");
-                }
-                else {
-                    $liststore->remove($iter);
-                    die "This is the last page!\n";
-                }
+        if ($format eq 'json-deflate') {
+            state $has_rawinflate = do {
+                require MIME::Base64;
+                require IO::Uncompress::RawInflate;
+            };
+            say STDERR ":: Decompressing JSON data with RawInflate..." if $DEBUG;
+            IO::Uncompress::RawInflate::rawinflate(\MIME::Base64::decode_base64($json_data), \my $buffer)
+              or die "rawinflate failed: $IO::Uncompress::RawInflate::RawInflateError\n";
+            $json_data = $buffer;
+        }
 
-                display_results($results);
-            }
-            elsif ($type eq 'video') {
-                if (
-                    $CONFIG{audio_only}
-                    ? execute_cli_pipe_viewer("--id=$code")
-                    : play_video(parse_json_string($liststore->get($iter, 8)))
-                  ) {
-                    highlight_watched_video($liststore, $iter);
-                }
-            }
+        my $data = parse_json_string($json_data);
+        $new_results = get_results_from_list(%$data);
+        unless ($yv_utils->has_entries($new_results)) {
+            $liststore->remove($iter);
+            die "No more results\n";
+        }
+    }
+    else {
+        send_search_request(
+            'No more results',
+            'next_page',
+            [$code, $next_page_token],
+            append => 1,
+        );
+    }
 
-            return 0;
-        },
-        [$code, $iter],
-        Glib::G_PRIORITY_LOW
-    );
+    my $label = '<big><b>' . ('=' x 20) . '</b></big>';
+    $liststore->set($iter, 0 => $label, 3 => "");
+
+    display_results($new_results) if $new_results;
+
+    return;
 }
 
 sub make_row_description {
@@ -2414,16 +2542,6 @@ sub append_next_page {
     return $iter;
 }
 
-sub lwp_get {
-    my ($url) = @_;
-
-    state %cache;
-
-    my $data = $cache{$url} // $yv_obj->lwp_get($url, simple => 1);
-    $cache{$url} = $data if defined($data);
-    return $data;
-}
-
 sub fit_to_dimensions {
     my ($width, $height, $max_width, $max_height) = @_;
     my $scale = min($max_width / $width, $max_height / $height);
@@ -2434,95 +2552,12 @@ sub fit_to_dimensions {
     return ($width, $height);
 }
 
-sub get_pixbuf_thumbnail_from_content {
-    my ($thumbnail, $url, $xsize, $ysize) = @_;
-
-    $thumbnail // return $default_thumb;
-
-    state %cache;
-
-    require Digest::MD5;
-    my $key = Digest::MD5::md5_hex($url);
-
-    if (exists $cache{$key}) {
-        return $cache{$key};
-    }
-
-    my $pixbuf;
-
-    if (defined $thumbnail) {
-
-        # Add/update thumbnails' cache entry.
-        add_thumbnail_to_cache($url, $thumbnail);
-
-        my $pixbufloader = 'Gtk3::Gdk::PixbufLoader'->new;
-
-        $pixbufloader->signal_connect(
-            'size-prepared' => sub {
-                my ($loader, $width, $height) = @_;
-                my ($fit_width, $fit_height) = fit_to_dimensions($width, $height, $xsize, $ysize);
-                my $resized = $fit_width != $width || $fit_height != $height;
-                $loader->set_size($fit_width, $fit_height) if $resized;
-            }
-        );
-
-        eval {
-            $pixbufloader->write($thumbnail);
-            $pixbufloader->close;
-            $pixbuf = $pixbufloader->get_pixbuf;
-        };
-    }
-
-    $pixbuf //= $default_thumb;
-    $cache{$key} = $pixbuf;
-
-    return $pixbuf;
-}
-
-sub add_thumbnail_to_cache {
-    my ($url, $data) = @_;
-
-    $data // return;
-
-    require Digest::MD5;
-    my $key = Digest::MD5::md5_hex($url);
-
-    $THUMBNAILS_CACHE->{$key}{data}      = $data;
-    $THUMBNAILS_CACHE->{$key}{timestamp} = time;
-
-    return 1;
-}
-
-sub get_thumbnail_from_cache {
-    my ($url) = @_;
-
-    require Digest::MD5;
-    my $key = Digest::MD5::md5_hex($url);
-
-    exists($THUMBNAILS_CACHE->{$key}) || return undef;
-
-    my $data = $THUMBNAILS_CACHE->{$key}{data};
-
-    if (defined($data)) {
-        $THUMBNAILS_CACHE->{$key}{timestamp} = time;    # update the cache hit timestamp
-    }
-
-    return $data;
-}
-
-sub get_pixbuf_thumbnail_from_url {
-    my ($url, $xsize, $ysize) = @_;
-
-    my $thumbnail = get_thumbnail_from_cache($url) // lwp_get($url);
-
-    if (not defined($thumbnail)) {
-        if ($url =~ s{/mq([0-9])\.}{/$1.}) {
-            $thumbnail = get_thumbnail_from_cache($url) // lwp_get($url);
-        }
-    }
-
-    my $pixbuf = get_pixbuf_thumbnail_from_content($thumbnail, $url, $xsize, $ysize);
-
+sub load_thumbnail {
+    my ($path, $width, $height) = @_;
+    my $pixbuf = Gtk3::Gdk::Pixbuf->new_from_file_at_size($path, $width, $height)
+      // return;
+    utime undef, undef, $path
+      or warn "[!] Can't touch path <<$path>>: $!";
     return $pixbuf;
 }
 
@@ -2530,11 +2565,11 @@ sub get_results_from_list {
     my (%args) = @_;
 
     $args{entries} //= [];
-    $args{page}    //= $yv_obj->get_page;
+    $args{page}    //= $spin_start_with_page->get_value();
 
     my @results = @{$args{entries}};
 
-    my $maxResults   = $yv_obj->get_maxResults;
+    my $maxResults   = $CONFIG{maxResults};
     my $totalResults = scalar(@results);
 
     if ($args{page} >= 1 and scalar(@results) >= $maxResults) {
@@ -2602,64 +2637,71 @@ sub videos_from_data_file {
     get_results_from_list(entries => $videos);
 }
 
-sub get_subscription_video_results {
-
-    state $t0 = time;
-    state $d0 = $t0;
-
-    # Reuse the subscription file if it's less than 10 minutes old
-    if (    $t0 != $d0
-        and (time - $t0 <= $CONFIG{subscriptions_lifetime})
-        and (-f $subscription_videos_data_file)
-        and (-M $subscription_videos_data_file) < ((-M $CONFIG{subscribed_channels_file}) // 0)) {
-        return videos_from_data_file($subscription_videos_data_file);
-    }
-
-    $t0 = time + 1;
+sub refresh_subscription_video_results {
 
     my @channels = $yv_utils->read_channels_from_file($CONFIG{subscribed_channels_file});
-
     if (not @channels) {
         warn "\n[!] No subscribed channels...\n";
         return get_results_from_list(entries => []);
     }
 
-    my %subscriptions;
+    my $channel_index = 0;
+    my $update_progress = sub {
+        $progressbar->set_text(sprintf(
+            "[%u/%u] Retrieving info for “%s”...",
+            $channel_index + 1,
+            scalar @channels,
+            $channels[$channel_index][1]
+        ));
+        $progressbar->set_fraction($channel_index / scalar @channels);
+    };
+
+    $progressbar->set_sensitive(1);
+    $update_progress->();
+
+    my @items;
+    my @request_args = map { $_->[0] } @channels;
+
+    $search_request = $worker->send_request(
+        sub {
+            my ($result, $request) = @_;
+            push @items, @{$yv_utils->get_entries($result)};
+            if ($request->{keep_alive}) {
+                ++$channel_index;
+                $update_progress->();
+            } else {
+                $search_request = undef;
+                $progressbar->set_fraction(1.0);
+                Glib::Idle->add(sub {
+                    update_subscriptions(\@items);
+                    display_subscription_videos(0);
+                    $progressbar->set_fraction(0.0);
+                    $progressbar->set_sensitive(0);
+                    $progressbar->set_text('');
+                }, [], Glib::G_PRIORITY_LOW);
+            }
+        },
+        'fetch_subscriptions',
+        \@request_args,
+        priority => REQUEST_PRIORITY_SEARCH,
+    );
+
+    return;
+}
+
+sub update_subscriptions {
+    my ($items) = @_;
 
     require Time::Piece;
     my $time = Time::Piece->new();
 
-    my @items;
-    foreach my $i (0 .. $#channels) {
+    my %subscriptions;
 
-        local $| = 1;
-        printf("[%d/%d] Retrieving info for $channels[$i][1]...\n", $i + 1, $#channels + 1);
-
-        my $id      = $channels[$i][0]      // next;
-        my $uploads = $yv_obj->uploads($id) // next;
-
-        my $videos = $uploads->{results} // [];
-
-        if (ref($videos) eq 'HASH' and exists $videos->{videos}) {
-            $videos = $videos->{videos};
-        }
-
-        if (ref($videos) eq 'HASH' and exists $videos->{entries}) {
-            $videos = $videos->{entries};
-        }
-
-        if (ref($videos) ne 'ARRAY') {
-            next;
-        }
-
-        $subscriptions{$id} = 1;
-        $subscriptions{lc($id)} = 1;
-
-        foreach my $video (@$videos) {
-            $video->{timestamp} = [@$time];
-        }
-
-        push @items, @$videos;
+    for my $video (@$items) {
+        my $channel_id = $yv_utils->get_channel_id($video);
+        $subscriptions{$channel_id} = 1;
+        $subscriptions{lc($channel_id)} = 1;
+        $video->{timestamp} = [@$time];
     }
 
     my $subscriptions_data = [];
@@ -2668,7 +2710,7 @@ sub get_subscription_video_results {
         $subscriptions_data = eval { Storable::retrieve($subscription_videos_data_file) } // [];
     }
 
-    unshift(@$subscriptions_data, @items);
+    unshift @$subscriptions_data, @$items;
 
     # Remove duplicates
     @$subscriptions_data = do {
@@ -2704,7 +2746,7 @@ sub get_subscription_video_results {
         Storable::store([grep { $yv_utils->get_time($_) ne 'LIVE' } @$subscriptions_data], $subscription_videos_data_file);
     }
 
-    get_results_from_list(entries => $subscriptions_data);
+    return;
 }
 
 sub get_watched_video_results {
@@ -2712,11 +2754,33 @@ sub get_watched_video_results {
 }
 
 sub display_watched_videos {
+    clear_search_requests();
     display_results(get_watched_video_results());
 }
 
 sub display_subscription_videos {
-    display_results(get_subscription_video_results());
+    my ($refresh) = @_;
+    $refresh //= 1;
+
+    clear_search_requests();
+
+    state $t0 = time;
+    state $d0 = $t0;
+
+    # Reuse the subscription file if it's less than 10 minutes old
+    if (    $t0 != $d0
+        and (time - $t0 <= $CONFIG{subscriptions_lifetime})
+        and (-f $subscription_videos_data_file)
+        and (-M $subscription_videos_data_file) < ((-M $CONFIG{subscribed_channels_file}) // 0)) {
+        display_results(videos_from_data_file($subscription_videos_data_file));
+        return;
+    }
+
+    $t0 = time + 1;
+
+    refresh_subscription_video_results() if $refresh;
+
+    return;
 }
 
 sub save_search_results_position {
@@ -2737,38 +2801,7 @@ sub display_results {
 
     my $url = $results->{url};
 
-    #my $info  = $results->{results} // {};
-    my $items = $results->{results} // [];
-
-    if (ref($items) eq 'HASH') {
-
-        if (exists $items->{videos}) {
-            $items = $items->{videos};
-        }
-        elsif (exists $items->{playlists}) {
-            $items = $items->{playlists};
-        }
-        elsif (exists $items->{channels}) {
-            $items = $items->{channels};
-        }
-        elsif (exists $items->{entries}) {
-            $items = $items->{entries};
-        }
-        else {
-            warn "No results...\n";
-        }
-    }
-
-    if (ref($items) ne 'ARRAY') {
-        die "Probably the selected invidious instance is down.\n"
-          . "\nTry changing the `api_host` in configuration file:\n\n"
-          . qq{\tapi_host => "auto",\n}
-          . qq{\nSee also: https://github.com/trizen/pipe-viewer#invidious-instances\n};
-    }
-
-    if (not $yv_utils->has_entries($results)) {
-        die "No results...\n";
-    }
+    my $items = $yv_utils->get_entries($results);
 
     $liststore->clear if $CONFIG{clear_search_list};
 
@@ -2776,14 +2809,17 @@ sub display_results {
         add_results_to_history($results) if not $from_history;
     }
 
+    my @missing_thumbs;
+
     foreach my $i (0 .. $#{$items}) {
         my $item = $items->[$i];
+        my $iter;
 
         if ($yv_utils->is_playlist($item)) {
-            add_playlist_entry($item);
+            $iter = add_playlist_entry($item);
         }
         elsif ($yv_utils->is_channel($item)) {
-            add_channel_entry($item);
+            $iter = add_channel_entry($item);
         }
         elsif ($yv_utils->is_video($item)) {
 
@@ -2792,8 +2828,37 @@ sub display_results {
                 append_to_history($yv_utils->get_title($item), 0);
             }
 
-            add_video_entry($item);
+            $iter = add_video_entry($item);
         }
+
+        if ($CONFIG{show_thumbs}) {
+            my $pixbuf;
+            my $thumb = get_thumbnail_info($item);
+            $thumb->{path} = $THUMBNAILS_CACHE->path($thumb->{url});
+            if (-e $thumb->{path}) {
+                $pixbuf = load_thumbnail($thumb->{path}, $thumb->{width}, $thumb->{height});
+            } else {
+                $thumb->{row} = $liststore->get_string_from_iter($iter);
+                push @missing_thumbs, $thumb;
+            }
+            $liststore->set($iter, [1, 10, 11], [$pixbuf // $default_thumb, $thumb->{width}, $thumb->{height}]);
+        }
+    }
+
+    if ($CONFIG{show_thumbs}) {
+        fetch_thumbnails(
+            sub {
+                my ($thumb) = @_;
+                return unless -e $thumb->{path};
+                my $pixbuf = load_thumbnail($thumb->{path}, $thumb->{width}, $thumb->{height})
+                  // return;
+                my $iter = $liststore->get_iter_from_string($thumb->{row});
+                $liststore->set($iter, [1], [$pixbuf]);
+            },
+            \@missing_thumbs,
+            \$results_thumbs_request,
+            priority => REQUEST_PRIORITY_RESULTS_THUMBS,
+        );
     }
 
     if (ref($results->{results}) eq 'HASH' and exists($results->{results}{continuation})) {
@@ -2826,40 +2891,16 @@ sub get_thumbnail_info {
     unless ($xsize && $ysize) {
         ($xsize, $ysize) = @THUMBNAILS_SIZE;
     }
-    my $thumb = $yv_utils->get_thumbnail($entry, $xsize, $ysize);
+    my %thumb = %{$yv_utils->get_thumbnail($entry, $xsize, $ysize) // return};
 
-    ($xsize, $ysize) = fit_to_dimensions($thumb->{width}, $thumb->{height}, $xsize, $ysize);
+    ($thumb{width}, $thumb{height}) = fit_to_dimensions($thumb{width}, $thumb{height}, $xsize, $ysize);
 
-    my $url = $thumb->{url};
+    # Clean URL of trackers and other junk
+    $thumb{url} =~ s/\.(?:jpg|png|webp)\K\?.*//;
+    # Prefer JPEG format over WebP if the later is not supported.
+    $thumb{url} =~ s/\.webp\z/.jpg/ && $thumb{url} =~ s{/vi_webp/}{/vi/} unless $webp_supported;
 
-    if (defined $url) {
-
-        # Clean URL of trackers and other junk
-        $url =~ s/\.(?:jpg|png|webp)\K\?.*//;
-
-        # Prefer JPEG format over WebP if the later is not supported.
-        $url =~ s/\.webp\z/.jpg/ && $url =~ s{/vi_webp/}{/vi/} unless $webp_supported;
-    }
-
-    return ($url, $xsize, $ysize);
-}
-
-sub set_thumbnail {
-    my ($entry, $liststore, $iter) = @_;
-
-    my ($url, $xsize, $ysize) = get_thumbnail_info($entry);
-    $liststore->set($iter, [1, 10, 11], [$default_thumb, $xsize, $ysize]);
-
-    Glib::Idle->add(
-        sub {
-            my ($entry, $liststore, $iter) = @{$_[0]};
-            my $pixbuf = get_pixbuf_thumbnail_from_url($url, $xsize, $ysize);
-            $liststore->set($iter, [1], [$pixbuf]);
-            return 0;
-        },
-        [$entry, $liststore, $iter],
-        Glib::G_PRIORITY_LOW
-    );
+    return \%thumb;
 }
 
 sub reflow_text {
@@ -2941,9 +2982,7 @@ sub add_video_entry {
 
     highlight_watched_video($liststore, $iter);
 
-    if ($CONFIG{show_thumbs}) {
-        set_thumbnail($video, $liststore, $iter);
-    }
+    return $iter;
 }
 
 sub add_channel_entry {
@@ -2994,9 +3033,7 @@ $symbols{subs}\t %s subs",
                     8 => make_json_string($channel),
                    );
 
-    if ($CONFIG{show_thumbs}) {
-        set_thumbnail($channel, $liststore, $iter);
-    }
+    return $iter;
 }
 
 sub add_playlist_entry {
@@ -3047,53 +3084,33 @@ $symbols{video}\t %s videos",
                     8 => make_json_string($playlist),
                    );
 
-    if ($CONFIG{show_thumbs}) {
-        set_thumbnail($playlist, $liststore, $iter);
-    }
+    return $iter;
 }
 
 sub list_playlist {
     my ($playlist_id) = @_;
-
-    my $results = $yv_obj->videos_from_playlist_id($playlist_id);
-
-    if ($yv_utils->has_entries($results)) {
-        display_results($results);
-        return 1;
-    }
-    else {
-        die "[!] Inexistent playlist...\n";
-    }
+    send_search_request(
+        "[!] Inexistent playlist...",
+        'videos_from_playlist_id', [$playlist_id]
+    );
     return;
 }
 
 sub list_channel_videos {
     my ($channel) = @_;
-
-    my $results = $yv_obj->uploads($channel);
-
-    if ($yv_utils->has_entries($results)) {
-        display_results($results);
-        return 1;
-    }
-    else {
-        die "[!] No videos for channel: $channel\n";
-    }
+    send_search_request(
+        "[!] No videos for channel: $channel",
+        'uploads', [$channel]
+    );
     return;
 }
 
 sub list_channel_playlists {
     my ($channel) = @_;
-
-    my $results = $yv_obj->playlists($channel);
-
-    if ($yv_utils->has_entries($results)) {
-        display_results($results);
-        return 1;
-    }
-    else {
-        die "[!] No playlists for channel: $channel\n";
-    }
+    send_search_request(
+        "[!] No playlists for channel: $channel",
+        'playlists', [$channel]
+    );
     return;
 }
 
@@ -3101,55 +3118,6 @@ sub strip_spaces {
     my ($text) = @_;
     $text =~ s/^\s+//;
     return unpack 'A*', $text;
-}
-
-sub get_streaming_url {
-    my ($video_id) = @_;
-
-    my ($urls, $captions, $info) = $yv_obj->get_streaming_urls($video_id);
-
-    if (not defined $urls) {
-        return scalar {};
-    }
-
-    # Download the closed-captions
-    my $srt_file;
-    if (ref($captions) eq 'ARRAY' and @$captions and $CONFIG{get_captions}) {
-        require WWW::PipeViewer::GetCaption;
-        my $yv_cap = WWW::PipeViewer::GetCaption->new(
-                                                      auto_captions => $CONFIG{auto_captions},
-                                                      captions_dir  => $CONFIG{cache_dir},
-                                                      captions      => $captions,
-                                                      languages     => $CONFIG{srt_languages},
-                                                      yv_obj        => $yv_obj,
-                                                     );
-        $srt_file = $yv_cap->save_caption($video_id);
-    }
-
-    require WWW::PipeViewer::Itags;
-    state $yv_itags = WWW::PipeViewer::Itags->new();
-
-    my ($streaming, $resolution) = $yv_itags->find_streaming_url(
-        urls       => $urls,
-        resolution => $CONFIG{resolution},
-
-        hfr        => $CONFIG{hfr},
-        ignore_av1 => $CONFIG{ignore_av1},
-
-        split         => $CONFIG{split_videos},
-        prefer_m4a    => $CONFIG{prefer_m4a},
-        audio_quality => $CONFIG{audio_quality},
-        dash          => $CONFIG{dash},
-
-        ignored_projections => $CONFIG{ignored_projections},
-    );
-
-    return {
-            streaming  => $streaming,
-            srt_file   => $srt_file,
-            info       => $info,
-            resolution => $resolution,
-           };
 }
 
 #---------------------- PLAY AN YOUTUBE VIDEO ----------------------#
@@ -3233,11 +3201,13 @@ sub prepend_video_data_to_file {
 }
 
 sub save_watched_video {
-    my ($video_id, $video_data) = @_;
+    my ($info, $iter) = @_;
+
+    my $video_id = $yv_utils->get_video_id($info);
 
     # Store the video title to history (when `save_watched_to_history` is true)
     if ($CONFIG{save_watched_to_history}) {
-        append_to_history($yv_utils->get_title($video_data), 0);
+        append_to_history($yv_utils->get_title($info), 0);
     }
 
     if ($CONFIG{watch_history}) {
@@ -3253,67 +3223,88 @@ sub save_watched_video {
             close $fh;
         }
 
-        prepend_video_data_to_file($video_data, $watch_history_data_file);
+        prepend_video_data_to_file($info, $watch_history_data_file);
     }
 
     $WATCHED_VIDEOS{$video_id} = 1;
+    highlight_watched_video($liststore, $iter) if $iter;
+
     return 1;
 }
 
 sub play_video {
-    my ($video) = @_;
+    my ($info, $iter) = @_;
 
-    my $video_id  = $yv_utils->get_video_id($video);
-    my $streaming = get_streaming_url($video_id);
+    my $video_id = $yv_utils->get_video_id($info);
 
-    if (ref($streaming->{streaming}) ne 'HASH') {
-        die "[!] Can't play this video: no streaming URL has been found!\n";
-    }
+    my %options = (
+        get_captions  => $CONFIG{get_captions},
+        auto_captions => $CONFIG{auto_captions},
+        captions_dir  => $CONFIG{cache_dir},
+        srt_languages => $CONFIG{srt_languages},
 
-    if (    not defined($streaming->{streaming}{url})
-        and defined($streaming->{info}{status})
-        and $streaming->{info}{status} =~ /(?:error|fail)/i) {
-        die "[!] Error on: " . sprintf($CONFIG{youtube_video_url}, $video_id) . "\n",
-          "[*] Reason: " . $streaming->{info}{reason} =~ tr/+/ /r . "\n";
-    }
+        resolution => $CONFIG{resolution},
 
-    my $command = get_player_command($streaming, $video);
+        hfr        => $CONFIG{hfr},
+        ignore_av1 => $CONFIG{ignore_av1},
 
-    if ($DEBUG) {
-        say "-> Resolution: $streaming->{resolution}";
-        say "-> Video itag: $streaming->{streaming}{itag}";
-        say "-> Audio itag: $streaming->{streaming}{__AUDIO__}{itag}" if exists $streaming->{streaming}{__AUDIO__};
-        say "-> Video type: $streaming->{streaming}{type}";
-        say "-> Audio type: $streaming->{streaming}{__AUDIO__}{type}" if exists $streaming->{streaming}{__AUDIO__};
-    }
+        split_videos  => $CONFIG{split_videos},
+        prefer_m4a    => $CONFIG{prefer_m4a},
+        audio_quality => $CONFIG{audio_quality},
+        dash          => $CONFIG{dash},
 
-    my $code = execute_external_program($command);
+        ignored_projections => $CONFIG{ignored_projections},
+      );
 
-    if ($code == 0) {
-        save_watched_video($video_id, $video);
-    }
-    else {
-        warn "[!] Can't play this video -- player exited with code: $code\n";
-        return 0;
-    }
+    $worker->send_request(
+        sub {
+            my ($streaming) = @_;
 
-    return 1;
+            if (ref($streaming->{streaming}) ne 'HASH') {
+                die "[!] Can't play this video: no streaming URL has been found!\n";
+            }
+
+            if (    not defined($streaming->{streaming}{url})
+                and defined($streaming->{info}{status})
+                and $streaming->{info}{status} =~ /(?:error|fail)/i) {
+                die "[!] Error on: " . sprintf($CONFIG{youtube_video_url}, $video_id) . "\n",
+                  "[*] Reason: " . $streaming->{info}{reason} =~ tr/+/ /r . "\n";
+            }
+
+            my $command = get_player_command($streaming, $info);
+
+            if ($DEBUG) {
+                say "-> Resolution: $streaming->{resolution}";
+                say "-> Video itag: $streaming->{streaming}{itag}";
+                say "-> Audio itag: $streaming->{streaming}{__AUDIO__}{itag}"
+                  if exists $streaming->{streaming}{__AUDIO__};
+                say "-> Video type: $streaming->{streaming}{type}";
+                say "-> Audio type: $streaming->{streaming}{__AUDIO__}{type}"
+                  if exists $streaming->{streaming}{__AUDIO__};
+            }
+
+            my $code = execute_external_program($command);
+            if ($code) {
+                warn "[!] Can't play this video -- player exited with code: $code\n";
+                return;
+            }
+
+            save_watched_video($info, $iter);
+        },
+        'fetch_streaming_urls',
+        [$video_id, \%options],
+        priority => REQUEST_PRIORITY_INFO,
+    );
 }
 
 sub list_category {
-
     my $iter   = $cat_treeview->get_selection->get_selected;
     my $cat_id = $cats_liststore->get($iter, 1);
-    my $type   = $cats_liststore->get($iter, 3);
-
-    my $videos = $yv_obj->trending_videos_from_category($cat_id);
-
-    if ($yv_utils->has_entries($videos)) {
-        display_results($videos);
-    }
-    else {
-        die "No video found for categoryID: <$cat_id>\n";
-    }
+    send_search_request(
+        "No video found for categoryID: <$cat_id>",
+        'trending_videos_from_category', [$cat_id]
+    );
+    return;
 }
 
 sub list_local_playlist {
@@ -3428,21 +3419,23 @@ sub play_enqueued_videos {
     return 1;
 }
 
-sub play_selected_video_with_cli_pipe_viewer {
+sub play_with_cli_pipe_viewer {
+    my %args = @_;
+
     my ($id, $iter) = get_selected_entry_code();
     $id // return;
 
-    my $type = $liststore->get($iter, 7);
+    my $type    = $liststore->get($iter, 7);
+    my $options = $args{audio_only} ? '--no-video' : '';
 
     if ($type eq 'video') {
-        if (execute_cli_pipe_viewer("--video-id=$id")) {
-            my $video_data = parse_json_string($liststore->get($iter, 8));
-            save_watched_video($id, $video_data);
-            highlight_watched_video($liststore, $iter);
+        if (execute_cli_pipe_viewer("$options --video-id=$id")) {
+            my $info = parse_json_string($liststore->get($iter, 8));
+            save_watched_video($info, $iter);
         }
     }
     elsif ($type eq 'playlist') {
-        execute_cli_pipe_viewer("--pp=$id");
+        execute_cli_pipe_viewer("$options --pp=$id");
     }
     else {
         warn "Can't play $type: $id\n";
@@ -3486,28 +3479,38 @@ sub download_video {
 sub comments_row_activated {
 
     my $iter = $feeds_treeview->get_selection->get_selected() or return;
-    my $url  = $feeds_liststore->get($iter, 1);
 
-    if (defined($url) and $url =~ m{^https?://}) {    # load more comments
+    # Spinner.
+    return if $feeds_liststore->get($iter, 5);
+
+    # Next page.
+    my $url = $feeds_liststore->get($iter, 1);
+    if ($url and $url =~ m{^https?://}) {
 
         my $token = $feeds_liststore->get($iter, 2);
         $feeds_liststore->remove($iter);
-        my $results = $yv_obj->next_page_with_token($url, $token);
 
-        if ($yv_utils->has_entries($results)) {
-            display_comments($results);
-        }
-        else {
-            die "This is the last page of comments.\n";
-        }
+        start_comments_spinner();
+        $worker->abort_requests($comments_request);
+        $comments_request = $worker->send_request(
+            sub {
+                my $results = $_[0];
+                stop_comments_spinner();
+                $comments_request = undef;
+                die "This is the last page of comments.\n"
+                  unless ($yv_utils->has_entries($results));
+                display_comments($results);
+            },
+            'next_page_with_token',
+            [$url, $token],
+            priority => REQUEST_PRIORITY_COMMENTS
+        );
 
         return 1;
     }
 
-    my $video_id   = $feeds_liststore->get($iter, 3);
-    my $comment_id = $feeds_liststore->get($iter, 4);
-
-    my $comment_url = sprintf("https://www.youtube.com/watch?v=%s&lc=%s", $video_id, $comment_id);
+    my ($video_id, $comment_id) = $feeds_liststore->get($iter, 3, 4);
+    my $comment_url = sprintf "https://www.youtube.com/watch?v=%s&lc=%s", $video_id, $comment_id;
 
     open_external_url($comment_url);
 
@@ -3522,14 +3525,11 @@ sub get_channel_id_for_selected_video {
 
 sub show_related_videos {
     my $video_id = get_selected_entry_code(type => 'video') // return;
-
-    my $results = $yv_obj->related_to_videoID($video_id);
-    if ($yv_utils->has_entries($results)) {
-        display_results($results);
-    }
-    else {
-        die "No related video for videoID: <$video_id>\n";
-    }
+    send_search_request(
+        "No related video for videoID: <$video_id>",
+        'related_to_videoID', [$video_id]
+    );
+    return;
 }
 
 sub wrap_text {
@@ -3584,13 +3584,13 @@ sub display_comments {
                                       );
 
         if (not $comment->{_hidden}) {
-            my $iter = $feeds_liststore->append;
-            $feeds_liststore->set(
-                                  $iter,
-                                  0 => $comment_text,
-                                  3 => $video_id,
-                                  4 => $comment_id,
-                                 );
+            $feeds_liststore->insert_with_values(
+                -1,
+                0 => $comment_text,
+                3 => $video_id,
+                4 => $comment_id,
+                7 => 1,
+            );
         }
 
         if (exists($comment->{replies}) and ref($comment->{replies}) eq 'ARRAY') {
@@ -3622,25 +3622,25 @@ sub display_comments {
                                                  )
                                             );
 
-                my $iter = $feeds_liststore->append;
-                $feeds_liststore->set(
-                                      $iter,
-                                      0 => $reply_text,
-                                      3 => $video_id,
-                                      4 => $reply_id,
-                                     );
+                $feeds_liststore->insert_with_values(
+                    -1,
+                    0 => $reply_text,
+                    3 => $video_id,
+                    4 => $reply_id,
+                    7 => 1,
+                );
             }
         }
     }
 
     if (defined $continuation) {
-        my $iter = $feeds_liststore->append;
-        $feeds_liststore->set(
-                              $iter,
-                              0 => "<big><b>LOAD MORE</b></big>",
-                              1 => $url,
-                              2 => $continuation,
-                             );
+        $feeds_liststore->insert_with_values(
+            -1,
+            0 => "<big><b>LOAD MORE</b></big>",
+            1 => $url,
+            2 => $continuation,
+            7 => 1,
+        );
     }
 
     return 1;
@@ -3677,21 +3677,8 @@ sub save_session {
                     $session_file
                    );
 
-    # Keep only thumbnails that have been accessed in the past 3 days
-    my @keys = grep { time - $THUMBNAILS_CACHE->{$_}{timestamp} <= 259200 } keys %{$THUMBNAILS_CACHE};
-
-    if ($DEBUG) {
-        say "[1] Cached thumbnails: ", scalar keys %{$THUMBNAILS_CACHE};
-    }
-
-    my %common_thumbnails;
-    @common_thumbnails{@keys} = @{$THUMBNAILS_CACHE}{@keys};
-
-    if ($DEBUG) {
-        say "[2] Cached thumbnails: ", scalar keys %common_thumbnails;
-    }
-
-    Storable::store(\%common_thumbnails, $thumbnails_file);
+    # Delete all entries older than 3 days when keeping the cache.
+    $THUMBNAILS_CACHE->clean($CONFIG{cache_thumbnails} ? 259200 : -1);
 }
 
 sub add_results_to_history {
@@ -3721,6 +3708,7 @@ sub display_next_results {
 sub display_relative_results {
     my ($nth_item) = @_;
     my $results_copy = $ResultsHistory{results}[$nth_item];
+    clear_search_requests();
     display_results($results_copy, 1);
     set_prev_next_results_sensitivity();
     # Restore vertical scrolling position: first reset it to zero,
@@ -3752,7 +3740,7 @@ sub show_playlists_from_selected_author {
 }
 
 sub set_entry_details {
-    my ($code, $iter, %opt) = @_;
+    my ($code, $iter, $extra_info) = @_;
 
     my $type = $liststore->get($iter, 7);
     my $info = parse_json_string($liststore->get($iter, 8));
@@ -3766,8 +3754,8 @@ sub set_entry_details {
 
     $title = encode_entities($title);
 
-    $gui->get_object('video_title_label')->set_label("<big><big><b>$title</b></big></big>");
-    $gui->get_object('video_title_label')->set_tooltip_markup("<b>$title</b>");
+    $details_title->set_label("<big><big><b>$title</b></big></big>");
+    $details_title->set_tooltip_markup("<b>$title</b>");
 
     my $text_info;
     my @details1;
@@ -3775,12 +3763,25 @@ sub set_entry_details {
 
     if ($type eq 'video') {
 
-        if ($opt{extra_info}) {
-            my $extra_info = $yv_obj->video_details($yv_utils->get_video_id($info));
-
+        if ($extra_info) {
             foreach my $key (keys %$extra_info) {
                 $info->{$key} = $extra_info->{$key};
             }
+        } else {
+            start_details_spinner();
+            $worker->abort_requests($details_request);
+            $details_request = $worker->send_request(
+                sub {
+                    my ($extra_info, $request) = @_;
+                    stop_details_spinner();
+                    $details_request = undef;
+                    $extra_info // return;
+                    set_entry_details($code, $iter, $extra_info);
+                },
+                'video_details',
+                [$yv_utils->get_video_id($info)],
+                priority => REQUEST_PRIORITY_DETAILS,
+            );
         }
 
         @details1 = (
@@ -3853,47 +3854,61 @@ sub set_entry_details {
     $linkbutton->set_label($url);
     $linkbutton->set_uri($url);
 
-    if (not $opt{extra_info}) {
+    if (not $extra_info) {
+
+        my @missing_thumbs;
 
         # Getting thumbs (start, middle, end).
         foreach my $nr (1 .. 3) {
 
-            my ($url, $xsize, $ysize) = get_thumbnail_info($info, 320, 180);
+            my $thumb = get_thumbnail_info($info, 320, 180);
             my $widget = $gui->get_object("image$nr");
-            $widget->set_size_request($xsize, $ysize);
-            $widget->set_from_pixbuf($default_thumb);
+            $widget->set_size_request($thumb->{width}, $thumb->{height});
 
-            if ($url =~ /_live\.\w+\z/) {
+            if ($thumb->{url} =~ /_live\.\w+\z/) {
                 ## no extra thumbnails available while video is LIVE
             }
             else {
-                $url =~ s{/(\w*)default\.(\w+)\z}{/$1$nr.$2};
+                $thumb->{url} =~ s{/(\w*)default\.(\w+)\z}{/$1$nr.$2};
             }
+            $thumb->{path} = $THUMBNAILS_CACHE->path($thumb->{url});
 
-            Glib::Idle->add(
-                sub {
-                    my ($widget, $url, $xsize, $ysize) = @{$_[0]};
-                    my $pixbuf = get_pixbuf_thumbnail_from_url($url, $xsize, $ysize);
-                    $widget->set_from_pixbuf($pixbuf);
-                    return 0;
-                },
-                [$widget, $url, $xsize, $ysize],
-                Glib::G_PRIORITY_LOW
-            );
+            my $pixbuf;
+            if (-e $thumb->{path}) {
+                $pixbuf = load_thumbnail($thumb->{path}, $thumb->{width}, $thumb->{height});
+            } else {
+                $thumb->{widget} = $widget;
+                push @missing_thumbs, $thumb;
+                start_details_spinner();
+            }
+            $widget->set_from_pixbuf($pixbuf // $default_thumb);
         }
+
+        fetch_thumbnails(
+            sub {
+                my ($thumb) = @_;
+                stop_details_spinner();
+                return unless -e $thumb->{path};
+                my $pixbuf = load_thumbnail($thumb->{path}, $thumb->{width}, $thumb->{height})
+                  // return;
+                $thumb->{widget}->set_from_pixbuf($pixbuf);
+            },
+            \@missing_thumbs,
+            \$details_thumbs_request,
+            priority => REQUEST_PRIORITY_DETAILS_THUMBS,
+        );
     }
 
     # Setting textview description
     set_text($gui->get_object('description_textview'), $yv_utils->get_description($info));
 
-    if ($type eq 'video' and not $opt{extra_info}) {
-        Glib::Idle->add(sub { set_entry_details($code, $iter, extra_info => 1); return 0 }, [], Glib::G_PRIORITY_LOW);
-    }
-
     return 1;
 }
 
 sub on_mainw_destroy {
+
+    Glib::Source->remove($worker_watch);
+    $worker->stop();
 
     # Save hpaned position
     $CONFIG{hpaned_position} = $hbox2->get_position;
@@ -3915,14 +3930,6 @@ sub on_mainw_destroy {
             last;
         }
     }
-}
-
-if ($CONFIG{cache_thumbnails} and -f $thumbnails_file) {
-    $THUMBNAILS_CACHE = eval { Storable::retrieve($thumbnails_file) } // do {
-        warn "[!] Failed to load the cached thumbnails...\n";
-        warn "[!] Reason: $@\n" if $@;
-        scalar {};
-    };
 }
 
 if ($CONFIG{watch_history} and -f $CONFIG{watch_history_file}) {

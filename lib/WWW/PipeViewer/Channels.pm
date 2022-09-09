@@ -23,6 +23,28 @@ sub _make_channels_url {
     return $self->_make_feed_url('channels', %opts);
 }
 
+=head2 channel_info($channel_id or $channel_name)
+
+Get a channel information (name and ID).
+
+=cut
+
+sub channel_info {
+    my ($self, $channel) = @_;
+    my $info;
+    my $title;
+    my $id;
+    if ($info = $self->yt_channel_info($channel)) {
+        my $header = $self->_extract_channel_header($info) // return;
+        $title = eval { $header->{title} }     // return;
+        $id    = eval { $header->{channelId} } // eval { $header->{externalId} } // return;
+    } elsif ($info = $self->_get_results($self->_make_feed_url("channels/$channel"))) {
+        $title = eval { $info->{results}->{author} }   // return;
+        $id    = eval { $info->{results}->{authorId} } // return;
+    }
+    return {author => $title, authorId => $id};
+}
+
 =head2 uploads($channel_id)
 
 Get the uploads for a given channel ID.

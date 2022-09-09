@@ -167,6 +167,12 @@ Author: Trizen https://github.com/trizen
       <column type="gchararray"/>
       <!-- column-name comment_id -->
       <column type="gchararray"/>
+      <!-- column-name spinner_timer -->
+      <column type="guint"/>
+      <!-- column-name spinner_pulse -->
+      <column type="guint"/>
+      <!-- column-name show_comments -->
+      <column type="gboolean"/>
     </columns>
   </object>
   <object class="GtkListStore" id="liststore2">
@@ -977,7 +983,6 @@ Unless the author name is valid, this field is ignored.</property>
                                                     <property name="update-policy">if-valid</property>
                                                     <property name="value">1</property>
                                                     <signal name="activate" handler="search" after="yes" swapped="no"/>
-                                                    <signal name="value-changed" handler="spin_start_with_page_changed" swapped="no"/>
                                                   </object>
                                                 </child>
                                               </object>
@@ -1366,6 +1371,22 @@ When the specified resolution is not found, the best available resolution is use
             <property name="position">2</property>
           </packing>
         </child>
+        <child>
+          <object class="GtkProgressBar" id="progressbar">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="valign">center</property>
+            <property name="pulse-step">0.05</property>
+            <property name="text" translatable="yes"> </property>
+            <property name="show-text">True</property>
+            <property name="ellipsize">end</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">3</property>
+          </packing>
+        </child>
       </object>
     </child>
   </object>
@@ -1499,24 +1520,45 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
           </packing>
         </child>
         <child>
-          <object class="GtkLabel" id="video_title_label">
+          <object class="GtkOverlay">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
-            <property name="margin-left">4</property>
-            <property name="margin-right">4</property>
-            <property name="margin-start">4</property>
-            <property name="margin-end">4</property>
-            <property name="margin-top">4</property>
-            <property name="margin-bottom">4</property>
-            <property name="label" translatable="yes">Details window label</property>
-            <property name="use-markup">True</property>
-            <property name="justify">fill</property>
-            <property name="selectable">True</property>
-            <property name="ellipsize">end</property>
-            <property name="track-visited-links">False</property>
+            <property name="border-width">4</property>
+            <child>
+              <object class="GtkLabel" id="details_title">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="halign">center</property>
+                <property name="margin-start">20</property>
+                <property name="margin-end">20</property>
+                <property name="label" translatable="yes">Details window label</property>
+                <property name="use-markup">True</property>
+                <property name="justify">fill</property>
+                <property name="selectable">True</property>
+                <property name="ellipsize">end</property>
+                <property name="track-visited-links">False</property>
+              </object>
+              <packing>
+                <property name="index">-1</property>
+              </packing>
+            </child>
+            <child type="overlay">
+              <object class="GtkSpinner" id="details_spinner">
+                <property name="width-request">16</property>
+                <property name="height-request">16</property>
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="halign">end</property>
+                <property name="valign">center</property>
+                <property name="active">True</property>
+              </object>
+              <packing>
+                <property name="pass-through">True</property>
+              </packing>
+            </child>
           </object>
           <packing>
-            <property name="expand">False</property>
+            <property name="expand">True</property>
             <property name="fill">True</property>
             <property name="position">0</property>
           </packing>
@@ -1903,8 +1945,17 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                     <property name="title" translatable="yes">Comments</property>
                     <property name="clickable">True</property>
                     <child>
+                      <object class="GtkCellRendererSpinner"/>
+                      <attributes>
+                        <attribute name="visible">5</attribute>
+                        <attribute name="active">5</attribute>
+                        <attribute name="pulse">6</attribute>
+                      </attributes>
+                    </child>
+                    <child>
                       <object class="GtkCellRendererText" id="cellrenderertext6"/>
                       <attributes>
+                        <attribute name="visible">7</attribute>
                         <attribute name="markup">0</attribute>
                       </attributes>
                     </child>
