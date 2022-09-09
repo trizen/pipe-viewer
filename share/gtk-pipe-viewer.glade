@@ -1809,7 +1809,6 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                 <property name="can-focus">True</property>
                 <property name="receives-default">True</property>
                 <property name="use-stock">True</property>
-                <signal name="clicked" handler="gtk_widget_hide" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">True</property>
