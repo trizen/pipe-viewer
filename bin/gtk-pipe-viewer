@@ -55,6 +55,7 @@ use List::Util qw(any max min pairs);
 
 require Storable;
 binmode(STDOUT, ':utf8');
+binmode(STDERR, ':utf8');
 
 my $appname = 'GTK+ Pipe Viewer';
 my $version = $WWW::PipeViewer::VERSION;
