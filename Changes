@@ -5,6 +5,12 @@
 
 [CHANGELOG]
 
+Version 0.3.0
+
+- Lots of GUI improvements and fixes. (by @benoit-pierre)
+- Added support for changing the audio quality.
+- Fixed building of Youtube search parameters. (by @benoit-pierre)
+
 Version 0.2.3
 
 - Prefer the default language for audio.
