@@ -483,7 +483,7 @@ my $feed_icon_pixbuf      = 'Gtk3::Gdk::Pixbuf'->new_from_file_at_size(catfile($
 my $feed_icon_gray_pixbuf = 'Gtk3::Gdk::Pixbuf'->new_from_file_at_size(catfile($icons_path, "feed_gray.png"),     16,  16);
 my $default_thumb         = 'Gtk3::Gdk::Pixbuf'->new_from_file_at_size(catfile($icons_path, "default_thumb.jpg"), 160, 90);
 
-my $webp_supported = any { $_->name eq 'webp' } Gtk3::Gdk::Pixbuf::get_formats;
+my $webp_supported = any { $_->get_name eq 'webp' } Gtk3::Gdk::Pixbuf::get_formats;
 
 # Setting application title and icon
 $mainw->set_title("$appname $version");
