@@ -354,16 +354,6 @@ my $gui = 'Gtk3::Builder'->new;
 $gui->add_from_file($glade_file);
 $gui->connect_signals(undef);
 
-# GValue wrapper (unused for now)
-sub gval ($$) {
-    Glib::Object::Introspection::GValueWrapper->new('Glib::' . ucfirst($_[0]) => $_[1]);
-}
-
-# Convert a string into an array-ref of bytes
-sub gcarray ($) {
-    [map { ord } split(//, $_[0])]
-}
-
 # -------------  Get GUI objects ------------- #
 
 my %objects = (
