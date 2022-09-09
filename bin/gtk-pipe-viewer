@@ -35,6 +35,7 @@ my $DEVEL;
 use if ($DEVEL = -w __FILE__), lib => abs_path(__FILE__ . '/../../lib');
 
 use WWW::PipeViewer v0.3.1;
+use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::RegularExpressions;
 
 use Gtk3                  qw(-init);
@@ -1187,7 +1188,7 @@ sub get_treeview_popup_menu {
     if ($type eq 'video') {
 
         my $video_id   = $liststore->get($iter, 3);
-        my $video_data = $yv_obj->parse_json_string($liststore->get($iter, 8));
+        my $video_data = parse_json_string($liststore->get($iter, 8));
 
         # Youtube comments
         {
@@ -1393,7 +1394,7 @@ sub get_treeview_popup_menu {
             $author->append($item);
         }
 
-        my $channel_data = $yv_obj->parse_json_string($liststore->get($iter, 8));
+        my $channel_data = parse_json_string($liststore->get($iter, 8));
         my $channel_name = $yv_utils->get_channel_title($channel_data);
 
         # Subscribe to channel
@@ -1473,7 +1474,7 @@ sub get_treeview_popup_menu {
                     my $type = $liststore->get($iter, 7);
                     if (defined($id) and $type eq 'video') {
                         if (execute_cli_pipe_viewer("--id=$id --no-video")) {
-                            my $video_data = $yv_obj->parse_json_string($liststore->get($iter, 8));
+                            my $video_data = parse_json_string($liststore->get($iter, 8));
                             save_watched_video($id, $video_data);
                             highlight_watched_video($liststore, $iter);
                         }
@@ -2095,7 +2096,7 @@ sub add_user_to_favorites {
     my $selection = $treeview->get_selection() // return;
     my $iter      = $selection->get_selected() // return;
 
-    my $info = $yv_obj->parse_json_string($liststore->get($iter, 8));
+    my $info = parse_json_string($liststore->get($iter, 8));
 
     my $channel_id   = $liststore->get($iter, 6);
     my $channel_name = $yv_utils->get_channel_title($info);
@@ -2350,7 +2351,7 @@ sub get_code {
                         $json_data = $buffer;
                     }
 
-                    my $data = $yv_obj->parse_json_string($json_data);
+                    my $data = parse_json_string($json_data);
                     $results = get_results_from_list(%$data);
                 }
                 else {
@@ -2372,7 +2373,7 @@ sub get_code {
                 if (
                     $CONFIG{audio_only}
                     ? execute_cli_pipe_viewer("--id=$code")
-                    : play_video($yv_obj->parse_json_string($liststore->get($iter, 8)))
+                    : play_video(parse_json_string($liststore->get($iter, 8)))
                   ) {
                     highlight_watched_video($liststore, $iter);
                 }
@@ -2556,11 +2557,9 @@ sub get_results_from_list {
 
     if ($args{page} * $maxResults < $totalResults) {
 
-        my $json_str = $yv_obj->make_json_string(
-                                                 {
-                                                  %args, page => $args{page} + 1,
-                                                 }
-                                                );
+        my $json_str = make_json_string({
+            %args, page => $args{page} + 1,
+        });
 
         state $has_rawdeflate = $CONFIG{remember_session} && eval {
             require MIME::Base64;
@@ -2935,7 +2934,7 @@ sub add_video_entry {
                     4 => encode_entities($description),
                     6 => $channel_id,
                     7 => 'video',
-                    8 => $yv_obj->make_json_string($video),
+                    8 => make_json_string($video),
                    );
 
     highlight_watched_video($liststore, $iter);
@@ -2990,7 +2989,7 @@ $symbols{subs}\t %s subs",
                     4 => encode_entities($description),
                     6 => $channel_id,
                     7 => 'channel',
-                    8 => $yv_obj->make_json_string($channel),
+                    8 => make_json_string($channel),
                    );
 
     if ($CONFIG{show_thumbs}) {
@@ -3043,7 +3042,7 @@ $symbols{video}\t %s videos",
                     4 => encode_entities($description),
                     6 => $channel_id,
                     7 => 'playlist',
-                    8 => $yv_obj->make_json_string($playlist),
+                    8 => make_json_string($playlist),
                    );
 
     if ($CONFIG{show_thumbs}) {
@@ -3435,7 +3434,7 @@ sub play_selected_video_with_cli_pipe_viewer {
 
     if ($type eq 'video') {
         if (execute_cli_pipe_viewer("--video-id=$id")) {
-            my $video_data = $yv_obj->parse_json_string($liststore->get($iter, 8));
+            my $video_data = parse_json_string($liststore->get($iter, 8));
             save_watched_video($id, $video_data);
             highlight_watched_video($liststore, $iter);
         }
@@ -3754,7 +3753,7 @@ sub set_entry_details {
     my ($code, $iter, %opt) = @_;
 
     my $type = $liststore->get($iter, 7);
-    my $info = $yv_obj->parse_json_string($liststore->get($iter, 8));
+    my $info = parse_json_string($liststore->get($iter, 8));
 
     # Setting title
     my $title = $yv_utils->get_title($info);

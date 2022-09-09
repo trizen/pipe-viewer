@@ -7,6 +7,7 @@ use warnings;
 use MIME::Base64 qw(encode_base64url);
 use List::Util   qw(pairs);
 
+use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::Proto;
 
 =head1 NAME
@@ -517,13 +518,13 @@ sub _get_initial_data {
         $json =~ s{\\u([[:xdigit:]]{4})}{chr(hex($1))}ge;
         $json =~ s{\\(["&])}{$1}g;
 
-        my $hash = $self->parse_utf8_json_string($json);
+        my $hash = parse_utf8_json_string($json);
         return $hash;
     }
 
     if ($content =~ m{<div id="initial-data"><!--(.*?)--></div>}is) {
         my $json = $1;
-        my $hash = $self->parse_utf8_json_string($json);
+        my $hash = parse_utf8_json_string($json);
         return $hash;
     }
 
@@ -1035,7 +1036,7 @@ sub yt_browse_next_page {
                 $self->get_m_youtube_url . '/youtubei/v1/browse?key=' . _unscramble('1HUCiSlOalFEcYQSS8_9q1LW4y8JAwI2zT_qA_G'),
                 \%request) // return;
 
-    my $hash = $self->parse_json_string($content);
+    my $hash = parse_json_string($content);
 
     my $res =
       eval    { $hash->{continuationContents}{playlistVideoListContinuation} }
@@ -1110,7 +1111,7 @@ sub yt_search_next_page {
                                       \%request
                                      ) // return;
 
-    my $hash = $self->parse_json_string($content);
+    my $hash = parse_json_string($content);
 
     my @results = $self->_extract_sectionList_results(
                        scalar {

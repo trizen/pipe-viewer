@@ -4,6 +4,8 @@ use utf8;
 use 5.014;
 use warnings;
 
+use WWW::PipeViewer::ParseJSON;
+
 =head1 NAME
 
 WWW::PipeViewer::CommentThreads - Retrieve comments threads.
@@ -58,7 +60,7 @@ sub comments_from_ytdlp {
         say STDERR ":: Extracting comments with `yt-dlp`...";
     }
 
-    my $info = $self->parse_json_string($self->proxy_stdout(@cmd) // return);
+    my $info = parse_json_string($self->proxy_stdout(@cmd) // return);
 
     (ref($info) eq 'HASH' and exists($info->{comments}) and ref($info->{comments}) eq 'ARRAY')
       || return;
