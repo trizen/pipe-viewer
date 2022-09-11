@@ -3958,7 +3958,7 @@ EOT
     $linkbutton->set_label($url);
     $linkbutton->set_uri($url);
 
-    if ($opt{extra_info}) {
+    if (not $opt{extra_info}) {
 
         # Getting thumbs (start, middle, end).
         foreach my $nr (1 .. 3) {
