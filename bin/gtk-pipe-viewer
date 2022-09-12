@@ -158,7 +158,6 @@ sub which_command {
 
 my %symbols = (
                thumbs_up   => '👍',
-               thumbs_down => '👎',
                type        => '💡',
                author      => '😃',
                author_id   => '🤖',
@@ -2220,7 +2219,7 @@ sub popular_uploads {
 
 {
     no strict 'refs';
-    foreach my $name (qw(favorites uploads likes dislikes playlists subscriptions activities)) {
+    foreach my $name (qw(favorites uploads likes playlists subscriptions activities)) {
         *{__PACKAGE__ . '::' . $name} = sub {
             my ($type, $channel) = @_;
 
@@ -3894,7 +3893,6 @@ sub set_entry_details {
         }
 
         my $likes    = $yv_utils->get_likes($info);
-        my $dislikes = $yv_utils->get_dislikes($info);
         my $views    = $yv_utils->get_views($info);
 
         $text_info = join(
@@ -3905,7 +3903,6 @@ sub set_entry_details {
                                                        [$symbols{author}      => $yv_utils->get_channel_title($info)],
                                                        [$symbols{category}    => $yv_utils->get_category_name($info)],
                                                        [$symbols{thumbs_up}   => $yv_utils->set_thousands($likes)],
-                                                       [$symbols{thumbs_down} => $yv_utils->set_thousands($dislikes)],
                                                        [$symbols{average}     => $yv_utils->get_rating($info)],
                                                        [$symbols{play}        => $yv_utils->get_time($info)],
                                                        [$symbols{views}       => $yv_utils->set_thousands($views)],

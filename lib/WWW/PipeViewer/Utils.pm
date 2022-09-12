@@ -361,7 +361,6 @@ sub format_text {
         ITEMS_SHORT => sub { $self->short_human_number($self->get_playlist_item_count($info)) },
 
         LIKES    => sub { $self->get_likes($info) },
-        DISLIKES => sub { $self->get_dislikes($info) },
 
         COMMENTS    => sub { $self->get_comments($info) },
         DURATION    => sub { $self->get_duration($info) },
@@ -373,18 +372,7 @@ sub format_text {
         AGE         => sub { $self->get_publication_age($info) },
         AGE_SHORT   => sub { $self->get_publication_age_approx($info) },
         DESCRIPTION => sub { $self->get_description($info) },
-
-        RATING => sub {
-            my $likes    = $self->get_likes($info)    // 0;
-            my $dislikes = $self->get_dislikes($info) // 0;
-
-            my $rating = 0;
-            if ($likes + $dislikes > 0) {
-                $rating = $likes / ($likes + $dislikes) * 5;
-            }
-
-            sprintf('%.2f', $rating);
-        },
+        RATING      => sub { $self->get_rating($info) },
 
         (
          defined($streaming)
@@ -780,25 +768,14 @@ sub get_comment_content {
     $info->{content} // $info->{text};
 }
 
-sub calculate_rating {
+sub get_rating {
     my ($self, $info) = @_;
 
-    my $likes    = $self->get_likes($info);
-    my $dislikes = $self->get_dislikes($info);
-    my $views    = $self->get_views($info);
+    my $likes = $self->get_likes($info);
+    my $views = $self->get_views($info);
+    my $rating;
 
-    my $rating = "1.00";
-
-    if (defined($likes) and $dislikes) {
-        if ($likes > 0) {
-            $rating = sprintf('%.2f', $likes / ($likes + $dislikes) * 4 + 1);
-        }
-        elsif ($dislikes == 0) {
-            $rating = "0.00";
-        }
-    }
-    elsif ($likes and $views and $views >= $likes) {
-        ##$rating = sprintf("%.2g%%", $likes / $views * 100);
+    if ($likes and $views and $views >= $likes) {
         $rating = sprintf("%.2g%%", log($likes + 1) / log($views + 1) * 100);
     }
     else {
@@ -806,12 +783,6 @@ sub calculate_rating {
     }
 
     return $rating;
-}
-
-sub get_rating {
-    my ($self, $info) = @_;
-    my $rating = $info->{rating} // return $self->calculate_rating($info);
-    sprintf('%.2f', $rating);
 }
 
 sub get_channel_id {
@@ -1059,11 +1030,6 @@ sub get_views_approx {
 sub get_likes {
     my ($self, $info) = @_;
     $info->{likeCount} // 0;
-}
-
-sub get_dislikes {
-    my ($self, $info) = @_;
-    $info->{dislikeCount} // 0;
 }
 
 sub get_comments {

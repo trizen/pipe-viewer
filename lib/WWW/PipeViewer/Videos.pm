@@ -176,7 +176,6 @@ sub _fallback_video_details {
             lengthSeconds => $info->{duration},
 
             likeCount    => $info->{like_count},
-            dislikeCount => $info->{dislike_count},
 
             category    => eval { $info->{categories}[0] } // $info->{category},
             publishDate => $info->{upload_date},
@@ -186,7 +185,6 @@ sub _fallback_video_details {
 
             author   => $info->{channel},
             authorId => $info->{channel_id} // $info->{uploader_id},
-            rating   => $info->{average_rating},
         };
     }
     else {
@@ -261,7 +259,6 @@ sub video_details {
 
         author   => $videoDetails->{author}    // $microformat->{ownerChannelName},
         authorId => $videoDetails->{channelId} // $microformat->{externalChannelId},
-        rating   => $videoDetails->{averageRating},
     );
 
     if (defined($extra_info) and ref($extra_info) eq 'HASH') {
@@ -272,16 +269,6 @@ sub video_details {
         my $like_count = $extra_info->{likeCount};
 
         $details{likeCount} = $like_count;
-        ##$details{likeCount} = $yv_utils->short_human_number($like_count);
-
-        if ($like_count and $details{rating} and $details{rating} > 1) {
-
-            my $rating        = $details{rating};
-            my $dislike_count = sprintf('%.0f', $like_count * ((5 - $rating) / ($rating - 1)));
-
-            $details{dislikeCount} = $dislike_count;
-            ##$details{dislikeCount} = $yv_utils->short_human_number($dislike_count);
-        }
 
         $details{author} //= $extra_info->{author};
         $details{title}  //= $extra_info->{title};
