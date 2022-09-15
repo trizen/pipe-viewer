@@ -3247,11 +3247,6 @@ sub get_streaming_url {
            };
 }
 
-sub get_quotewords {
-    require Text::ParseWords;
-    return Text::ParseWords::quotewords(@_);
-}
-
 #---------------------- PLAY AN YOUTUBE VIDEO ----------------------#
 sub get_player_command {
     my ($streaming, $video) = @_;
