@@ -1017,8 +1017,7 @@ sub tricks {
   *ITEMS*        : the number of playlist items
   *ITEMS_SHORT*  : the number of playlist items in abbreviated notation
   *LIKES*        : the number of likes
-  *DISLIKES*     : the number of dislikes
-  *RATING*       : the rating of the video from 0 to 5
+  *RATING*       : the rating of the video (as a percentage, extrapolated from likes & views)
   *COMMENTS*     : the number of comments
   *DURATION*     : the duration of the video in seconds
   *PUBLISHED*    : the publication date as "DD MMM YYYY"
@@ -4019,7 +4018,6 @@ sub print_video_info {
     $rep = 0 if $rep < 0;
 
     my $likes    = $yv_utils->get_likes($video);
-    my $dislikes = $yv_utils->get_dislikes($video);
     my $views    = $yv_utils->get_views($video);
 
     print(
@@ -4036,7 +4034,6 @@ sub print_video_info {
                                         ['Definition' => $yv_utils->get_definition($video)],
                                         ['Duration'   => $yv_utils->get_time($video)],
                                         ['Likes'      => $yv_utils->set_thousands($likes)],
-                                        ['Dislikes'   => $yv_utils->set_thousands($dislikes)],
                                         ['Rating'     => $yv_utils->get_rating($video)],
                                         ['Views'      => $yv_utils->set_thousands($views)],
                                         ['Published'  => $yv_utils->get_publication_date($video)],

@@ -168,7 +168,6 @@ sub basic_video_info_fields {
           publishedText
           viewCount
           likeCount
-          dislikeCount
           genre
           author
           authorId
