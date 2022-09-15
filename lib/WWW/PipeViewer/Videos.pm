@@ -68,45 +68,6 @@ sub trending_videos_from_category {
     return $self->_get_results($self->_make_feed_url('trending', (defined($category) ? (type => $category) : ())));
 }
 
-=head2 send_rating_to_video($videoID, $rating)
-
-Send rating to a video. $rating can be either 'like' or 'dislike'.
-
-=cut
-
-sub send_rating_to_video {
-    my ($self, $video_id, $rating) = @_;
-
-    if ($rating eq 'none' or $rating eq 'like' or $rating eq 'dislike') {
-        my $url = $self->_simple_feeds_url('videos/rate', id => $video_id, rating => $rating);
-        return defined($self->lwp_post($url, $self->_auth_lwp_header()));
-    }
-
-    return;
-}
-
-=head2 like_video($videoID)
-
-Like a video. Returns true on success.
-
-=cut
-
-sub like_video {
-    my ($self, $video_id) = @_;
-    $self->send_rating_to_video($video_id, 'like');
-}
-
-=head2 dislike_video($videoID)
-
-Dislike a video. Returns true on success.
-
-=cut
-
-sub dislike_video {
-    my ($self, $video_id) = @_;
-    $self->send_rating_to_video($video_id, 'dislike');
-}
-
 =head2 videos_details($id, $part)
 
 Get info about a videoID, such as: channelId, title, description,
