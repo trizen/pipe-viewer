@@ -1149,6 +1149,7 @@ sub new_image_from_pixbuf {
 
 # Treeview signals
 {
+    $treeview->set_activate_on_single_click($CONFIG{single_click_play});
     $treeview->signal_connect('button_press_event', \&menu_popup);
     $treeview->signal_connect('size-allocate',      \&treeview_scroll_to_end) if $CONFIG{autoscroll_to_end};
     $users_treeview->signal_connect('button_press_event', \&users_menu_popup);
@@ -1165,6 +1166,11 @@ sub treeview_scroll_to_end {
 sub menu_popup {
     my ($treeview, $event) = @_;
 
+    # Ignore non-right-clicks
+    if ($event->button != 3) {
+        return 0;
+    }
+
     ##my ($path, $col, $cell_x, $cell_y) = ...;
     my $path = ($treeview->get_path_at_pos($event->x, $event->y))[0] // return 0;
 
@@ -1173,17 +1179,6 @@ sub menu_popup {
 
     my $iter = $selection->get_selected() // return 0;
     my $type = $liststore->get($iter, 7);
-
-    # Play videos with a single-click
-    if ($CONFIG{single_click_play} and $event->button == 1) {
-        get_code();
-        return 0;
-    }
-
-    # Ignore non-right-clicks
-    elsif ($event->button != 3) {
-        return 0;
-    }
 
     # Ignore the right-click on 'next-page' entry
     $type eq 'next_page' and return 0;
