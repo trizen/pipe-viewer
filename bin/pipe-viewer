@@ -1033,7 +1033,6 @@ sub tricks {
   *ITAG*     : the itag value of the video
   *FORMAT*   : the extension of the video (without the dot)
 
-  *CAPTION*  : true if the video has captions
   *SUB*      : the local subtitle file (if any)
   *AUDIO*    : the audio URL of the video (only in DASH mode)
   *VIDEO*    : the video URL of the video (it might not contain audio)

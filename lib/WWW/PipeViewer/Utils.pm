@@ -366,7 +366,6 @@ sub format_text {
         TIME        => sub { $self->get_time($info) },
         TITLE       => sub { $self->get_title($info) },
         FTITLE      => sub { $self->normalize_filename($self->get_title($info), $fat32safe) },
-        CAPTION     => sub { $self->get_caption($info) },
         PUBLISHED   => sub { $self->get_publication_date($info) },
         AGE         => sub { $self->get_publication_age($info) },
         AGE_SHORT   => sub { $self->get_publication_age_approx($info) },
@@ -967,14 +966,6 @@ sub get_dimension {
     my ($self, $info) = @_;
 
     #uc($info->{contentDetails}{dimension});
-    #...;
-    "unknown";
-}
-
-sub get_caption {
-    my ($self, $info) = @_;
-
-    #$info->{contentDetails}{caption};
     #...;
     "unknown";
 }
