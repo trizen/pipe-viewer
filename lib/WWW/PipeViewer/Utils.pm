@@ -1009,8 +1009,6 @@ sub get_likes {
     foreach my $pair ([playlist => {'playlist' => 1}],
                       [channel      => {'channel'      => 1}],
                       [video        => {'video'        => 1, 'playlistItem' => 1}],
-                      [subscription => {'subscription' => 1}],
-                      [activity     => {'activity'     => 1}],
       ) {
 
         *{__PACKAGE__ . '::' . 'is_' . $pair->[0]} = sub {
