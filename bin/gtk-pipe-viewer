@@ -1890,13 +1890,6 @@ sub main_window_state_events {
     return 1;
 }
 
-sub add_category_header {
-    my ($text) = @_;
-    my $iter = $cats_liststore->append;
-    $cats_liststore->set($iter, [0], ["<big><b>\t$text</b></big>"]);
-    return 1;
-}
-
 sub append_categories {
     my ($categories, $type) = @_;
 
