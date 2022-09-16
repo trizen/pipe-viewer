@@ -1018,7 +1018,6 @@ sub tricks {
   *ITEMS_SHORT*  : the number of playlist items in abbreviated notation
   *LIKES*        : the number of likes
   *RATING*       : the rating of the video (as a percentage, extrapolated from likes & views)
-  *COMMENTS*     : the number of comments
   *DURATION*     : the duration of the video in seconds
   *PUBLISHED*    : the publication date as "DD MMM YYYY"
   *AGE*          : the age of a video (N days, N months, N years)

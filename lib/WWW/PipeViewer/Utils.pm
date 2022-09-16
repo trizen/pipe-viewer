@@ -362,7 +362,6 @@ sub format_text {
 
         LIKES    => sub { $self->get_likes($info) },
 
-        COMMENTS    => sub { $self->get_comments($info) },
         DURATION    => sub { $self->get_duration($info) },
         TIME        => sub { $self->get_time($info) },
         TITLE       => sub { $self->get_title($info) },
@@ -1030,13 +1029,6 @@ sub get_views_approx {
 sub get_likes {
     my ($self, $info) = @_;
     $info->{likeCount} // 0;
-}
-
-sub get_comments {
-    my ($self, $info) = @_;
-
-    #$info->{statistics}{commentCount};
-    1;
 }
 
 {
