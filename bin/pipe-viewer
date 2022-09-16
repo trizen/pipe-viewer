@@ -1023,7 +1023,6 @@ sub tricks {
   *AGE*          : the age of a video (N days, N months, N years)
   *AGE_SHORT*    : the abbreviated age of a video (Nd, Nm, Ny)
   *DIMENSION*    : the dimension of the video (2D or 3D)
-  *DEFINITION*   : the definition of the video (HD or SD)
   *TIME*         : the duration of the video as "HH::MM::SS"
   *TITLE*        : the title of the video
   *FTITLE*       : the title of the video (filename safe)
@@ -4029,7 +4028,6 @@ sub print_video_info {
                                         ['ChannelID'  => $yv_utils->get_channel_id($video)],
                                         ['VideoID'    => $yv_utils->get_video_id($video)],
                                         ['Category'   => $yv_utils->get_category_name($video)],
-                                        ['Definition' => $yv_utils->get_definition($video)],
                                         ['Duration'   => $yv_utils->get_time($video)],
                                         ['Likes'      => $yv_utils->set_thousands($likes)],
                                         ['Rating'     => $yv_utils->get_rating($video)],

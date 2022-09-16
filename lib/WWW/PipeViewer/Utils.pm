@@ -345,7 +345,6 @@ sub format_text {
         ID         => sub { $self->get_video_id($info) },
         AUTHOR     => sub { $self->get_channel_title($info) },
         CHANNELID  => sub { $self->get_channel_id($info) },
-        DEFINITION => sub { $self->get_definition($info) },
         DIMENSION  => sub { $self->get_dimension($info) },
 
         VIEWS       => sub { $self->get_views($info) },
@@ -952,14 +951,6 @@ sub get_time {
     }
 
     $self->format_time($self->get_duration($info));
-}
-
-sub get_definition {
-    my ($self, $info) = @_;
-
-    #uc($info->{contentDetails}{definition} // '-');
-    #...;
-    "unknown";
 }
 
 sub get_dimension {
