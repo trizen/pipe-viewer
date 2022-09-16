@@ -1022,7 +1022,6 @@ sub tricks {
   *PUBLISHED*    : the publication date as "DD MMM YYYY"
   *AGE*          : the age of a video (N days, N months, N years)
   *AGE_SHORT*    : the abbreviated age of a video (Nd, Nm, Ny)
-  *DIMENSION*    : the dimension of the video (2D or 3D)
   *TIME*         : the duration of the video as "HH::MM::SS"
   *TITLE*        : the title of the video
   *FTITLE*       : the title of the video (filename safe)
