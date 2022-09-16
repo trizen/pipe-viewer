@@ -1150,8 +1150,7 @@ sub new_image_from_pixbuf {
 # Treeview signals
 {
     $treeview->set_activate_on_single_click($CONFIG{single_click_play});
-    $treeview->signal_connect('button_press_event', \&menu_popup);
-    $treeview->signal_connect('size-allocate',      \&treeview_scroll_to_end) if $CONFIG{autoscroll_to_end};
+    $treeview->signal_connect('size-allocate', \&treeview_scroll_to_end) if $CONFIG{autoscroll_to_end};
     $users_treeview->signal_connect('button_press_event', \&users_menu_popup);
 }
 
@@ -1162,26 +1161,39 @@ sub treeview_scroll_to_end {
     $adj->set_value($adj->get_upper - $adj->get_page_size);
 }
 
-# Menu popup
-sub menu_popup {
+sub treeview_button_press {
     my ($treeview, $event) = @_;
-
-    # Ignore non-right-clicks
-    if ($event->button != 3) {
-        return 0;
-    }
-
-    ##my ($path, $col, $cell_x, $cell_y) = ...;
-    my $path = ($treeview->get_path_at_pos($event->x, $event->y))[0] // return 0;
-
+    return 0 if $event->button != 3;
     my $selection = $treeview->get_selection;
+    my $path      = ($treeview->get_path_at_pos($event->x, $event->y))[0] // return 0;
     $selection->select_path($path);
+    my $iter = $selection->get_selected()     // return 0;
+    my $menu = get_treeview_popup_menu($iter) // return 0;
+    $menu->popup(undef, undef, undef, undef, $event->button, $event->time);
+    return 1;
+}
 
-    my $iter = $selection->get_selected() // return 0;
+sub treeview_popup_menu {
+    my ($treeview) = @_;
+    my $selection  = $treeview->get_selection;
+    my $iter       = $selection->get_selected()     // return 0;
+    my $menu       = get_treeview_popup_menu($iter) // return 0;
+    my $path       = $liststore->get_path($iter);
+    my $column     = $treeview->get_column(1);
+    # Ensure the selected row is visible.
+    $treeview->scroll_to_cell($path, $column, 0, 0, 0);
+    my $rect = $treeview->get_cell_area($path, $column);
+    $menu->popup_at_rect($treeview->get_window(), $rect, 'center', 'north_west', undef);
+    return 1;
+}
+
+sub get_treeview_popup_menu {
+    my ($iter) = @_;
+
     my $type = $liststore->get($iter, 7);
 
-    # Ignore the right-click on 'next-page' entry
-    $type eq 'next_page' and return 0;
+    # No popup-menu on 'next-page' entry
+    return if $type eq 'next_page';
 
     # Create the main right-click menu
     my $menu = 'Gtk3::Menu'->new;
@@ -1546,8 +1558,7 @@ sub menu_popup {
         }
     }
 
-    $menu->popup(undef, undef, undef, undef, $event->button, $event->time);
-    return 0;
+    return $menu;
 }
 
 sub users_menu_popup {
