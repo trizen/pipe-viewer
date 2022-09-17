@@ -567,6 +567,8 @@ Author: Trizen https://github.com/trizen
                     <property name="reorderable">True</property>
                     <property name="search-column">1</property>
                     <property name="tooltip-column">9</property>
+                    <signal name="button-press-event" handler="treeview_button_press" swapped="no"/>
+                    <signal name="popup-menu" handler="treeview_popup_menu" swapped="no"/>
                     <signal name="row-activated" handler="get_code" swapped="no"/>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
