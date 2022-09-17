@@ -27,7 +27,6 @@ use parent qw(
   WWW::PipeViewer::Channels
   WWW::PipeViewer::Playlists
   WWW::PipeViewer::ParseJSON
-  WWW::PipeViewer::Activities
   WWW::PipeViewer::PlaylistItems
   WWW::PipeViewer::CommentThreads
   WWW::PipeViewer::VideoCategories

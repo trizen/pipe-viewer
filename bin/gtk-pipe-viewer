@@ -1413,18 +1413,6 @@ sub menu_popup {
             $author->append($item);
         }
 
-        # Recent channel activity events
-#<<<
-        #~ {
-            #~ my $item = 'Gtk3::ImageMenuItem'->new("Activities");
-            #~ $item->signal_connect(activate => sub { activities('channel', $channel_id) });
-            #~ $item->set_property(tooltip_text => "Show recent channel activity events");
-            #~ $item->set_image('Gtk3::Image'->new_from_icon_name("view-refresh-symbolic", q{menu}));
-            #~ $item->show;
-            #~ $author->append($item);
-        #~ }
-#>>>
-
         # Liked videos by this author
 #<<<
         #~ {
@@ -2219,7 +2207,7 @@ sub popular_uploads {
 
 {
     no strict 'refs';
-    foreach my $name (qw(favorites uploads likes playlists subscriptions activities)) {
+    foreach my $name (qw(favorites uploads likes playlists subscriptions)) {
         *{__PACKAGE__ . '::' . $name} = sub {
             my ($type, $channel) = @_;
 

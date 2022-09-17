@@ -1018,13 +1018,10 @@ sub tricks {
   *ITEMS_SHORT*  : the number of playlist items in abbreviated notation
   *LIKES*        : the number of likes
   *RATING*       : the rating of the video (as a percentage, extrapolated from likes & views)
-  *COMMENTS*     : the number of comments
   *DURATION*     : the duration of the video in seconds
   *PUBLISHED*    : the publication date as "DD MMM YYYY"
   *AGE*          : the age of a video (N days, N months, N years)
   *AGE_SHORT*    : the abbreviated age of a video (Nd, Nm, Ny)
-  *DIMENSION*    : the dimension of the video (2D or 3D)
-  *DEFINITION*   : the definition of the video (HD or SD)
   *TIME*         : the duration of the video as "HH::MM::SS"
   *TITLE*        : the title of the video
   *FTITLE*       : the title of the video (filename safe)
@@ -1034,7 +1031,6 @@ sub tricks {
   *ITAG*     : the itag value of the video
   *FORMAT*   : the extension of the video (without the dot)
 
-  *CAPTION*  : true if the video has captions
   *SUB*      : the local subtitle file (if any)
   *AUDIO*    : the audio URL of the video (only in DASH mode)
   *VIDEO*    : the video URL of the video (it might not contain audio)
@@ -4031,7 +4027,6 @@ sub print_video_info {
                                         ['ChannelID'  => $yv_utils->get_channel_id($video)],
                                         ['VideoID'    => $yv_utils->get_video_id($video)],
                                         ['Category'   => $yv_utils->get_category_name($video)],
-                                        ['Definition' => $yv_utils->get_definition($video)],
                                         ['Duration'   => $yv_utils->get_time($video)],
                                         ['Likes'      => $yv_utils->set_thousands($likes)],
                                         ['Rating'     => $yv_utils->get_rating($video)],

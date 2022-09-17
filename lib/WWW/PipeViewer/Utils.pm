@@ -345,8 +345,6 @@ sub format_text {
         ID         => sub { $self->get_video_id($info) },
         AUTHOR     => sub { $self->get_channel_title($info) },
         CHANNELID  => sub { $self->get_channel_id($info) },
-        DEFINITION => sub { $self->get_definition($info) },
-        DIMENSION  => sub { $self->get_dimension($info) },
 
         VIEWS       => sub { $self->get_views($info) },
         VIEWS_SHORT => sub { $self->get_views_approx($info) },
@@ -362,12 +360,10 @@ sub format_text {
 
         LIKES    => sub { $self->get_likes($info) },
 
-        COMMENTS    => sub { $self->get_comments($info) },
         DURATION    => sub { $self->get_duration($info) },
         TIME        => sub { $self->get_time($info) },
         TITLE       => sub { $self->get_title($info) },
         FTITLE      => sub { $self->normalize_filename($self->get_title($info), $fat32safe) },
-        CAPTION     => sub { $self->get_caption($info) },
         PUBLISHED   => sub { $self->get_publication_date($info) },
         AGE         => sub { $self->get_publication_age($info) },
         AGE_SHORT   => sub { $self->get_publication_age_approx($info) },
@@ -956,30 +952,6 @@ sub get_time {
     $self->format_time($self->get_duration($info));
 }
 
-sub get_definition {
-    my ($self, $info) = @_;
-
-    #uc($info->{contentDetails}{definition} // '-');
-    #...;
-    "unknown";
-}
-
-sub get_dimension {
-    my ($self, $info) = @_;
-
-    #uc($info->{contentDetails}{dimension});
-    #...;
-    "unknown";
-}
-
-sub get_caption {
-    my ($self, $info) = @_;
-
-    #$info->{contentDetails}{caption};
-    #...;
-    "unknown";
-}
-
 sub get_views {
     my ($self, $info) = @_;
     $info->{viewCount} // 0;
@@ -1032,20 +1004,11 @@ sub get_likes {
     $info->{likeCount} // 0;
 }
 
-sub get_comments {
-    my ($self, $info) = @_;
-
-    #$info->{statistics}{commentCount};
-    1;
-}
-
 {
     no strict 'refs';
     foreach my $pair ([playlist => {'playlist' => 1}],
                       [channel      => {'channel'      => 1}],
                       [video        => {'video'        => 1, 'playlistItem' => 1}],
-                      [subscription => {'subscription' => 1}],
-                      [activity     => {'activity'     => 1}],
       ) {
 
         *{__PACKAGE__ . '::' . 'is_' . $pair->[0]} = sub {
