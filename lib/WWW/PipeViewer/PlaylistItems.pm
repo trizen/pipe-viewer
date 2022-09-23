@@ -49,9 +49,7 @@ sub videos_from_playlist_id {
 
 =head2 uploads($channel_id)
 
-=head2 likes($channel_id)
-
-Get the favorites, uploads and likes for a given channel ID.
+Get the favorites / uploads for a given channel ID.
 
 =cut
 
@@ -59,15 +57,13 @@ Get the favorites, uploads and likes for a given channel ID.
 
 =head2 uploads_from_username($username)
 
-=head2 likes_from_username($username)
-
-Get the favorites, uploads and likes for a given YouTube username.
+Get the favorites / uploads for a given YouTube username.
 
 =cut
 
 {
     no strict 'refs';
-    foreach my $name (qw(favorites uploads likes)) {
+    foreach my $name (qw(favorites uploads)) {
 
         *{__PACKAGE__ . '::' . $name . '_from_username'} = sub {
             my ($self, $username) = @_;

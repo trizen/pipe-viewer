@@ -1424,18 +1424,6 @@ sub get_treeview_popup_menu {
             $author->append($item);
         }
 
-        # Liked videos by this author
-#<<<
-        #~ {
-            #~ my $item = 'Gtk3::ImageMenuItem'->new("Likes");
-            #~ $item->signal_connect(activate => sub { likes('channel', $channel_id) });
-            #~ $item->set_property(tooltip_text => "Show liked videos by this author");
-            #~ $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-default-symbolic", q{menu}));
-            #~ $item->show;
-            #~ $author->append($item);
-        #~ }
-#>>>
-
         # Separator
         {
             my $item = 'Gtk3::SeparatorMenuItem'->new;
@@ -2210,7 +2198,7 @@ sub popular_uploads {
 
 {
     no strict 'refs';
-    foreach my $name (qw(favorites uploads likes playlists)) {
+    foreach my $name (qw(favorites uploads playlists)) {
         *{__PACKAGE__ . '::' . $name} = sub {
             my ($type, $channel) = @_;
 
@@ -3170,11 +3158,6 @@ sub uploads_from_text_entry {
 sub playlists_from_text_entry {
     my ($text_entry) = @_;
     playlists($channel_type_combobox->get_active_text, $text_entry->get_text);
-}
-
-sub likes_from_text_entry {
-    my ($text_entry) = @_;
-    likes($channel_type_combobox->get_active_text, $text_entry->get_text);
 }
 
 sub strip_spaces {
