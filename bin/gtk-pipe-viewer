@@ -1382,7 +1382,7 @@ sub get_treeview_popup_menu {
         # Recent uploads from this author
         {
             my $item = 'Gtk3::ImageMenuItem'->new("Uploads");
-            $item->signal_connect(activate => sub { uploads('channel', $channel_id) });
+            $item->signal_connect(activate => sub { list_channel_videos($channel_id) });
             $item->set_property(tooltip_text => "Show the most recent videos from this author");
             $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-shared-symbolic", q{menu}));
             $item->show;
@@ -2135,19 +2135,13 @@ sub save_usernames_to_file {
 sub playlists_from_selected_username {
     my $selection = $users_treeview->get_selection() // return;
     my $iter      = $selection->get_selected()       // return;
-
-    my $channel = $users_liststore->get($iter, 0);
-
-    playlists('channel', $channel);
+    list_channel_playlists($users_liststore->get($iter, 0));
 }
 
 sub videos_from_selected_username {
     my $selection = $users_treeview->get_selection() // return;
     my $iter      = $selection->get_selected()       // return;
-
-    my $channel = $users_liststore->get($iter, 0);
-
-    uploads('channel', $channel);
+    list_channel_videos($users_liststore->get($iter, 0));
 }
 
 sub videos_from_saved_channel {
@@ -2169,42 +2163,6 @@ sub popular_uploads {
     }
     else {
         die "No popular uploads for channel: <<$channel>>\n";
-    }
-}
-
-{
-    no strict 'refs';
-    foreach my $name (qw(uploads playlists)) {
-        *{__PACKAGE__ . '::' . $name} = sub {
-            my ($type, $channel) = @_;
-
-            my $method = $name;
-
-            if ($yv_utils->is_channelID($channel)) {
-                $method = $name;
-            }
-            elsif ($type =~ /^user/i and $channel ne 'mine' and $channel =~ /^\S+\z/) {
-                $method = $name . '_from_username';
-            }
-            elsif ($type =~ /^channel/i and $channel ne 'mine' and $channel =~ /^\S+\z/) {
-                $method = $name . '_from_username';
-            }
-
-            my $request = $yv_obj->$method(
-                                           ($type =~ /^(user|channel)/i and $channel =~ /^\S+\z/)
-                                           ? $channel
-                                           : ()
-                                          );
-
-            if ($yv_utils->has_entries($request)) {
-                display_results($request);
-            }
-            else {
-                die "No $name results" . ($channel ? " for channel: <<$channel>>\n" : "\n");
-            }
-
-            return 1;
-        };
     }
 }
 
@@ -2243,10 +2201,10 @@ sub check_keywords {
         list_channel_videos($+{channel_id});
     }
     elsif ($key =~ /$get_username_playlists_re/) {
-        list_username_playlists($+{username});
+        list_channel_playlists($+{username});
     }
     elsif ($key =~ /$get_username_videos_re/) {
-        list_username_videos($+{username});
+        list_channel_videos($+{username});
     }
     else {
         return;
@@ -2325,7 +2283,7 @@ sub get_code {
                 list_playlist($code);
             }
             elsif ($type eq 'channel') {
-                uploads('channel', $code);
+                list_channel_videos($code);
             }
             elsif ($type eq 'next_page' and $code ne '') {
 
@@ -3062,61 +3020,31 @@ sub list_playlist {
 }
 
 sub list_channel_videos {
-    my ($channel_id) = @_;
+    my ($channel) = @_;
 
-    my $results = $yv_obj->uploads($channel_id);
-
-    if ($yv_utils->has_entries($results)) {
-        display_results($results);
-        return 1;
-    }
-    else {
-        die "[!] No videos for channel ID: $channel_id\n";
-    }
-    return;
-}
-
-sub list_username_videos {
-    my ($username) = @_;
-
-    my $results = $yv_obj->uploads_from_username($username);
+    my $results = $yv_obj->uploads($channel);
 
     if ($yv_utils->has_entries($results)) {
         display_results($results);
         return 1;
     }
     else {
-        die "[!] No videos for user: $username\n";
+        die "[!] No videos for channel: $channel\n";
     }
     return;
 }
 
 sub list_channel_playlists {
-    my ($channel_id) = @_;
+    my ($channel) = @_;
 
-    my $results = $yv_obj->playlists($channel_id);
-
-    if ($yv_utils->has_entries($results)) {
-        display_results($results);
-        return 1;
-    }
-    else {
-        die "[!] No playlists for channel ID: $channel_id\n";
-    }
-    return;
-}
-
-sub list_username_playlists {
-    my ($username) = @_;
-
-    my $results = $yv_obj->playlists_from_username($username);
+    my $results = $yv_obj->playlists($channel);
 
     if ($yv_utils->has_entries($results)) {
         display_results($results);
         return 1;
     }
     else {
-        die "[!] No playlists for user: $username\n";
+        die "[!] No playlists for channel: $channel\n";
     }
     return;
 }
@@ -3778,18 +3706,11 @@ sub set_prev_next_results_sensitivity {
 }
 
 sub show_videos_from_selected_author {
-    uploads('channel', get_channel_id_for_selected_video() || return);
+    list_channel_videos(get_channel_id_for_selected_video() || return);
 }
 
 sub show_playlists_from_selected_author {
-    my $request = $yv_obj->playlists(get_channel_id_for_selected_video() || return);
-    if ($yv_utils->has_entries($request)) {
-        display_results($request);
-    }
-    else {
-        die "No playlists found...\n";
-    }
-    return 1;
+    list_channel_playlists(get_channel_id_for_selected_video() || return);
 }
 
 sub set_entry_details {
