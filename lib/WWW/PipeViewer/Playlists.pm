@@ -73,17 +73,6 @@ sub playlists {
     $self->_get_results($url);
 }
 
-=head2 playlists_from_username($username)
-
-Get and return the playlists created for a given username.
-
-=cut
-
-sub playlists_from_username {
-    my ($self, $username) = @_;
-    $self->playlists($username);
-}
-
 =head1 AUTHOR
 
 Trizen, C<< <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d> >>
