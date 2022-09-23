@@ -2210,7 +2210,7 @@ sub popular_uploads {
 
 {
     no strict 'refs';
-    foreach my $name (qw(favorites uploads likes playlists subscriptions)) {
+    foreach my $name (qw(favorites uploads likes playlists)) {
         *{__PACKAGE__ . '::' . $name} = sub {
             my ($type, $channel) = @_;
 
@@ -3175,11 +3175,6 @@ sub playlists_from_text_entry {
 sub likes_from_text_entry {
     my ($text_entry) = @_;
     likes($channel_type_combobox->get_active_text, $text_entry->get_text);
-}
-
-sub subscriptions_from_text_entry {
-    my ($text_entry) = @_;
-    subscriptions($channel_type_combobox->get_active_text, $text_entry->get_text);
 }
 
 sub strip_spaces {

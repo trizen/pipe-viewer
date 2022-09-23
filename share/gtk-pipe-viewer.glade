@@ -1354,47 +1354,6 @@ When the specified resolution is not found, the best available resolution is use
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkFrame" id="frame26">
-                                    <property name="visible">True</property>
-                                    <property name="can-focus">False</property>
-                                    <property name="label-xalign">0</property>
-                                    <property name="shadow-type">none</property>
-                                    <child>
-                                      <object class="GtkAlignment" id="alignment5">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="top-padding">4</property>
-                                        <property name="left-padding">12</property>
-                                        <property name="right-padding">12</property>
-                                        <child>
-                                          <object class="GtkEntry" id="entry4">
-                                            <property name="visible">True</property>
-                                            <property name="can-focus">True</property>
-                                            <property name="invisible-char">•</property>
-                                            <property name="primary-icon-activatable">False</property>
-                                            <property name="secondary-icon-activatable">False</property>
-                                            <signal name="activate" handler="subscriptions_from_text_entry" swapped="no"/>
-                                          </object>
-                                        </child>
-                                      </object>
-                                    </child>
-                                    <child type="label">
-                                      <object class="GtkLabel" id="label34">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="xpad">4</property>
-                                        <property name="label" translatable="yes">&lt;b&gt;Subscriptions:&lt;/b&gt;</property>
-                                        <property name="use-markup">True</property>
-                                      </object>
-                                    </child>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">False</property>
-                                    <property name="position">2</property>
-                                  </packing>
-                                </child>
-                                <child>
                                   <object class="GtkFrame" id="frame29">
                                     <property name="visible">True</property>
                                     <property name="can-focus">False</property>
