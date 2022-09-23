@@ -1364,9 +1364,7 @@ sub apply_configuration {
 
         if ($str) {
             if (my $id = extract_channel_id($str)) {
-                $yv_utils->is_channelID($id)
-                  ? print_videos($yv_obj->uploads($id))
-                  : print_videos($yv_obj->uploads_from_username($id));
+                print_videos($yv_obj->uploads($id));
             }
             else {
                 warn_invalid("username or channel ID", $str);
@@ -1413,9 +1411,7 @@ sub apply_configuration {
 
         if ($str) {
             if (my $id = extract_channel_id($str)) {
-                $yv_utils->is_channelID($id)
-                  ? print_playlists($yv_obj->playlists($id))
-                  : print_playlists($yv_obj->playlists_from_username($id));
+                print_playlists($yv_obj->playlists($id));
             }
             else {
                 warn_invalid("username or channel ID", $str);
@@ -2081,10 +2077,10 @@ sub youtube_urls {
         print_videos($yv_obj->uploads($+{channel_id}));
     }
     elsif ($arg =~ /$get_username_playlists_re/) {
-        print_playlists($yv_obj->playlists_from_username($+{username}));
+        print_playlists($yv_obj->playlists($+{username}));
     }
     elsif ($arg =~ /$get_username_videos_re/) {
-        print_videos($yv_obj->uploads_from_username($+{username}));
+        print_videos($yv_obj->uploads($+{username}));
     }
     else {
         return;
