@@ -1978,8 +1978,7 @@ sub set_usernames {
                               $iter,
                               0 => $channel,
                               1 => $channels{$channel},
-                              2 => 'channel',
-                              3 => (
+                              2 => (
                                     exists($subscribed_channels{$channel})
                                     ? $feed_icon_pixbuf
                                     : $user_icon_pixbuf
@@ -2079,11 +2078,11 @@ sub subscribe_toggle_selected_username {
 
     if (exists $subscribed_channels{$channel_id}) {
         delete $subscribed_channels{$channel_id};
-        $users_liststore->set($iter, [3], [$user_icon_pixbuf]);
+        $users_liststore->set($iter, [2], [$user_icon_pixbuf]);
     }
     else {
         $subscribed_channels{$channel_id} = $channel_name;
-        $users_liststore->set($iter, [3], [$feed_icon_pixbuf]);
+        $users_liststore->set($iter, [2], [$feed_icon_pixbuf]);
     }
 
     write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
@@ -2137,20 +2136,18 @@ sub playlists_from_selected_username {
     my $selection = $users_treeview->get_selection() // return;
     my $iter      = $selection->get_selected()       // return;
 
-    my $type    = $users_liststore->get($iter, 2);
     my $channel = $users_liststore->get($iter, 0);
 
-    playlists($type, $channel);
+    playlists('channel', $channel);
 }
 
 sub videos_from_selected_username {
     my $selection = $users_treeview->get_selection() // return;
     my $iter      = $selection->get_selected()       // return;
 
-    my $type    = $users_liststore->get($iter, 2);
     my $channel = $users_liststore->get($iter, 0);
 
-    uploads($type, $channel);
+    uploads('channel', $channel);
 }
 
 sub videos_from_saved_channel {

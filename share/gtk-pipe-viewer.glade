@@ -238,8 +238,6 @@ Author: Trizen https://github.com/trizen
       <column type="gchararray"/>
       <!-- column-name channel_name -->
       <column type="gchararray"/>
-      <!-- column-name type -->
-      <column type="gchararray"/>
       <!-- column-name logo -->
       <column type="GdkPixbuf"/>
     </columns>
@@ -2459,7 +2457,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                         <child>
                           <object class="GtkCellRendererPixbuf" id="cellrendererpixbuf14"/>
                           <attributes>
-                            <attribute name="pixbuf">3</attribute>
+                            <attribute name="pixbuf">2</attribute>
                           </attributes>
                         </child>
                       </object>
