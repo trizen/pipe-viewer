@@ -2683,7 +2683,7 @@ sub print_comments {
             ## ok
         }
         elsif (valid_num($key, $comments)) {
-            print_videos($yv_obj->get_videos_from_username($comments->[$key - 1]{author}));
+            print_videos($yv_obj->uploads($comments->[$key - 1]{authorId}));
         }
         else {
             warn_invalid('keyword', $key);
