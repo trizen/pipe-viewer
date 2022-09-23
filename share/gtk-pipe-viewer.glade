@@ -1353,50 +1353,6 @@ When the specified resolution is not found, the best available resolution is use
                                     <property name="position">4</property>
                                   </packing>
                                 </child>
-                                <child>
-                                  <object class="GtkFrame" id="frame28">
-                                    <property name="visible">True</property>
-                                    <property name="can-focus">False</property>
-                                    <property name="label-xalign">0</property>
-                                    <property name="label-yalign">0</property>
-                                    <property name="shadow-type">none</property>
-                                    <child>
-                                      <object class="GtkAlignment" id="alignment26">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="top-padding">4</property>
-                                        <property name="left-padding">12</property>
-                                        <property name="right-padding">12</property>
-                                        <child>
-                                          <object class="GtkComboBoxText" id="comboboxtext7">
-                                            <property name="visible">True</property>
-                                            <property name="can-focus">False</property>
-                                            <property name="active">0</property>
-                                            <items>
-                                              <item translatable="yes">username</item>
-                                              <item translatable="yes">channel ID</item>
-                                            </items>
-                                            <signal name="changed" handler="combobox_channel_type_changed" swapped="no"/>
-                                          </object>
-                                        </child>
-                                      </object>
-                                    </child>
-                                    <child type="label">
-                                      <object class="GtkLabel" id="label36">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="xpad">4</property>
-                                        <property name="label" translatable="yes">&lt;b&gt;Channel type:&lt;/b&gt;</property>
-                                        <property name="use-markup">True</property>
-                                      </object>
-                                    </child>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">False</property>
-                                    <property name="position">5</property>
-                                  </packing>
-                                </child>
                               </object>
                               <packing>
                                 <property name="position">1</property>

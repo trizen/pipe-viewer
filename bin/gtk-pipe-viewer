@@ -176,9 +176,6 @@ my %symbols = (
 # Main configuration
 my %CONFIG = (
 
-    # Combobox values
-    active_channel_type_combobox        => 0,
-
     video_players => {
                       vlc => {
                               cmd   => q{vlc},
@@ -390,7 +387,6 @@ my %objects = (
     'comboboxtext8'          => \my $duration_combobox,
     'comboboxtext1'          => \my $published_within_combobox,
     'comboboxtext2'          => \my $order_combobox,
-    'comboboxtext7'          => \my $channel_type_combobox,
     'comboboxtext10'         => \my $search_for_combobox,
     'spinbutton1'            => \my $spin_results,
     'spinbutton2'            => \my $spin_start_with_page,
@@ -1005,7 +1001,6 @@ sub apply_configuration {
     $dash_checkbutton->set_active($CONFIG{dash});
 
     $clear_list_checkbutton->set_active($CONFIG{clear_search_list});
-    $channel_type_combobox->set_active($CONFIG{active_channel_type_combobox});
 
     foreach my $option_name (
                              qw(
@@ -1801,10 +1796,6 @@ sub combobox_resolution_changed {
 
 sub combobox_duration_changed {
     combobox_changed($duration_combobox, "videoDuration", 1);
-}
-
-sub combobox_channel_type_changed {
-    $CONFIG{active_channel_type_combobox} = $channel_type_combobox->get_active;
 }
 
 sub combobox_published_within_changed {
@@ -3135,12 +3126,12 @@ sub list_username_playlists {
 
 sub uploads_from_text_entry {
     my ($text_entry) = @_;
-    uploads($channel_type_combobox->get_active_text, $text_entry->get_text);
+    list_channel_videos($text_entry->get_text);
 }
 
 sub playlists_from_text_entry {
     my ($text_entry) = @_;
-    playlists($channel_type_combobox->get_active_text, $text_entry->get_text);
+    list_channel_playlists($text_entry->get_text);
 }
 
 sub strip_spaces {
