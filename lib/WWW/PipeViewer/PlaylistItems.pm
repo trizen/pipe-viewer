@@ -45,34 +45,6 @@ sub videos_from_playlist_id {
     $self->_get_results($url);
 }
 
-=head2 uploads($channel_id)
-
-Get the uploads for a given channel ID.
-
-=cut
-
-=head2 uploads_from_username($username)
-
-Get the uploads for a given YouTube username.
-
-=cut
-
-{
-    no strict 'refs';
-    foreach my $name (qw(uploads)) {
-
-        *{__PACKAGE__ . '::' . $name . '_from_username'} = sub {
-            my ($self, $username) = @_;
-            $self->videos_from_username($username);
-        };
-
-        *{__PACKAGE__ . '::' . $name} = sub {
-            my ($self, $channel_id) = @_;
-            $self->videos_from_channel_id($channel_id);
-        };
-    }
-}
-
 =head1 AUTHOR
 
 Trizen, C<< <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d> >>

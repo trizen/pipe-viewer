@@ -23,7 +23,13 @@ sub _make_channels_url {
     return $self->_make_feed_url('channels', %opts);
 }
 
-sub videos_from_channel_id {
+=head2 uploads($channel_id)
+
+Get the uploads for a given channel ID.
+
+=cut
+
+sub uploads {
     my ($self, $channel_id) = @_;
 
     if (my $results = $self->yt_channel_uploads($channel_id)) {
@@ -32,11 +38,6 @@ sub videos_from_channel_id {
 
     my $url = $self->_make_feed_url("channels/$channel_id/videos");
     return $self->_get_results($url);
-}
-
-sub videos_from_username {
-    my ($self, $channel_id) = @_;
-    $self->videos_from_channel_id($channel_id);
 }
 
 =head2 popular_videos($channel_id)
