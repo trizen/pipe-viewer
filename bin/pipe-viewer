@@ -761,7 +761,6 @@ usage: $execname [options] ([url] | [keywords])
  * Videos
    -uv --uploads=s      : list videos uploaded by a specific channel or user
    -pv --popular=s      : list the most popular videos from a specific channel
-   -uf --favorites=s    : list the favorite videos of a specific user
    -id --videoids=s,s   : play YouTube videos by their IDs
    -rv --related=s      : show related videos for a video ID or URL
    -sv --search-videos  : search for YouTube videos (default mode)
@@ -1096,9 +1095,6 @@ Results: search for 'cats' videos, ordered by ViewCount and short duration.
 Command: $execname -sc math lessons
 Results: search for YouTube channels.
 
-Command: $execname -uf=Google
-Results: show the latest favorite videos by a user.
-
 
 ==== USER INPUT EXAMPLES ====
 
@@ -1431,22 +1427,8 @@ sub apply_configuration {
         }
     }
 
-    if (defined $opt->{favorites}) {
-        my $str = delete($opt->{favorites});
-
-        if ($str) {
-            if (my $id = extract_channel_id($str)) {
-                $yv_utils->is_channelID($id)
-                  ? print_videos($yv_obj->favorites($id))
-                  : print_videos($yv_obj->favorites_from_username($id));
-            }
-            else {
-                warn_invalid("username or channel ID", $str);
-            }
-        }
-        else {
-            print_favorite_videos();
-        }
+    if (defined delete $opt->{favorites}) {
+        print_favorite_videos();
     }
 
     if (defined delete $opt->{likes}) {
@@ -1531,7 +1513,7 @@ sub parse_arguments {
         'search-movie|movies|sm!'      => \$opt{search_movies},
 
         'uploads|U|user|user-videos|uv|u=s' => \$opt{uploads},
-        'favorites|F|user-favorites|uf:s'   => \$opt{favorites},
+        'favorites|F'                       => \$opt{favorites},
         'playlists|P|user-playlists|up:s'   => \$opt{playlists},
         'likes|L|user-likes'                => \$opt{likes},
         'dislikes|D'                        => \$opt{dislikes},
