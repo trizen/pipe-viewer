@@ -206,7 +206,9 @@ my %CONFIG = (
     comments_order => 'top',    # valid values: top, new
 
     # URI options
-    youtube_video_url => 'https://www.youtube.com/watch?v=%s',
+    youtube_video_url    => 'https://www.youtube.com/watch?v=%s',
+    youtube_playlist_url => 'https://www.youtube.com/playlist?list=%s',
+    youtube_channel_url  => 'https://www.youtube.com/channel/%s',
 
     # Subtitle options
     srt_languages => ['en', 'es'],
@@ -720,8 +722,12 @@ my $yv_obj = WWW::PipeViewer->new(
                                  );
 
 require WWW::PipeViewer::Utils;
-my $yv_utils = WWW::PipeViewer::Utils->new(youtube_url_format => $opt{youtube_video_url},
-                                           thousand_separator => $opt{thousand_separator},);
+my $yv_utils = WWW::PipeViewer::Utils->new(
+    youtube_video_url_format => $opt{youtube_video_url},
+    youtube_channel_url_format => $opt{youtube_channel_url},
+    youtube_playlist_url_format => $opt{youtube_playlist_url},
+    thousand_separator => $opt{thousand_separator},
+);
 
 {    # Apply the configuration file
     my %temp = %CONFIG;
@@ -2191,7 +2197,7 @@ sub warn_cant_do {
     my ($action, @ids) = @_;
 
     foreach my $videoID (@ids) {
-        warn colored("\n[!] Can't $action video: " . sprintf($CONFIG{youtube_video_url}, $videoID), 'bold red') . "\n";
+        warn colored("\n[!] Can't $action video: " . sprintf($opt{youtube_video_url}, $videoID), 'bold red') . "\n";
 
         my %info = $yv_obj->_get_video_info($videoID);
         my $resp = $yv_obj->parse_json_string($info{player_response} // next);
@@ -3785,7 +3791,7 @@ sub play_videos {
         if (   !defined($streaming->{streaming}{url})
             and defined($streaming->{info}{status})
             and $streaming->{info}{status} =~ /(?:error|fail)/i) {
-            warn colored("[!] Error on: ", 'bold red') . sprintf($CONFIG{youtube_video_url}, $video_id) . "\n";
+            warn colored("[!] Error on: ", 'bold red') . sprintf($opt{youtube_video_url}, $video_id) . "\n";
             warn colored(":: Reason: ",    'bold red') . $streaming->{info}{reason} =~ tr/+/ /r . "\n\n";
         }
 
@@ -3905,7 +3911,7 @@ sub print_playlist_info {
         ## local playlist
     }
     else {
-        say STDOUT $hr, "\n", _bold_color('=> URL: '), sprintf("https://www.youtube.com/playlist?list=%s", $id);
+        say STDOUT $hr, "\n", _bold_color('=> URL: '), sprintf($opt{youtube_playlist_url}, $id);
     }
 
     my $title        = $yv_utils->get_title($playlist);
@@ -3952,7 +3958,7 @@ sub print_channel_info {
            _bold_color('=> URL: ')
           );
 
-    print STDOUT sprintf("https://www.youtube.com/channel/%s", $yv_utils->get_channel_id($channel));
+    print STDOUT sprintf($opt{youtube_channel_url}, $yv_utils->get_channel_id($channel));
 
     my $title        = $yv_utils->get_channel_title($channel);
     my $title_length = length($title);
@@ -4005,7 +4011,7 @@ sub print_video_info {
            _bold_color('=> URL: ')
           );
 
-    print STDOUT sprintf($CONFIG{youtube_video_url}, $yv_utils->get_video_id($video));
+    print STDOUT sprintf($opt{youtube_video_url}, $yv_utils->get_video_id($video));
 
     my $title        = $yv_utils->get_title($video);
     my $title_length = length($title);
@@ -4916,6 +4922,14 @@ Command for C<wget> when C<download_with_wget> is set to a true value.
 =head2 youtube_video_url
 
 Format for C<sprintf()> for constructing an YouTube video URL given the video ID.
+
+=head2 youtube_channel_url
+
+Format for C<sprintf()> for constructing an YouTube channel URL given the channel ID.
+
+=head2 youtube_playlist_url
+
+Format for C<sprintf()> for constructing an YouTube playlist URL given the playlist ID.
 
 =head2 ytdl
 

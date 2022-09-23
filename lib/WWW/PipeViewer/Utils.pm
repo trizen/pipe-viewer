@@ -34,9 +34,17 @@ Character used as thousand separator.
 
 Month names for I<format_date()>
 
-=item youtube_url_format => ""
+=item youtube_video_url_format => ""
 
-A youtube URL format for sprintf(format, videoID).
+A video YouTube URL format for sprintf(format, videoID).
+
+=item youtube_channel_url_format => ""
+
+A channel YouTube URL format for sprintf(format, channelID).
+
+=item youtube_playlist_url_format => ""
+
+A playlist YouTube URL format for sprintf(format, playlistID).
 
 =back
 
@@ -47,7 +55,9 @@ sub new {
 
     my $self = bless {
                       thousand_separator => q{,},
-                      youtube_url_format => 'https://www.youtube.com/watch?v=%s',
+                      youtube_video_url_format => 'https://www.youtube.com/watch?v=%s',
+                      youtube_channel_url_format =>  'https://www.youtube.com/channel/%s',
+                      youtube_playlist_url_format => 'https://www.youtube.com/playlist?list=%s',
                      }, $class;
 
     $self->{months} = [
@@ -342,7 +352,7 @@ sub format_text {
     my $fat32safe = $opt{fat32safe};
 
     my %special_tokens = (
-        ID         => sub { $self->get_video_id($info) },
+        ID         => sub { $self->get_video_id($info) // $self->get_playlist_id($info) // $self->get_channel_id($info) },
         AUTHOR     => sub { $self->get_channel_title($info) },
         CHANNELID  => sub { $self->get_channel_id($info) },
 
@@ -394,7 +404,21 @@ sub format_text {
          : ()
         ),
 
-        URL => sub { sprintf($self->{youtube_url_format}, $self->get_video_id($info)) },
+        URL => sub {
+            if (defined(my $video_id = $self->get_video_id($info))) {
+                return sprintf($self->{youtube_video_url_format}, $video_id);
+            }
+
+            if (defined(my $playlist_id = $self->get_playlist_id($info))) {
+                return sprintf($self->{youtube_playlist_url_format}, $playlist_id);
+            }
+
+            if (defined(my $channel_id = $self->get_channel_id($info))) {
+                return sprintf($self->{youtube_channel_url_format}, $channel_id);
+            }
+
+            return undef;
+        },
     );
 
     my $tokens_re = do {

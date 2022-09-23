@@ -955,8 +955,12 @@ my $yv_obj = WWW::PipeViewer->new(
                                  );
 
 require WWW::PipeViewer::Utils;
-my $yv_utils = WWW::PipeViewer::Utils->new(thousand_separator => $CONFIG{thousand_separator},
-                                           youtube_url_format => $CONFIG{youtube_video_url},);
+my $yv_utils = WWW::PipeViewer::Utils->new(
+                                           youtube_video_url_format => $CONFIG{youtube_video_url},
+                                           youtube_channel_url_format => $CONFIG{youtube_channel_url},
+                                           youtube_playlist_url_format => $CONFIG{youtube_playlist_url},
+                                           thousand_separator => $CONFIG{thousand_separator},
+                                           );
 
 # Spin button start with page
 $spin_start_with_page->set_value(1);
