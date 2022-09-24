@@ -12,7 +12,7 @@ WWW::PipeViewer::Channels - Channels interface.
 
     use WWW::PipeViewer;
     my $obj = WWW::PipeViewer->new(%opts);
-    my $videos = $obj->channels_from_categoryID($category_id);
+    my $videos = $obj->uploads($channel_id);
 
 =head1 SUBROUTINES/METHODS
 
@@ -23,7 +23,13 @@ sub _make_channels_url {
     return $self->_make_feed_url('channels', %opts);
 }
 
-sub videos_from_channel_id {
+=head2 uploads($channel_id)
+
+Get the uploads for a given channel ID.
+
+=cut
+
+sub uploads {
     my ($self, $channel_id) = @_;
 
     if (my $results = $self->yt_channel_uploads($channel_id)) {
@@ -32,11 +38,6 @@ sub videos_from_channel_id {
 
     my $url = $self->_make_feed_url("channels/$channel_id/videos");
     return $self->_get_results($url);
-}
-
-sub videos_from_username {
-    my ($self, $channel_id) = @_;
-    $self->videos_from_channel_id($channel_id);
 }
 
 =head2 popular_videos($channel_id)
@@ -60,49 +61,15 @@ sub popular_videos {
     return $self->_get_results($url);
 }
 
-=head2 channels_from_categoryID($category_id)
-
-Return the YouTube channels associated with the specified category.
-
 =head2 channels_info($channel_id)
 
 Return information for the comma-separated list of the YouTube channel ID(s).
 
-=head1 Channel details
-
-For all functions, C<$channels->{results}{items}> contains:
-
 =cut
 
-{
-    no strict 'refs';
-
-    foreach my $method (
-                        {
-                         key  => 'categoryId',
-                         name => 'channels_from_guide_category',
-                        },
-                        {
-                         key  => 'id',
-                         name => 'channels_info',
-                        },
-                        {
-                         key  => 'forUsername',
-                         name => 'channels_from_username',
-                        },
-      ) {
-        *{__PACKAGE__ . '::' . $method->{name}} = sub {
-            my ($self, $channel_id) = @_;
-            return $self->_get_results($self->_make_channels_url($method->{key} => $channel_id));
-        };
-    }
-
-    foreach my $part (qw(id contentDetails statistics topicDetails)) {
-        *{__PACKAGE__ . '::' . 'channels_' . $part} = sub {
-            my ($self, $id) = @_;
-            return $self->_get_results($self->_make_channels_url(id => $id, part => $part));
-        };
-    }
+sub channels_info {
+    my ($self, $channel_id) = @_;
+    return $self->_get_results($self->_make_channels_url(id => $channel_id));
 }
 
 =head2 channel_id_from_username($username)

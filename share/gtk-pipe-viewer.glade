@@ -238,8 +238,6 @@ Author: Trizen https://github.com/trizen
       <column type="gchararray"/>
       <!-- column-name channel_name -->
       <column type="gchararray"/>
-      <!-- column-name type -->
-      <column type="gchararray"/>
       <!-- column-name logo -->
       <column type="GdkPixbuf"/>
     </columns>
@@ -1312,130 +1310,6 @@ When the specified resolution is not found, the best available resolution is use
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkFrame" id="frame24">
-                                    <property name="visible">True</property>
-                                    <property name="can-focus">False</property>
-                                    <property name="label-xalign">0</property>
-                                    <property name="shadow-type">none</property>
-                                    <child>
-                                      <object class="GtkAlignment" id="alignment23">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="top-padding">4</property>
-                                        <property name="left-padding">12</property>
-                                        <property name="right-padding">12</property>
-                                        <child>
-                                          <object class="GtkEntry" id="entry3">
-                                            <property name="visible">True</property>
-                                            <property name="can-focus">True</property>
-                                            <property name="tooltip-text" translatable="yes">Insert an YouTube username</property>
-                                            <property name="invisible-char">•</property>
-                                            <property name="primary-icon-activatable">False</property>
-                                            <property name="secondary-icon-activatable">False</property>
-                                            <signal name="activate" handler="favorites_from_text_entry" swapped="no"/>
-                                          </object>
-                                        </child>
-                                      </object>
-                                    </child>
-                                    <child type="label">
-                                      <object class="GtkLabel" id="label30">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="xpad">4</property>
-                                        <property name="label" translatable="yes">&lt;b&gt;Favorites:&lt;/b&gt;</property>
-                                        <property name="use-markup">True</property>
-                                      </object>
-                                    </child>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">False</property>
-                                    <property name="position">1</property>
-                                  </packing>
-                                </child>
-                                <child>
-                                  <object class="GtkFrame" id="frame26">
-                                    <property name="visible">True</property>
-                                    <property name="can-focus">False</property>
-                                    <property name="label-xalign">0</property>
-                                    <property name="shadow-type">none</property>
-                                    <child>
-                                      <object class="GtkAlignment" id="alignment5">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="top-padding">4</property>
-                                        <property name="left-padding">12</property>
-                                        <property name="right-padding">12</property>
-                                        <child>
-                                          <object class="GtkEntry" id="entry4">
-                                            <property name="visible">True</property>
-                                            <property name="can-focus">True</property>
-                                            <property name="invisible-char">•</property>
-                                            <property name="primary-icon-activatable">False</property>
-                                            <property name="secondary-icon-activatable">False</property>
-                                            <signal name="activate" handler="subscriptions_from_text_entry" swapped="no"/>
-                                          </object>
-                                        </child>
-                                      </object>
-                                    </child>
-                                    <child type="label">
-                                      <object class="GtkLabel" id="label34">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="xpad">4</property>
-                                        <property name="label" translatable="yes">&lt;b&gt;Subscriptions:&lt;/b&gt;</property>
-                                        <property name="use-markup">True</property>
-                                      </object>
-                                    </child>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">False</property>
-                                    <property name="position">2</property>
-                                  </packing>
-                                </child>
-                                <child>
-                                  <object class="GtkFrame" id="frame29">
-                                    <property name="visible">True</property>
-                                    <property name="can-focus">False</property>
-                                    <property name="label-xalign">0</property>
-                                    <property name="shadow-type">none</property>
-                                    <child>
-                                      <object class="GtkAlignment" id="alignment27">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="top-padding">4</property>
-                                        <property name="left-padding">12</property>
-                                        <property name="right-padding">12</property>
-                                        <child>
-                                          <object class="GtkEntry" id="entry5">
-                                            <property name="visible">True</property>
-                                            <property name="can-focus">True</property>
-                                            <property name="invisible-char">•</property>
-                                            <property name="primary-icon-activatable">False</property>
-                                            <property name="secondary-icon-activatable">False</property>
-                                            <signal name="activate" handler="likes_from_text_entry" swapped="no"/>
-                                          </object>
-                                        </child>
-                                      </object>
-                                    </child>
-                                    <child type="label">
-                                      <object class="GtkLabel" id="label37">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="xpad">4</property>
-                                        <property name="label" translatable="yes">&lt;b&gt;Likes:&lt;/b&gt;</property>
-                                        <property name="use-markup">True</property>
-                                      </object>
-                                    </child>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">False</property>
-                                    <property name="position">3</property>
-                                  </packing>
-                                </child>
-                                <child>
                                   <object class="GtkFrame" id="frame2">
                                     <property name="visible">True</property>
                                     <property name="can-focus">False</property>
@@ -1475,50 +1349,6 @@ When the specified resolution is not found, the best available resolution is use
                                     <property name="expand">False</property>
                                     <property name="fill">False</property>
                                     <property name="position">4</property>
-                                  </packing>
-                                </child>
-                                <child>
-                                  <object class="GtkFrame" id="frame28">
-                                    <property name="visible">True</property>
-                                    <property name="can-focus">False</property>
-                                    <property name="label-xalign">0</property>
-                                    <property name="label-yalign">0</property>
-                                    <property name="shadow-type">none</property>
-                                    <child>
-                                      <object class="GtkAlignment" id="alignment26">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="top-padding">4</property>
-                                        <property name="left-padding">12</property>
-                                        <property name="right-padding">12</property>
-                                        <child>
-                                          <object class="GtkComboBoxText" id="comboboxtext7">
-                                            <property name="visible">True</property>
-                                            <property name="can-focus">False</property>
-                                            <property name="active">0</property>
-                                            <items>
-                                              <item translatable="yes">username</item>
-                                              <item translatable="yes">channel ID</item>
-                                            </items>
-                                            <signal name="changed" handler="combobox_channel_type_changed" swapped="no"/>
-                                          </object>
-                                        </child>
-                                      </object>
-                                    </child>
-                                    <child type="label">
-                                      <object class="GtkLabel" id="label36">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="xpad">4</property>
-                                        <property name="label" translatable="yes">&lt;b&gt;Channel type:&lt;/b&gt;</property>
-                                        <property name="use-markup">True</property>
-                                      </object>
-                                    </child>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">False</property>
-                                    <property name="position">5</property>
                                   </packing>
                                 </child>
                               </object>
@@ -2627,7 +2457,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                         <child>
                           <object class="GtkCellRendererPixbuf" id="cellrendererpixbuf14"/>
                           <attributes>
-                            <attribute name="pixbuf">3</attribute>
+                            <attribute name="pixbuf">2</attribute>
                           </attributes>
                         </child>
                       </object>

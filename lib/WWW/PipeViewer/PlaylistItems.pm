@@ -45,42 +45,6 @@ sub videos_from_playlist_id {
     $self->_get_results($url);
 }
 
-=head2 favorites($channel_id)
-
-=head2 uploads($channel_id)
-
-=head2 likes($channel_id)
-
-Get the favorites, uploads and likes for a given channel ID.
-
-=cut
-
-=head2 favorites_from_username($username)
-
-=head2 uploads_from_username($username)
-
-=head2 likes_from_username($username)
-
-Get the favorites, uploads and likes for a given YouTube username.
-
-=cut
-
-{
-    no strict 'refs';
-    foreach my $name (qw(favorites uploads likes)) {
-
-        *{__PACKAGE__ . '::' . $name . '_from_username'} = sub {
-            my ($self, $username) = @_;
-            $self->videos_from_username($username);
-        };
-
-        *{__PACKAGE__ . '::' . $name} = sub {
-            my ($self, $channel_id) = @_;
-            $self->videos_from_channel_id($channel_id);
-        };
-    }
-}
-
 =head1 AUTHOR
 
 Trizen, C<< <echo dHJpemVuQHByb3Rvbm1haWwuY29tCg== | base64 -d> >>

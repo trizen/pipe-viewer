@@ -176,9 +176,6 @@ my %symbols = (
 # Main configuration
 my %CONFIG = (
 
-    # Combobox values
-    active_channel_type_combobox        => 0,
-
     video_players => {
                       vlc => {
                               cmd   => q{vlc},
@@ -390,7 +387,6 @@ my %objects = (
     'comboboxtext8'          => \my $duration_combobox,
     'comboboxtext1'          => \my $published_within_combobox,
     'comboboxtext2'          => \my $order_combobox,
-    'comboboxtext7'          => \my $channel_type_combobox,
     'comboboxtext10'         => \my $search_for_combobox,
     'spinbutton1'            => \my $spin_results,
     'spinbutton2'            => \my $spin_start_with_page,
@@ -1005,7 +1001,6 @@ sub apply_configuration {
     $dash_checkbutton->set_active($CONFIG{dash});
 
     $clear_list_checkbutton->set_active($CONFIG{clear_search_list});
-    $channel_type_combobox->set_active($CONFIG{active_channel_type_combobox});
 
     foreach my $option_name (
                              qw(
@@ -1387,7 +1382,7 @@ sub get_treeview_popup_menu {
         # Recent uploads from this author
         {
             my $item = 'Gtk3::ImageMenuItem'->new("Uploads");
-            $item->signal_connect(activate => sub { uploads('channel', $channel_id) });
+            $item->signal_connect(activate => sub { list_channel_videos($channel_id) });
             $item->set_property(tooltip_text => "Show the most recent videos from this author");
             $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-shared-symbolic", q{menu}));
             $item->show;
@@ -1413,28 +1408,6 @@ sub get_treeview_popup_menu {
             $item->show;
             $author->append($item);
         }
-
-        # Favorites of this author
-        {
-            my $item = 'Gtk3::ImageMenuItem'->new("Favorites");
-            $item->signal_connect(activate => sub { favorites('channel', $channel_id) });
-            $item->set_property(tooltip_text => "Show favorite videos of this author");
-            $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-favorite-symbolic", q{menu}));
-            $item->show;
-            $author->append($item);
-        }
-
-        # Liked videos by this author
-#<<<
-        #~ {
-            #~ my $item = 'Gtk3::ImageMenuItem'->new("Likes");
-            #~ $item->signal_connect(activate => sub { likes('channel', $channel_id) });
-            #~ $item->set_property(tooltip_text => "Show liked videos by this author");
-            #~ $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-default-symbolic", q{menu}));
-            #~ $item->show;
-            #~ $author->append($item);
-        #~ }
-#>>>
 
         # Separator
         {
@@ -1637,7 +1610,6 @@ set_text(
     CTRL+W : show the watched videos
     CTRL+U : show the saved user-list
     CTRL+D : show more details for a selected entry
-    CTRL+G : show favorite videos of the author of a selected video
     CTRL+R : show related videos for a selected video
     CTRL+M : show videos from the author of a selected video
     CTRL+K : show playlists from the author of a selected video
@@ -1667,7 +1639,6 @@ $accel->connect(ord('d'), ['control-mask'], ['visible'], \&show_details_window);
 #$accel->connect(ord('c'), ['control-mask'], ['visible'], \&show_comments_window);
 $accel->connect(ord('s'), ['control-mask'], ['visible'], \&add_user_to_favorites);
 $accel->connect(ord('r'), ['control-mask'], ['visible'], \&show_related_videos);
-$accel->connect(ord('g'), ['control-mask'], ['visible'], \&show_user_favorite_videos);
 $accel->connect(ord('m'), ['control-mask'], ['visible'], \&show_videos_from_selected_author);
 $accel->connect(ord('k'), ['control-mask'], ['visible'], \&show_playlists_from_selected_author);
 $accel->connect(0xffff,   ['lock-mask'],    ['visible'], \&delete_selected_row);
@@ -1825,10 +1796,6 @@ sub combobox_resolution_changed {
 
 sub combobox_duration_changed {
     combobox_changed($duration_combobox, "videoDuration", 1);
-}
-
-sub combobox_channel_type_changed {
-    $CONFIG{active_channel_type_combobox} = $channel_type_combobox->get_active;
 }
 
 sub combobox_published_within_changed {
@@ -2011,8 +1978,7 @@ sub set_usernames {
                               $iter,
                               0 => $channel,
                               1 => $channels{$channel},
-                              2 => 'channel',
-                              3 => (
+                              2 => (
                                     exists($subscribed_channels{$channel})
                                     ? $feed_icon_pixbuf
                                     : $user_icon_pixbuf
@@ -2112,11 +2078,11 @@ sub subscribe_toggle_selected_username {
 
     if (exists $subscribed_channels{$channel_id}) {
         delete $subscribed_channels{$channel_id};
-        $users_liststore->set($iter, [3], [$user_icon_pixbuf]);
+        $users_liststore->set($iter, [2], [$user_icon_pixbuf]);
     }
     else {
         $subscribed_channels{$channel_id} = $channel_name;
-        $users_liststore->set($iter, [3], [$feed_icon_pixbuf]);
+        $users_liststore->set($iter, [2], [$feed_icon_pixbuf]);
     }
 
     write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
@@ -2169,21 +2135,13 @@ sub save_usernames_to_file {
 sub playlists_from_selected_username {
     my $selection = $users_treeview->get_selection() // return;
     my $iter      = $selection->get_selected()       // return;
-
-    my $type    = $users_liststore->get($iter, 2);
-    my $channel = $users_liststore->get($iter, 0);
-
-    playlists($type, $channel);
+    list_channel_playlists($users_liststore->get($iter, 0));
 }
 
 sub videos_from_selected_username {
     my $selection = $users_treeview->get_selection() // return;
     my $iter      = $selection->get_selected()       // return;
-
-    my $type    = $users_liststore->get($iter, 2);
-    my $channel = $users_liststore->get($iter, 0);
-
-    uploads($type, $channel);
+    list_channel_videos($users_liststore->get($iter, 0));
 }
 
 sub videos_from_saved_channel {
@@ -2205,42 +2163,6 @@ sub popular_uploads {
     }
     else {
         die "No popular uploads for channel: <<$channel>>\n";
-    }
-}
-
-{
-    no strict 'refs';
-    foreach my $name (qw(favorites uploads likes playlists subscriptions)) {
-        *{__PACKAGE__ . '::' . $name} = sub {
-            my ($type, $channel) = @_;
-
-            my $method = $name;
-
-            if ($yv_utils->is_channelID($channel)) {
-                $method = $name;
-            }
-            elsif ($type =~ /^user/i and $channel ne 'mine' and $channel =~ /^\S+\z/) {
-                $method = $name . '_from_username';
-            }
-            elsif ($type =~ /^channel/i and $channel ne 'mine' and $channel =~ /^\S+\z/) {
-                $method = $name . '_from_username';
-            }
-
-            my $request = $yv_obj->$method(
-                                           ($type =~ /^(user|channel)/i and $channel =~ /^\S+\z/)
-                                           ? $channel
-                                           : ()
-                                          );
-
-            if ($yv_utils->has_entries($request)) {
-                display_results($request);
-            }
-            else {
-                die "No $name results" . ($channel ? " for channel: <<$channel>>\n" : "\n");
-            }
-
-            return 1;
-        };
     }
 }
 
@@ -2279,10 +2201,10 @@ sub check_keywords {
         list_channel_videos($+{channel_id});
     }
     elsif ($key =~ /$get_username_playlists_re/) {
-        list_username_playlists($+{username});
+        list_channel_playlists($+{username});
     }
     elsif ($key =~ /$get_username_videos_re/) {
-        list_username_videos($+{username});
+        list_channel_videos($+{username});
     }
     else {
         return;
@@ -2361,7 +2283,7 @@ sub get_code {
                 list_playlist($code);
             }
             elsif ($type eq 'channel') {
-                uploads('channel', $code);
+                list_channel_videos($code);
             }
             elsif ($type eq 'next_page' and $code ne '') {
 
@@ -3098,88 +3020,43 @@ sub list_playlist {
 }
 
 sub list_channel_videos {
-    my ($channel_id) = @_;
+    my ($channel) = @_;
 
-    my $results = $yv_obj->uploads($channel_id);
-
-    if ($yv_utils->has_entries($results)) {
-        display_results($results);
-        return 1;
-    }
-    else {
-        die "[!] No videos for channel ID: $channel_id\n";
-    }
-    return;
-}
-
-sub list_username_videos {
-    my ($username) = @_;
-
-    my $results = $yv_obj->uploads_from_username($username);
+    my $results = $yv_obj->uploads($channel);
 
     if ($yv_utils->has_entries($results)) {
         display_results($results);
         return 1;
     }
     else {
-        die "[!] No videos for user: $username\n";
+        die "[!] No videos for channel: $channel\n";
     }
     return;
 }
 
 sub list_channel_playlists {
-    my ($channel_id) = @_;
+    my ($channel) = @_;
 
-    my $results = $yv_obj->playlists($channel_id);
-
-    if ($yv_utils->has_entries($results)) {
-        display_results($results);
-        return 1;
-    }
-    else {
-        die "[!] No playlists for channel ID: $channel_id\n";
-    }
-    return;
-}
-
-sub list_username_playlists {
-    my ($username) = @_;
-
-    my $results = $yv_obj->playlists_from_username($username);
+    my $results = $yv_obj->playlists($channel);
 
     if ($yv_utils->has_entries($results)) {
         display_results($results);
         return 1;
     }
     else {
-        die "[!] No playlists for user: $username\n";
+        die "[!] No playlists for channel: $channel\n";
     }
     return;
-}
-
-sub favorites_from_text_entry {
-    my ($text_entry) = @_;
-    favorites($channel_type_combobox->get_active_text, $text_entry->get_text);
 }
 
 sub uploads_from_text_entry {
     my ($text_entry) = @_;
-    uploads($channel_type_combobox->get_active_text, $text_entry->get_text);
+    list_channel_videos($text_entry->get_text);
 }
 
 sub playlists_from_text_entry {
     my ($text_entry) = @_;
-    playlists($channel_type_combobox->get_active_text, $text_entry->get_text);
-}
-
-sub likes_from_text_entry {
-    my ($text_entry) = @_;
-    likes($channel_type_combobox->get_active_text, $text_entry->get_text);
-}
-
-sub subscriptions_from_text_entry {
-    my ($text_entry) = @_;
-    subscriptions($channel_type_combobox->get_active_text, $text_entry->get_text);
+    list_channel_playlists($text_entry->get_text);
 }
 
 sub strip_spaces {
@@ -3599,11 +3476,6 @@ sub comments_row_activated {
     return 1;
 }
 
-sub show_user_favorite_videos {
-    my $username = get_channel_id_for_selected_video() // return;
-    favorites('channel', $username);
-}
-
 sub get_channel_id_for_selected_video {
     my $selection = $treeview->get_selection() // return;
     my $iter      = $selection->get_selected() // return;
@@ -3834,18 +3706,11 @@ sub set_prev_next_results_sensitivity {
 }
 
 sub show_videos_from_selected_author {
-    uploads('channel', get_channel_id_for_selected_video() || return);
+    list_channel_videos(get_channel_id_for_selected_video() || return);
 }
 
 sub show_playlists_from_selected_author {
-    my $request = $yv_obj->playlists(get_channel_id_for_selected_video() || return);
-    if ($yv_utils->has_entries($request)) {
-        display_results($request);
-    }
-    else {
-        die "No playlists found...\n";
-    }
-    return 1;
+    list_channel_playlists(get_channel_id_for_selected_video() || return);
 }
 
 sub set_entry_details {
