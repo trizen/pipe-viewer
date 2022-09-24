@@ -2673,6 +2673,7 @@ sub display_subscription_videos {
 }
 
 sub save_search_results_position {
+    return if $ResultsHistory{current} < 0;
     my $position = $treeview->get_vadjustment->get_value;
     $ResultsHistory{position}[$ResultsHistory{current}] = $position;
     return;
