@@ -54,15 +54,20 @@ Get popular videos from a category ID.
 
 =cut
 
+my %_CATEGORIES = (
+    gaming   => 'Gaming',
+    movies   => 'Movies',
+    music    => 'Music',
+    trending => undef,
+);
+
 sub trending_videos_from_category {
     my ($self, $category) = @_;
 
-    if (defined($category) and $category eq 'popular') {
-        return $self->popular_videos;
-    }
-
-    if (defined($category) and $category eq 'trending') {
-        $category = undef;
+    if (defined $category) {
+        return $self->popular_videos if $category eq 'popular';
+        die "invalid category: $category" unless exists $_CATEGORIES{$category};
+        $category = $_CATEGORIES{$category};
     }
 
     return $self->_get_results($self->_make_feed_url('trending', (defined($category) ? (type => $category) : ())));

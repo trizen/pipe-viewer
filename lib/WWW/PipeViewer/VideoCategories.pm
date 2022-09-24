@@ -29,7 +29,6 @@ sub video_categories {
 
     return [{id => "music",    title => "Music"},
             {id => "gaming",   title => "Gaming"},
-            {id => "news",     title => "News"},
             {id => "movies",   title => "Movies"},
             {id => "trending", title => "Trending"},
             {id => "popular",  title => "Popular"},
