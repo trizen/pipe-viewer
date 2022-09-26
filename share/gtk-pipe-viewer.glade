@@ -502,8 +502,8 @@ Author: Trizen https://github.com/trizen
                     <property name="reorderable">True</property>
                     <property name="search-column">1</property>
                     <property name="tooltip-column">9</property>
-                    <signal name="button-press-event" handler="treeview_button_press" swapped="no"/>
-                    <signal name="popup-menu" handler="treeview_popup_menu" swapped="no"/>
+                    <signal name="button-press-event" handler="gtk_treeview_button_press" swapped="no"/>
+                    <signal name="popup-menu" handler="gtk_treeview_popup_menu" swapped="no"/>
                     <signal name="row-activated" handler="get_code" swapped="no"/>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
@@ -2275,6 +2275,8 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                     <property name="can-focus">True</property>
                     <property name="model">liststore2</property>
                     <property name="search-column">1</property>
+                    <signal name="button-press-event" handler="gtk_treeview_button_press" swapped="no"/>
+                    <signal name="popup-menu" handler="gtk_treeview_popup_menu" swapped="no"/>
                     <signal name="row-activated" handler="videos_from_saved_channel" swapped="no"/>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
