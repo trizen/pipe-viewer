@@ -1565,6 +1565,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
     <child internal-child="vbox">
       <object class="GtkBox" id="dialog-vbox3">
         <property name="can-focus">False</property>
+        <property name="orientation">vertical</property>
         <child internal-child="action_area">
           <object class="GtkButtonBox" id="dialog-action_area3">
             <property name="can-focus">False</property>
@@ -1576,9 +1577,6 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
             <property name="pack-type">end</property>
             <property name="position">0</property>
           </packing>
-        </child>
-        <child>
-          <placeholder/>
         </child>
       </object>
     </child>
@@ -1905,6 +1903,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
       <object class="GtkBox" id="dialog-vbox2">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
+        <property name="orientation">vertical</property>
         <property name="spacing">1</property>
         <child internal-child="action_area">
           <object class="GtkButtonBox" id="dialog-action_area2">
@@ -2510,6 +2509,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
       <object class="GtkBox" id="dialog-vbox5">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
+        <property name="orientation">vertical</property>
         <property name="spacing">1</property>
         <child internal-child="action_area">
           <object class="GtkButtonBox" id="dialog-action_area5">
