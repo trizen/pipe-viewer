@@ -1582,6 +1582,8 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
     </child>
   </object>
   <object class="GtkDialog" id="details_window">
+    <property name="width-request">800</property>
+    <property name="height-request">600</property>
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">Extra details</property>
     <property name="modal">True</property>
@@ -1603,6 +1605,21 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
             <property name="can-focus">False</property>
             <property name="layout-style">end</property>
             <child>
+              <object class="GtkLinkButton" id="linkbutton1">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="halign">start</property>
+                <property name="relief">none</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+                <property name="secondary">True</property>
+              </packing>
+            </child>
+            <child>
               <object class="GtkButton" id="play">
                 <property name="label">gtk-media-play</property>
                 <property name="visible">True</property>
@@ -1614,7 +1631,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
               <packing>
                 <property name="expand">True</property>
                 <property name="fill">True</property>
-                <property name="position">0</property>
+                <property name="position">1</property>
               </packing>
             </child>
             <child>
@@ -1629,7 +1646,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
               <packing>
                 <property name="expand">True</property>
                 <property name="fill">True</property>
-                <property name="position">1</property>
+                <property name="position">2</property>
               </packing>
             </child>
             <child>
@@ -1643,7 +1660,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
               <packing>
                 <property name="expand">True</property>
                 <property name="fill">True</property>
-                <property name="position">2</property>
+                <property name="position">3</property>
               </packing>
             </child>
           </object>
@@ -1749,26 +1766,27 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="orientation">vertical</property>
+                <property name="spacing">4</property>
                 <child>
-                  <object class="GtkLabel" id="video_details_label">
+                  <object class="GtkFlowBox" id="details_flowbox1">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="use-markup">True</property>
-                    <property name="wrap">True</property>
-                    <property name="selectable">True</property>
-                    <property name="ellipsize">end</property>
-                    <property name="width-chars">35</property>
+                    <property name="max-children-per-line">1</property>
+                    <property name="selection-mode">none</property>
+                    <property name="activate-on-single-click">False</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
-                    <property name="fill">False</property>
+                    <property name="fill">True</property>
                     <property name="position">0</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkSeparator">
+                  <object class="GtkFlowBox" id="details_flowbox2">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
+                    <property name="selection-mode">none</property>
+                    <property name="activate-on-single-click">False</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -1777,14 +1795,22 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                   </packing>
                 </child>
                 <child>
+                  <object class="GtkSeparator">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="margin-end">4</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+                <child>
                   <object class="GtkFrame" id="frame3">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="margin-left">4</property>
-                    <property name="margin-right">4</property>
-                    <property name="margin-start">4</property>
                     <property name="margin-end">4</property>
-                    <property name="margin-top">4</property>
                     <property name="margin-bottom">4</property>
                     <property name="label-xalign">0</property>
                     <property name="shadow-type">out</property>
@@ -1829,7 +1855,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                   <packing>
                     <property name="expand">True</property>
                     <property name="fill">True</property>
-                    <property name="position">3</property>
+                    <property name="position">4</property>
                   </packing>
                 </child>
               </object>
@@ -1843,31 +1869,6 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
             <property name="expand">True</property>
             <property name="fill">True</property>
             <property name="position">2</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkButtonBox" id="hbuttonbox10">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="layout-style">center</property>
-            <child>
-              <object class="GtkLinkButton" id="linkbutton1">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="relief">none</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">3</property>
           </packing>
         </child>
         <child>
