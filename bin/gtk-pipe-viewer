@@ -1182,6 +1182,19 @@ sub treeview_popup_menu {
     # Ensure the selected row is visible.
     $treeview->scroll_to_cell($path, $column, 0, 0, 0);
     my $rect = $treeview->get_cell_area($path, $column);
+    # When Gtk animations are enabled (`gtk-enable-animations=true`),
+    # the coordinates reported won't be correct if the cell was not
+    # already fully visible…
+    if ($rect->{y} < 0) {
+        # The cell was hiden, before the visible area,
+        # or partially visible at the top of said area.
+        $rect->{y} = 0;
+    }
+    elsif ($rect->{y} > $treeview->get_bin_window->get_height) {
+        # The cell was hiden, after the visible area,
+        # or partially visible at the end of said area.
+        $rect->{y} = $treeview->get_bin_window->get_height - $rect->{height};
+    }
     $menu->popup_at_rect($treeview->get_window(), $rect, 'center', 'north_west', undef);
     return 1;
 }
