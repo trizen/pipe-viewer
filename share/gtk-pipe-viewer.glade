@@ -2176,7 +2176,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                 <property name="can-focus">True</property>
                 <property name="model">liststore2</property>
                 <property name="search-column">1</property>
-                <signal name="button-press-event" handler="gtk_treeview_button_press" swapped="no"/>
+                <signal name="button-press-event" handler="users_list_button_press" swapped="no"/>
                 <signal name="popup-menu" handler="gtk_treeview_popup_menu" swapped="no"/>
                 <signal name="row-activated" handler="videos_from_saved_channel" swapped="no"/>
                 <child internal-child="selection">
@@ -2197,7 +2197,10 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                   <object class="GtkTreeViewColumn" id="treeviewcolumn23">
                     <property name="title">Channel</property>
                     <child>
-                      <object class="GtkCellRendererText" id="cellrenderertext14"/>
+                      <object class="GtkCellRendererText" id="cellrenderertext14">
+                        <property name="editable">True</property>
+                        <signal name="edited" handler="update_saved_channel_name" swapped="no"/>
+                      </object>
                       <attributes>
                         <attribute name="text">1</attribute>
                       </attributes>

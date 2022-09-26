@@ -1539,6 +1539,33 @@ sub get_users_list_popup_menu {
         $menu->append($item);
     }
 
+    # Rename the channel
+    {
+        my $item = 'Gtk3::ImageMenuItem'->new("Rename");
+        $item->set_image('Gtk3::Image'->new_from_icon_name("accessories-text-editor", q{menu}));
+        $item->set_property(tooltip_text => "Rename the channel");
+        $item->signal_connect(
+            activate => sub {
+                Glib::Timeout->add(
+                    100,
+                    sub {
+                        # Ugly, but if the "Rename" menu entry happens to be
+                        # positioned outside the user list window, over the
+                        # main window, and the window manager is configured
+                        # to have focus follow the mouse pointer, then when
+                        # the popup menu is unmapped, the main window will
+                        # get focused, cancelling the editing…
+                        $users_list_window->present();
+                        rename_selected_username();
+                        return 0;
+                    },
+                );
+            }
+        );
+        $item->show;
+        $menu->append($item);
+    }
+
     # Remove the channel
     {
         my $item = 'Gtk3::ImageMenuItem'->new("Remove");
@@ -1983,6 +2010,60 @@ sub set_usernames {
     }
 }
 
+sub users_list_button_press {
+    my ($widget, $event) = @_;
+    if ($event->button != 1) {
+        return gtk_treeview_button_press($widget, $event);
+    }
+    # Manually handle left clicks to prevent triggering editing
+    # a username on double-click (instead of activating the row).
+    my $path = ($users_treeview->get_path_at_pos($event->x, $event->y))[0] // return 0;
+    my $selected_path = $path->to_string;
+    state $double_click_time = Gtk3::Settings::get_default->get_property('gtk-double-click-time');
+    state $prev_selected_path = -1;
+    state $trigger_edit_timeout;
+    if ($trigger_edit_timeout) {
+        Glib::Source->remove($trigger_edit_timeout);
+        $trigger_edit_timeout = undef;
+    }
+    if ($event->type eq 'button-press') {
+        if ($prev_selected_path == $selected_path) {
+            $trigger_edit_timeout = Glib::Timeout->add(
+                $double_click_time + 20,
+                sub {
+                    $trigger_edit_timeout = undef;
+                    rename_selected_username();
+                    return 0;
+                }
+            );
+        }
+        else {
+            $users_treeview->set_cursor($path, undef, 0);
+            $prev_selected_path = $selected_path;
+        }
+    }
+    elsif ($event->type eq '2button-press') {
+        $users_treeview->row_activated($path, $users_treeview->get_column(1));
+    }
+    return 1;
+}
+
+sub update_saved_channel_name {
+    my ($edit, $path, $new_name) = @_;
+    my $iter = $users_liststore->get_iter_from_string($path);
+    if ($new_name =~ /\S/ && $new_name ne $users_liststore->get($iter, 1)) {
+        my $channel_id = $users_liststore->get($iter, 0);
+        $users_liststore->set($iter, [1], [$new_name]);
+        if (exists $subscribed_channels{$channel_id}) {
+            $subscribed_channels{$channel_id} = $new_name;
+            write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
+        }
+        $channels{$channel_id} = $new_name;
+        write_channels_to_file(\%channels, $CONFIG{saved_channels_file});
+    }
+    return 1;
+}
+
 sub save_channel {
     my ($channel_id, $channel_name, %args) = @_;
     die unless $yv_utils->is_channelID($channel_id) and $channel_name =~ /\S/;
@@ -2036,6 +2117,14 @@ sub subscribe_toggle_selected_username {
     }
 
     write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
+}
+
+sub rename_selected_username {
+    my $iter   = $users_treeview->get_selection->get_selected;
+    my $path   = $users_liststore->get_path($iter);
+    my $column = $users_treeview->get_column(1);
+    $users_treeview->set_cursor($path, $column, 1);
+    return;
 }
 
 sub remove_selected_username {
