@@ -3750,7 +3750,6 @@ sub set_entry_details {
         $text_info = join(
                           "\n",
                           map    { sprintf("%s  %s", $_->[0], $_->[1]) }
-                            grep { $_->[1] !~ /^(0|unknown)\z/i }
                             grep { defined($_->[1]) } (
                                                        [$symbols{author}      => $yv_utils->get_channel_title($info)],
                                                        [$symbols{category}    => $yv_utils->get_category_name($info)],

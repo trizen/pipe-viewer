@@ -798,9 +798,6 @@ sub get_rating {
     if ($likes and $views and $views >= $likes) {
         $rating = sprintf("%.2g%%", log($likes + 1) / log($views + 1) * 100);
     }
-    else {
-        $rating = "N/A";
-    }
 
     return $rating;
 }
@@ -812,7 +809,7 @@ sub get_channel_id {
 
 sub get_category_name {
     my ($self, $info) = @_;
-    $info->{genre} // $info->{category} // 'Unknown';
+    $info->{genre} // $info->{category};
 }
 
 sub get_publication_date {
@@ -1001,7 +998,7 @@ sub get_views_approx {
 
 sub get_likes {
     my ($self, $info) = @_;
-    $info->{likeCount} // 0;
+    $info->{likeCount};
 }
 
 {
