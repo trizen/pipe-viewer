@@ -1533,9 +1533,6 @@ sub users_menu_popup {
         return 0;
     }
 
-    # Hardcoded menu
-    #my $menu = $gui->get_object('user_option_menu');
-
     # Dynamic menu
     my $path = ($treeview->get_path_at_pos($event->x, $event->y))[0] // return 0;
 
