@@ -810,11 +810,6 @@ sub get_channel_id {
     $info->{authorId};
 }
 
-sub get_category_id {
-    my ($self, $info) = @_;
-    $info->{genre} // $info->{category} // 'Unknown';
-}
-
 sub get_category_name {
     my ($self, $info) = @_;
 
