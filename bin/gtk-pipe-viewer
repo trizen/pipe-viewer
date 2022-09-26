@@ -3040,16 +3040,6 @@ sub list_channel_playlists {
     return;
 }
 
-sub uploads_from_text_entry {
-    my ($text_entry) = @_;
-    list_channel_videos($text_entry->get_text);
-}
-
-sub playlists_from_text_entry {
-    my ($text_entry) = @_;
-    list_channel_playlists($text_entry->get_text);
-}
-
 sub strip_spaces {
     my ($text) = @_;
     $text =~ s/^\s+//;
