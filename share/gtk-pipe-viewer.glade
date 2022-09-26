@@ -2362,7 +2362,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                 <property name="invisible-char">•</property>
                 <property name="primary-icon-activatable">False</property>
                 <property name="secondary-icon-activatable">False</property>
-                <signal name="activate" handler="save_channel" swapped="no"/>
+                <signal name="activate" handler="save_channel_from_entries" swapped="no"/>
                 <signal name="button-press-event" handler="clear_text" swapped="no"/>
               </object>
               <packing>
@@ -2390,7 +2390,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                 <property name="invisible-char">•</property>
                 <property name="primary-icon-activatable">False</property>
                 <property name="secondary-icon-activatable">False</property>
-                <signal name="activate" handler="save_channel" swapped="no"/>
+                <signal name="activate" handler="save_channel_from_entries" swapped="no"/>
                 <signal name="button-press-event" handler="clear_text" swapped="no"/>
               </object>
               <packing>
@@ -2406,7 +2406,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                 <property name="can-focus">True</property>
                 <property name="receives-default">True</property>
                 <property name="use-stock">True</property>
-                <signal name="clicked" handler="save_channel" swapped="no"/>
+                <signal name="clicked" handler="save_channel_from_entries" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>

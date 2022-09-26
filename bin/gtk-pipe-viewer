@@ -1422,7 +1422,7 @@ sub get_treeview_popup_menu {
         # Subscribe to channel
         {
             my $item = 'Gtk3::ImageMenuItem'->new("Subscribe");
-            $item->signal_connect(activate => sub { save_channel_by_id($channel_id, $channel_name, subscribe => 1) });
+            $item->signal_connect(activate => sub { save_channel($channel_id, $channel_name, subscribe => 1) });
             $item->set_property(tooltip_text => "Subscribe to this channel");
             $item->set_image('Gtk3::Image'->new_from_pixbuf($feed_icon_gray_pixbuf));
             $item->show;
@@ -1433,7 +1433,7 @@ sub get_treeview_popup_menu {
         {
             my $item = 'Gtk3::ImageMenuItem'->new("Save channel");
             $item->set_property(tooltip_text => "Save the channel in the user-list");
-            $item->signal_connect(activate => sub { save_channel_by_id($channel_id, $channel_name) });
+            $item->signal_connect(activate => sub { save_channel($channel_id, $channel_name) });
             $item->set_image('Gtk3::Image'->new_from_icon_name("star-new-symbolic", q{menu}));
             $item->show;
             $author->append($item);
@@ -1987,7 +1987,7 @@ sub set_usernames {
     }
 }
 
-sub save_channel {
+sub save_channel_from_entries {
     my $channel_name = $save_channel_name_entry->get_text;
     my $channel_id   = $save_channel_id_entry->get_text;
 
@@ -2017,23 +2017,15 @@ sub save_channel {
         return;
     }
 
-    save_channel_by_id($channel_id, $channel_name);
+    save_channel($channel_id, $channel_name);
 }
 
-sub save_channel_by_id {
+sub save_channel {
     my ($channel_id, $channel_name, %args) = @_;
-
-    # Validate the channel ID
-    if (not defined($channel_id) or not $channel_id =~ /$valid_channel_id_re/) {
-        return;
-    }
-
-    if ($channel_id =~ /$valid_channel_id_re/) {
-        $channel_id = $+{channel_id};
-    }
+    die unless $yv_utils->is_channelID($channel_id) and $channel_name =~ /\S/;
 
     if ($args{subscribe} and not exists($subscribed_channels{$channel_id})) {
-        say ":: Subscribed channel: $channel_name" if $yv_obj->get_debug;
+        say ":: Subscribed channel: $channel_name [$channel_id]" if $yv_obj->get_debug;
         $subscribed_channels{$channel_id} = $channel_name;
         write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
     }
@@ -2044,13 +2036,8 @@ sub save_channel_by_id {
         return;
     }
 
-    # Get the channel name
-    if (not defined($channel_name) or not $channel_name =~ /\S/) {
-        $channel_name = $yv_obj->channel_title_from_id($channel_id) // $channel_id;
-    }
-
     # Save channel to file
-    say ":: Saving channel: $channel_name" if $yv_obj->get_debug;
+    say ":: Saving channel: $channel_name [$channel_id]" if $yv_obj->get_debug;
     $channels{$channel_id} = $channel_name;
     write_channels_to_file(\%channels, $CONFIG{saved_channels_file});
     set_usernames();
@@ -2065,7 +2052,7 @@ sub add_user_to_favorites {
     my $channel_id   = $liststore->get($iter, 6);
     my $channel_name = $yv_utils->get_channel_title($info);
 
-    save_channel_by_id($channel_id, $channel_name);
+    save_channel($channel_id, $channel_name);
 }
 
 sub subscribe_toggle_selected_username {
