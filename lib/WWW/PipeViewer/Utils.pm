@@ -798,9 +798,6 @@ sub get_rating {
     if ($likes and $views and $views >= $likes) {
         $rating = sprintf("%.2g%%", log($likes + 1) / log($views + 1) * 100);
     }
-    else {
-        $rating = "N/A";
-    }
 
     return $rating;
 }
@@ -810,33 +807,9 @@ sub get_channel_id {
     $info->{authorId};
 }
 
-sub get_category_id {
-    my ($self, $info) = @_;
-    $info->{genre} // $info->{category} // 'Unknown';
-}
-
 sub get_category_name {
     my ($self, $info) = @_;
-
-    state $categories = {
-                         1  => 'Film & Animation',
-                         2  => 'Autos & Vehicles',
-                         10 => 'Music',
-                         15 => 'Pets & Animals',
-                         17 => 'Sports',
-                         19 => 'Travel & Events',
-                         20 => 'Gaming',
-                         22 => 'People & Blogs',
-                         23 => 'Comedy',
-                         24 => 'Entertainment',
-                         25 => 'News & Politics',
-                         26 => 'Howto & Style',
-                         27 => 'Education',
-                         28 => 'Science & Technology',
-                         29 => 'Nonprofits & Activism',
-                        };
-
-    $info->{genre} // $info->{category} // 'Unknown';
+    $info->{genre} // $info->{category};
 }
 
 sub get_publication_date {
@@ -1025,7 +998,7 @@ sub get_views_approx {
 
 sub get_likes {
     my ($self, $info) = @_;
-    $info->{likeCount} // 0;
+    $info->{likeCount};
 }
 
 {

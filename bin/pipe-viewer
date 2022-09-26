@@ -4005,7 +4005,6 @@ sub print_video_info {
           q{ } x $rep => (_bold_color("=>> $title <<=") . "\n\n"),
           (
            map    { sprintf(q{-> } . "%-*s: %s\n", $opt{_colors} ? 18 : 10, _bold_color($_->[0]), $_->[1]) }
-             grep { $_->[1] !~ /^(0|unknown)\z/i }
              grep { defined($_->[1]) } (
                                         ['Channel'    => $yv_utils->get_channel_title($video)],
                                         ['ChannelID'  => $yv_utils->get_channel_id($video)],
