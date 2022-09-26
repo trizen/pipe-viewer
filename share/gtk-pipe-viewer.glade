@@ -2446,7 +2446,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="model">liststore2</property>
-                    <property name="search-column">0</property>
+                    <property name="search-column">1</property>
                     <signal name="row-activated" handler="videos_from_saved_channel" swapped="no"/>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
