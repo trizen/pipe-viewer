@@ -68,11 +68,6 @@ Author: Trizen https://github.com/trizen
     <property name="can-focus">False</property>
     <property name="stock">gtk-go-back</property>
   </object>
-  <object class="GtkImage" id="icon_from_pixbuf">
-    <property name="visible">True</property>
-    <property name="can-focus">False</property>
-    <property name="stock">gtk-missing-image</property>
-  </object>
   <object class="GtkImage" id="image10">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
@@ -82,64 +77,6 @@ Author: Trizen https://github.com/trizen
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="stock">gtk-index</property>
-  </object>
-  <object class="GtkImage" id="image14">
-    <property name="visible">True</property>
-    <property name="can-focus">False</property>
-    <property name="icon-name">emblem-documents</property>
-  </object>
-  <object class="GtkImage" id="image17">
-    <property name="visible">True</property>
-    <property name="can-focus">False</property>
-    <property name="icon-name">applications-multimedia</property>
-  </object>
-  <object class="GtkMenu" id="user_option_menu">
-    <property name="visible">True</property>
-    <property name="can-focus">False</property>
-    <child>
-      <object class="GtkImageMenuItem" id="menuitem8">
-        <property name="label" translatable="yes">Videos</property>
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <property name="tooltip-text" translatable="yes">List latest YouTube videos on this channel</property>
-        <property name="image">image17</property>
-        <property name="use-stock">False</property>
-        <signal name="activate" handler="videos_from_selected_username" swapped="no"/>
-      </object>
-    </child>
-    <child>
-      <object class="GtkImageMenuItem" id="menuitem7">
-        <property name="label" translatable="yes">Playlists</property>
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <property name="tooltip-text" translatable="yes">List YouTube playlists created by this channel</property>
-        <property name="image">image14</property>
-        <property name="use-stock">False</property>
-        <signal name="activate" handler="playlists_from_selected_username" swapped="no"/>
-      </object>
-    </child>
-    <child>
-      <object class="GtkImageMenuItem" id="subunsubchannel">
-        <property name="label" translatable="yes">(Un)subscribe</property>
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <property name="tooltip-text" translatable="yes">Subscribe / unsubscribe from this channel</property>
-        <property name="image">icon_from_pixbuf</property>
-        <property name="use-stock">False</property>
-        <signal name="activate" handler="subscribe_toggle_selected_username" swapped="no"/>
-      </object>
-    </child>
-    <child>
-      <object class="GtkImageMenuItem" id="menuitem5">
-        <property name="label">gtk-remove</property>
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <property name="tooltip-text" translatable="yes">Remove the selected channel from the list</property>
-        <property name="use-underline">True</property>
-        <property name="use-stock">True</property>
-        <signal name="activate" handler="remove_selected_username" swapped="no"/>
-      </object>
-    </child>
   </object>
   <object class="GtkImage" id="image5">
     <property name="visible">True</property>
@@ -565,8 +502,8 @@ Author: Trizen https://github.com/trizen
                     <property name="reorderable">True</property>
                     <property name="search-column">1</property>
                     <property name="tooltip-column">9</property>
-                    <signal name="button-press-event" handler="treeview_button_press" swapped="no"/>
-                    <signal name="popup-menu" handler="treeview_popup_menu" swapped="no"/>
+                    <signal name="button-press-event" handler="gtk_treeview_button_press" swapped="no"/>
+                    <signal name="popup-menu" handler="gtk_treeview_popup_menu" swapped="no"/>
                     <signal name="row-activated" handler="get_code" swapped="no"/>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection"/>
@@ -1255,115 +1192,6 @@ When the specified resolution is not found, the best available resolution is use
                                 <property name="track-visited-links">False</property>
                               </object>
                               <packing>
-                                <property name="tab-fill">False</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkBox" id="vbox8">
-                                <property name="name">channel</property>
-                                <property name="visible">True</property>
-                                <property name="can-focus">False</property>
-                                <property name="margin-top">4</property>
-                                <property name="orientation">vertical</property>
-                                <property name="spacing">8</property>
-                                <property name="baseline-position">top</property>
-                                <child>
-                                  <object class="GtkFrame" id="frame4">
-                                    <property name="visible">True</property>
-                                    <property name="can-focus">False</property>
-                                    <property name="label-xalign">0</property>
-                                    <property name="shadow-type">none</property>
-                                    <child>
-                                      <object class="GtkAlignment" id="alignment4">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="top-padding">4</property>
-                                        <property name="left-padding">12</property>
-                                        <property name="right-padding">12</property>
-                                        <child>
-                                          <object class="GtkEntry" id="entry1">
-                                            <property name="visible">True</property>
-                                            <property name="can-focus">True</property>
-                                            <property name="tooltip-text" translatable="yes">Insert an YouTube username</property>
-                                            <property name="invisible-char">•</property>
-                                            <property name="primary-icon-activatable">False</property>
-                                            <property name="secondary-icon-activatable">False</property>
-                                            <signal name="activate" handler="uploads_from_text_entry" swapped="no"/>
-                                          </object>
-                                        </child>
-                                      </object>
-                                    </child>
-                                    <child type="label">
-                                      <object class="GtkLabel" id="label9">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="xpad">4</property>
-                                        <property name="label" translatable="yes">&lt;b&gt;Uploads:&lt;/b&gt;</property>
-                                        <property name="use-markup">True</property>
-                                      </object>
-                                    </child>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">False</property>
-                                    <property name="position">0</property>
-                                  </packing>
-                                </child>
-                                <child>
-                                  <object class="GtkFrame" id="frame2">
-                                    <property name="visible">True</property>
-                                    <property name="can-focus">False</property>
-                                    <property name="label-xalign">0</property>
-                                    <property name="shadow-type">none</property>
-                                    <child>
-                                      <object class="GtkAlignment" id="alignment2">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="top-padding">4</property>
-                                        <property name="left-padding">12</property>
-                                        <property name="right-padding">12</property>
-                                        <child>
-                                          <object class="GtkEntry" id="entry2">
-                                            <property name="visible">True</property>
-                                            <property name="can-focus">True</property>
-                                            <property name="tooltip-text" translatable="yes">Insert an YouTube username</property>
-                                            <property name="invisible-char">•</property>
-                                            <property name="primary-icon-activatable">False</property>
-                                            <property name="secondary-icon-activatable">False</property>
-                                            <signal name="activate" handler="playlists_from_text_entry" swapped="no"/>
-                                          </object>
-                                        </child>
-                                      </object>
-                                    </child>
-                                    <child type="label">
-                                      <object class="GtkLabel" id="label5">
-                                        <property name="visible">True</property>
-                                        <property name="can-focus">False</property>
-                                        <property name="xpad">4</property>
-                                        <property name="label" translatable="yes">&lt;b&gt;Playlists:&lt;/b&gt;</property>
-                                        <property name="use-markup">True</property>
-                                      </object>
-                                    </child>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">False</property>
-                                    <property name="position">4</property>
-                                  </packing>
-                                </child>
-                              </object>
-                              <packing>
-                                <property name="position">1</property>
-                              </packing>
-                            </child>
-                            <child type="tab">
-                              <object class="GtkLabel" id="label2">
-                                <property name="visible">True</property>
-                                <property name="can-focus">False</property>
-                                <property name="label" translatable="yes">Channel</property>
-                              </object>
-                              <packing>
-                                <property name="position">1</property>
                                 <property name="tab-fill">False</property>
                               </packing>
                             </child>
@@ -2288,7 +2116,7 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
     <property name="title" translatable="yes">Saved channels</property>
     <property name="window-position">center-on-parent</property>
     <property name="default-width">400</property>
-    <property name="default-height">300</property>
+    <property name="default-height">290</property>
     <property name="type-hint">normal</property>
     <property name="transient-for">__MAIN__</property>
     <signal name="delete-event" handler="gtk_widget_hide" swapped="no"/>
@@ -2339,154 +2167,53 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
           </packing>
         </child>
         <child>
-          <object class="GtkBox" id="hbox15">
+          <object class="GtkScrolledWindow" id="scrolledwindow12">
             <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="spacing">4</property>
+            <property name="can-focus">True</property>
             <child>
-              <object class="GtkLabel" id="label22">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Channel name:</property>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkEntry" id="channel_name_save">
+              <object class="GtkTreeView" id="treeview1">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
-                <property name="invisible-char">•</property>
-                <property name="primary-icon-activatable">False</property>
-                <property name="secondary-icon-activatable">False</property>
-                <signal name="activate" handler="save_channel" swapped="no"/>
-                <signal name="button-press-event" handler="clear_text" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel" id="add_user_label">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Channel ID:</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
-                <property name="position">2</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkEntry" id="channel_id_save">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="invisible-char">•</property>
-                <property name="primary-icon-activatable">False</property>
-                <property name="secondary-icon-activatable">False</property>
-                <signal name="activate" handler="save_channel" swapped="no"/>
-                <signal name="button-press-event" handler="clear_text" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">3</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="save_channel">
-                <property name="label">gtk-add</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="use-stock">True</property>
-                <signal name="clicked" handler="save_channel" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
-                <property name="position">5</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkBox" id="vbox15">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="orientation">vertical</property>
-            <child>
-              <object class="GtkSeparator" id="hseparator1">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkScrolledWindow" id="scrolledwindow12">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
+                <property name="model">liststore2</property>
+                <property name="search-column">1</property>
+                <signal name="button-press-event" handler="users_list_button_press" swapped="no"/>
+                <signal name="popup-menu" handler="gtk_treeview_popup_menu" swapped="no"/>
+                <signal name="row-activated" handler="videos_from_saved_channel" swapped="no"/>
+                <child internal-child="selection">
+                  <object class="GtkTreeSelection"/>
+                </child>
                 <child>
-                  <object class="GtkTreeView" id="treeview1">
-                    <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                    <property name="model">liststore2</property>
-                    <property name="search-column">0</property>
-                    <signal name="row-activated" handler="videos_from_saved_channel" swapped="no"/>
-                    <child internal-child="selection">
-                      <object class="GtkTreeSelection"/>
-                    </child>
+                  <object class="GtkTreeViewColumn" id="treeviewcolumn13">
+                    <property name="title" translatable="yes">Icon</property>
                     <child>
-                      <object class="GtkTreeViewColumn" id="treeviewcolumn13">
-                        <property name="title" translatable="yes">Icon</property>
-                        <child>
-                          <object class="GtkCellRendererPixbuf" id="cellrendererpixbuf14"/>
-                          <attributes>
-                            <attribute name="pixbuf">2</attribute>
-                          </attributes>
-                        </child>
-                      </object>
+                      <object class="GtkCellRendererPixbuf" id="cellrendererpixbuf14"/>
+                      <attributes>
+                        <attribute name="pixbuf">2</attribute>
+                      </attributes>
                     </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkTreeViewColumn" id="treeviewcolumn23">
+                    <property name="title">Channel</property>
                     <child>
-                      <object class="GtkTreeViewColumn" id="treeviewcolumn23">
-                        <property name="title">Channel</property>
-                        <child>
-                          <object class="GtkCellRendererText" id="cellrenderertext14"/>
-                          <attributes>
-                            <attribute name="text">1</attribute>
-                          </attributes>
-                        </child>
+                      <object class="GtkCellRendererText" id="cellrenderertext14">
+                        <property name="editable">True</property>
+                        <signal name="edited" handler="update_saved_channel_name" swapped="no"/>
                       </object>
+                      <attributes>
+                        <attribute name="text">1</attribute>
+                      </attributes>
                     </child>
                   </object>
                 </child>
               </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
             </child>
           </object>
           <packing>
             <property name="expand">True</property>
             <property name="fill">True</property>
-            <property name="position">1</property>
+            <property name="position">0</property>
           </packing>
         </child>
       </object>

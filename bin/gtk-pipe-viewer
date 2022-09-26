@@ -397,8 +397,6 @@ my %objects = (
     'audio_only_checkbutton' => \my $audio_only_checkbutton,
     'hbox2'                  => \my $hbox2,
     'feeds_title'            => \my $feeds_title,
-    'channel_name_save'      => \my $save_channel_name_entry,
-    'channel_id_save'        => \my $save_channel_id_entry,
     'main-menu-history-menu' => \my $history_menu,
     'features_flowbox'       => \my $features_flowbox,
               );
@@ -1150,7 +1148,8 @@ sub new_image_from_pixbuf {
 {
     $treeview->set_activate_on_single_click($CONFIG{single_click_play});
     $treeview->signal_connect('size-allocate', \&treeview_scroll_to_end) if $CONFIG{autoscroll_to_end};
-    $users_treeview->signal_connect('button_press_event', \&users_menu_popup);
+    $treeview->{'get-popup-menu'} = \&get_treeview_popup_menu;
+    $users_treeview->{'get-popup-menu'} = \&get_users_list_popup_menu;
 }
 
 # Scroll treeview to end
@@ -1158,32 +1157,6 @@ sub treeview_scroll_to_end {
     my ($widget) = @_;
     my $adj = $widget->get_vadjustment;
     $adj->set_value($adj->get_upper - $adj->get_page_size);
-}
-
-sub treeview_button_press {
-    my ($treeview, $event) = @_;
-    return 0 if $event->button != 3;
-    my $selection = $treeview->get_selection;
-    my $path      = ($treeview->get_path_at_pos($event->x, $event->y))[0] // return 0;
-    $selection->select_path($path);
-    my $iter = $selection->get_selected()     // return 0;
-    my $menu = get_treeview_popup_menu($iter) // return 0;
-    $menu->popup(undef, undef, undef, undef, $event->button, $event->time);
-    return 1;
-}
-
-sub treeview_popup_menu {
-    my ($treeview) = @_;
-    my $selection  = $treeview->get_selection;
-    my $iter       = $selection->get_selected()     // return 0;
-    my $menu       = get_treeview_popup_menu($iter) // return 0;
-    my $path       = $liststore->get_path($iter);
-    my $column     = $treeview->get_column(1);
-    # Ensure the selected row is visible.
-    $treeview->scroll_to_cell($path, $column, 0, 0, 0);
-    my $rect = $treeview->get_cell_area($path, $column);
-    $menu->popup_at_rect($treeview->get_window(), $rect, 'center', 'north_west', undef);
-    return 1;
 }
 
 sub get_treeview_popup_menu {
@@ -1422,7 +1395,7 @@ sub get_treeview_popup_menu {
         # Subscribe to channel
         {
             my $item = 'Gtk3::ImageMenuItem'->new("Subscribe");
-            $item->signal_connect(activate => sub { save_channel_by_id($channel_id, $channel_name, subscribe => 1) });
+            $item->signal_connect(activate => sub { save_channel($channel_id, $channel_name, subscribe => 1) });
             $item->set_property(tooltip_text => "Subscribe to this channel");
             $item->set_image('Gtk3::Image'->new_from_pixbuf($feed_icon_gray_pixbuf));
             $item->show;
@@ -1433,7 +1406,7 @@ sub get_treeview_popup_menu {
         {
             my $item = 'Gtk3::ImageMenuItem'->new("Save channel");
             $item->set_property(tooltip_text => "Save the channel in the user-list");
-            $item->signal_connect(activate => sub { save_channel_by_id($channel_id, $channel_name) });
+            $item->signal_connect(activate => sub { save_channel($channel_id, $channel_name) });
             $item->set_image('Gtk3::Image'->new_from_icon_name("star-new-symbolic", q{menu}));
             $item->show;
             $author->append($item);
@@ -1526,23 +1499,8 @@ sub get_treeview_popup_menu {
     return $menu;
 }
 
-sub users_menu_popup {
-    my ($treeview, $event) = @_;
-
-    if ($event->button != 3) {
-        return 0;
-    }
-
-    # Hardcoded menu
-    #my $menu = $gui->get_object('user_option_menu');
-
-    # Dynamic menu
-    my $path = ($treeview->get_path_at_pos($event->x, $event->y))[0] // return 0;
-
-    my $selection = $treeview->get_selection;
-    $selection->select_path($path);
-
-    my $iter = $selection->get_selected() // return 0;
+sub get_users_list_popup_menu {
+    my ($iter) = @_;
 
     my $channel_id   = $users_liststore->get($iter, 0);
     my $channel_name = $users_liststore->get($iter, 1);
@@ -1581,18 +1539,44 @@ sub users_menu_popup {
         $menu->append($item);
     }
 
+    # Rename the channel
+    {
+        my $item = 'Gtk3::ImageMenuItem'->new("Rename");
+        $item->set_image('Gtk3::Image'->new_from_icon_name("accessories-text-editor", q{menu}));
+        $item->set_property(tooltip_text => "Rename the channel");
+        $item->signal_connect(
+            activate => sub {
+                Glib::Timeout->add(
+                    100,
+                    sub {
+                        # Ugly, but if the "Rename" menu entry happens to be
+                        # positioned outside the user list window, over the
+                        # main window, and the window manager is configured
+                        # to have focus follow the mouse pointer, then when
+                        # the popup menu is unmapped, the main window will
+                        # get focused, cancelling the editing…
+                        $users_list_window->present();
+                        rename_selected_username();
+                        return 0;
+                    },
+                );
+            }
+        );
+        $item->show;
+        $menu->append($item);
+    }
+
     # Remove the channel
     {
         my $item = 'Gtk3::ImageMenuItem'->new("Remove");
-        $item->set_image('Gtk3::Image'->new_from_icon_name("gtk-remove", q{menu}));
+        $item->set_image('Gtk3::Image'->new_from_icon_name("edit-delete", q{menu}));
         $item->set_property(tooltip_text => "Remove the channel from this list");
         $item->signal_connect(activate => \&remove_selected_username);
         $item->show;
         $menu->append($item);
     }
 
-    $menu->popup(undef, undef, undef, undef, $event->button, $event->time);
-    return 0;
+    return $menu;
 }
 
 # Setting help text
@@ -1672,6 +1656,45 @@ sub gtk_widget_show {
 sub gtk_widget_hide {
     my $widget = $_[-1] // $_[0];
     $widget->hide;
+    return 1;
+}
+
+sub gtk_treeview_button_press {
+    my ($widget, $event) = @_;
+    return 0 if $event->button != 3;
+    my $selection = $widget->get_selection;
+    my $path      = ($widget->get_path_at_pos($event->x, $event->y))[0] // return 0;
+    $selection->select_path($path);
+    my $iter = $selection->get_selected()           // return 0;
+    my $menu = $widget->{'get-popup-menu'}->($iter) // return 0;
+    $menu->popup(undef, undef, undef, undef, $event->button, $event->time);
+    return 1;
+}
+
+sub gtk_treeview_popup_menu {
+    my ($widget) = @_;
+    my $selection = $widget->get_selection;
+    my $iter      = $selection->get_selected()           // return 0;
+    my $menu      = $widget->{'get-popup-menu'}->($iter) // return 0;
+    my $path      = $widget->get_model->get_path($iter);
+    my $column    = $widget->get_column(1);
+    # Ensure the selected row is visible.
+    $widget->scroll_to_cell($path, $column, 0, 0, 0);
+    my $rect = $widget->get_cell_area($path, $column);
+    # When Gtk animations are enabled (`gtk-enable-animations=true`),
+    # the coordinates reported won't be correct if the cell was not
+    # already fully visible…
+    if ($rect->{y} < 0) {
+        # The cell was hiden, before the visible area,
+        # or partially visible at the top of said area.
+        $rect->{y} = 0;
+    }
+    elsif ($rect->{y} > $widget->get_bin_window->get_height) {
+        # The cell was hiden, after the visible area,
+        # or partially visible at the end of said area.
+        $rect->{y} = $widget->get_bin_window->get_height - $rect->{height};
+    }
+    $menu->popup_at_rect($widget->get_window(), $rect, 'center', 'north_west', undef);
     return 1;
 }
 
@@ -1987,53 +2010,66 @@ sub set_usernames {
     }
 }
 
-sub save_channel {
-    my $channel_name = $save_channel_name_entry->get_text;
-    my $channel_id   = $save_channel_id_entry->get_text;
-
-    # Validate the channel id
-    if (defined($channel_id) and $channel_id =~ /$valid_channel_id_re/) {
-
-        $channel_id = $+{channel_id};
-
-        # Get the channel name when empty
-        if (not defined($channel_name) or not $channel_name =~ /\S/) {
-            $channel_name = $yv_obj->channel_title_from_id($channel_id) // die "Invalid channel ID: <<$channel_id>>";
+sub users_list_button_press {
+    my ($widget, $event) = @_;
+    if ($event->button != 1) {
+        return gtk_treeview_button_press($widget, $event);
+    }
+    # Manually handle left clicks to prevent triggering editing
+    # a username on double-click (instead of activating the row).
+    my $path = ($users_treeview->get_path_at_pos($event->x, $event->y))[0] // return 0;
+    my $selected_path = $path->to_string;
+    state $double_click_time = Gtk3::Settings::get_default->get_property('gtk-double-click-time');
+    state $prev_selected_path = -1;
+    state $trigger_edit_timeout;
+    if ($trigger_edit_timeout) {
+        Glib::Source->remove($trigger_edit_timeout);
+        $trigger_edit_timeout = undef;
+    }
+    if ($event->type eq 'button-press') {
+        if ($prev_selected_path == $selected_path) {
+            $trigger_edit_timeout = Glib::Timeout->add(
+                $double_click_time + 20,
+                sub {
+                    $trigger_edit_timeout = undef;
+                    rename_selected_username();
+                    return 0;
+                }
+            );
+        }
+        else {
+            $users_treeview->set_cursor($path, undef, 0);
+            $prev_selected_path = $selected_path;
         }
     }
-    elsif (defined($channel_name) and $channel_name =~ /$valid_channel_id_re/) {
-
-        $channel_name = $+{channel_id};
-        $channel_id   = $yv_obj->channel_id_from_username($channel_name);
-
-        if (not defined $channel_id) {
-            die "Can't get channel ID from username: <<$channel_name>>";
-        }
+    elsif ($event->type eq '2button-press') {
+        $users_treeview->row_activated($path, $users_treeview->get_column(1));
     }
-    elsif (defined($channel_id) and $channel_id =~ /\S/) {
-        die "Invalid channel ID: <<$channel_id>>";
-    }
-    else {
-        return;
-    }
-
-    save_channel_by_id($channel_id, $channel_name);
+    return 1;
 }
 
-sub save_channel_by_id {
+sub update_saved_channel_name {
+    my ($edit, $path, $new_name) = @_;
+    my $iter = $users_liststore->get_iter_from_string($path);
+    if ($new_name =~ /\S/ && $new_name ne $users_liststore->get($iter, 1)) {
+        my $channel_id = $users_liststore->get($iter, 0);
+        $users_liststore->set($iter, [1], [$new_name]);
+        if (exists $subscribed_channels{$channel_id}) {
+            $subscribed_channels{$channel_id} = $new_name;
+            write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
+        }
+        $channels{$channel_id} = $new_name;
+        write_channels_to_file(\%channels, $CONFIG{saved_channels_file});
+    }
+    return 1;
+}
+
+sub save_channel {
     my ($channel_id, $channel_name, %args) = @_;
-
-    # Validate the channel ID
-    if (not defined($channel_id) or not $channel_id =~ /$valid_channel_id_re/) {
-        return;
-    }
-
-    if ($channel_id =~ /$valid_channel_id_re/) {
-        $channel_id = $+{channel_id};
-    }
+    die unless $yv_utils->is_channelID($channel_id) and $channel_name =~ /\S/;
 
     if ($args{subscribe} and not exists($subscribed_channels{$channel_id})) {
-        say ":: Subscribed channel: $channel_name" if $yv_obj->get_debug;
+        say ":: Subscribed channel: $channel_name [$channel_id]" if $yv_obj->get_debug;
         $subscribed_channels{$channel_id} = $channel_name;
         write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
     }
@@ -2044,13 +2080,8 @@ sub save_channel_by_id {
         return;
     }
 
-    # Get the channel name
-    if (not defined($channel_name) or not $channel_name =~ /\S/) {
-        $channel_name = $yv_obj->channel_title_from_id($channel_id) // $channel_id;
-    }
-
     # Save channel to file
-    say ":: Saving channel: $channel_name" if $yv_obj->get_debug;
+    say ":: Saving channel: $channel_name [$channel_id]" if $yv_obj->get_debug;
     $channels{$channel_id} = $channel_name;
     write_channels_to_file(\%channels, $CONFIG{saved_channels_file});
     set_usernames();
@@ -2065,7 +2096,7 @@ sub add_user_to_favorites {
     my $channel_id   = $liststore->get($iter, 6);
     my $channel_name = $yv_utils->get_channel_title($info);
 
-    save_channel_by_id($channel_id, $channel_name);
+    save_channel($channel_id, $channel_name);
 }
 
 sub subscribe_toggle_selected_username {
@@ -2086,6 +2117,14 @@ sub subscribe_toggle_selected_username {
     }
 
     write_channels_to_file(\%subscribed_channels, $CONFIG{subscribed_channels_file});
+}
+
+sub rename_selected_username {
+    my $iter   = $users_treeview->get_selection->get_selected;
+    my $path   = $users_liststore->get_path($iter);
+    my $column = $users_treeview->get_column(1);
+    $users_treeview->set_cursor($path, $column, 1);
+    return;
 }
 
 sub remove_selected_username {
@@ -2190,6 +2229,9 @@ sub check_keywords {
         else {
             return;
         }
+    }
+    elsif ($yv_utils->is_channelID($key)) {
+        list_channel_videos($key);
     }
     elsif ($key =~ /$get_playlist_id_re/o) {
         list_playlist($+{playlist_id});
@@ -3048,16 +3090,6 @@ sub list_channel_playlists {
         die "[!] No playlists for channel: $channel\n";
     }
     return;
-}
-
-sub uploads_from_text_entry {
-    my ($text_entry) = @_;
-    list_channel_videos($text_entry->get_text);
-}
-
-sub playlists_from_text_entry {
-    my ($text_entry) = @_;
-    list_channel_playlists($text_entry->get_text);
 }
 
 sub strip_spaces {
