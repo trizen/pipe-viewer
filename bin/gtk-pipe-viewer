@@ -1581,7 +1581,7 @@ sub users_menu_popup {
     # Remove the channel
     {
         my $item = 'Gtk3::ImageMenuItem'->new("Remove");
-        $item->set_image('Gtk3::Image'->new_from_icon_name("gtk-remove", q{menu}));
+        $item->set_image('Gtk3::Image'->new_from_icon_name("edit-delete", q{menu}));
         $item->set_property(tooltip_text => "Remove the channel from this list");
         $item->signal_connect(activate => \&remove_selected_username);
         $item->show;
