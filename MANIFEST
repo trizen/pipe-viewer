@@ -5,6 +5,7 @@ Changes
 lib/WWW/PipeViewer.pm
 lib/WWW/PipeViewer/Channels.pm
 lib/WWW/PipeViewer/CommentThreads.pm
+lib/WWW/PipeViewer/DiskCache.pm
 lib/WWW/PipeViewer/GetCaption.pm
 lib/WWW/PipeViewer/GuideCategories.pm
 lib/WWW/PipeViewer/InitialData.pm
@@ -19,6 +20,7 @@ lib/WWW/PipeViewer/Search.pm
 lib/WWW/PipeViewer/Utils.pm
 lib/WWW/PipeViewer/VideoCategories.pm
 lib/WWW/PipeViewer/Videos.pm
+lib/WWW/PipeViewer/Worker.pm
 LICENSE
 Makefile.PL
 MANIFEST			This list of files

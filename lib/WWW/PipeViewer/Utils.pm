@@ -259,6 +259,41 @@ sub date_to_age {
     return $age;
 }
 
+=head2 get_entries($result)
+
+Returns the entries for a given result.
+
+=cut
+
+sub get_entries {
+    my ($self, $result) = @_;
+
+    $result // return [];
+
+    if (ref($result->{results}) eq 'HASH') {
+
+        foreach my $type (qw(comments videos playlists entries)) {
+            if (exists $result->{results}{$type}) {
+
+                if (ref($result->{results}{$type}) ne 'ARRAY') {
+                    die "Probably the selected invidious instance is down.\n"
+                      . "\nTry changing the `api_host` in configuration file:\n\n"
+                      . qq{\tapi_host => "auto",\n}
+                      . qq{\nSee also: https://github.com/trizen/pipe-viewer#invidious-instances\n};
+                }
+
+                return $result->{results}{$type};
+            }
+        }
+    }
+
+    if (ref($result->{results}) eq 'ARRAY') {
+        return $result->{results};
+    }
+
+    return [];
+}
+
 =head2 has_entries($result)
 
 Returns true if a given result has entries.
@@ -267,34 +302,7 @@ Returns true if a given result has entries.
 
 sub has_entries {
     my ($self, $result) = @_;
-
-    $result // return 0;
-
-    if (ref($result->{results}) eq 'HASH') {
-
-        foreach my $type (qw(comments videos playlists entries)) {
-            if (exists $result->{results}{$type}) {
-                ref($result->{results}{$type}) eq 'ARRAY' or return 0;
-                return (@{$result->{results}{$type}} > 0);
-            }
-        }
-
-        my $type = $result->{results}{type} // '';
-
-        if ($type eq 'playlist') {
-            return ($result->{results}{videoCount} > 0);
-        }
-    }
-
-    if (ref($result->{results}) eq 'ARRAY') {
-        return (@{$result->{results}} > 0);
-    }
-
-    if (ref($result->{results}) eq 'HASH' and not keys %{$result->{results}}) {
-        return 0;
-    }
-
-    return 1;    # maybe?
+    return scalar @{$self->get_entries($result)};
 }
 
 =head2 normalize_filename($title, $fat32safe)

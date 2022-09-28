@@ -7,6 +7,8 @@ use warnings;
 use Memoize;
 use Memoize::Expire;
 
+use WWW::PipeViewer::ParseJSON;
+
 tie my %youtubei_cache => 'Memoize::Expire',
   LIFETIME             => 600,                 # in seconds
   NUM_USES             => 2;
@@ -498,7 +500,7 @@ sub _get_results {
     return
       scalar {
               url     => $url,
-              results => $self->parse_json_string($self->lwp_get($url, %opt)),
+              results => parse_json_string($self->lwp_get($url, %opt)),
              };
 }
 
@@ -550,7 +552,7 @@ sub get_invidious_instances {
         <$fh>;
     };
 
-    $self->parse_json_string($json_string);
+    parse_json_string($json_string);
 }
 
 sub select_good_invidious_instances {
@@ -790,8 +792,8 @@ sub _extract_from_invidious {
 
     $resp->is_success() || return;
 
-    my $json = $resp->decoded_content()        // return;
-    my $ref  = $self->parse_json_string($json) // return;
+    my $json = $resp->decoded_content() // return;
+    my $ref  = parse_json_string($json) // return;
 
     my @formats;
 
@@ -826,7 +828,7 @@ sub _info_from_ytdl {
     }
 
     my $json = $self->proxy_stdout(@ytdl_cmd, quotemeta("https://www.youtube.com/watch?v=" . $videoID));
-    my $ref  = $self->parse_json_string($json // return);
+    my $ref  = parse_json_string($json // return);
 
     if ($self->get_debug >= 3) {
         require Data::Dump;
@@ -1274,7 +1276,7 @@ sub get_streaming_urls {
     local *_extract_from_ytdl = memoize(\&_extract_from_ytdl);
 
     my %info = $self->_get_video_info($videoID);
-    my $json = defined($info{player_response}) ? $self->parse_json_string($info{player_response}) : {};
+    my $json = defined($info{player_response}) ? parse_json_string($info{player_response}) : {};
 
     if ($self->get_debug >= 2) {
         say STDERR ":: JSON data from player_response";
@@ -1326,7 +1328,7 @@ sub get_streaming_urls {
         # Try to find a fallback method that works
         foreach my $fallback_method (@fallback_methods) {
             $fallback_method->();
-            $json = defined($info{player_response}) ? $self->parse_json_string($info{player_response}) : {};
+            $json = defined($info{player_response}) ? parse_json_string($info{player_response}) : {};
             if (defined($json->{streamingData})) {
                 push @caption_urls, $self->_fallback_extract_captions($videoID);
                 last;
@@ -1468,7 +1470,7 @@ sub _save {
 
 sub post_as_json {
     my ($self, $url, $ref) = @_;
-    my $json_str = $self->make_json_string($ref);
+    my $json_str = make_json_string($ref);
     $self->_save('POST', $url, $json_str);
 }
 

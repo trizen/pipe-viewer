@@ -4,6 +4,16 @@ use utf8;
 use 5.014;
 use warnings;
 
+use JSON qw(encode_json decode_json from_json);
+
+require Exporter;
+our @ISA = qw(Exporter);
+our @EXPORT = qw(
+    make_json_string
+    parse_json_string
+    parse_utf8_json_string
+);
+
 =head1 NAME
 
 WWW::PipeViewer::ParseJSON - Parse JSON content.
@@ -24,26 +34,24 @@ Parse a JSON string and return a HASH ref.
 =cut
 
 sub parse_utf8_json_string {
-    my ($self, $json) = @_;
+    my ($json) = @_;
 
     if (not defined($json) or $json eq '') {
         return {};
     }
 
-    require JSON;
-    my $hash = eval { JSON::from_json($json) };
+    my $hash = eval { from_json($json) };
     return $@ ? do { warn "[JSON]: $@\n"; {} } : $hash;
 }
 
 sub parse_json_string {
-    my ($self, $json) = @_;
+    my ($json) = @_;
 
     if (not defined($json) or $json eq '') {
         return {};
     }
 
-    require JSON;
-    my $hash = eval { JSON::decode_json($json) };
+    my $hash = eval { decode_json($json) };
     return $@ ? do { warn "[JSON]: $@\n"; {} } : $hash;
 }
 
@@ -54,10 +62,9 @@ Create a JSON string from a HASH or ARRAY ref.
 =cut
 
 sub make_json_string {
-    my ($self, $ref) = @_;
+    my ($ref) = @_;
 
-    require JSON;
-    my $str = eval { JSON::encode_json($ref) };
+    my $str = eval { encode_json($ref) };
     return $@ ? do { warn "[JSON]: $@\n"; '' } : $str;
 }
 

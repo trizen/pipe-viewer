@@ -4,6 +4,8 @@ use utf8;
 use 5.014;
 use warnings;
 
+use WWW::PipeViewer::ParseJSON;
+
 =head1 NAME
 
 WWW::PipeViewer::Videos - videos handler.
@@ -168,7 +170,7 @@ sub video_details {
     }
 
     my %video_info = $self->_get_video_info($id);
-    my $video = $self->parse_json_string($video_info{player_response} // return $self->_fallback_video_details($id, $fields));
+    my $video = parse_json_string($video_info{player_response} // return $self->_fallback_video_details($id, $fields));
 
     state %cache;
     my $extra_info = ($cache{$id} //= $self->yt_video_info(id => $id));

@@ -4,6 +4,8 @@ use utf8;
 use 5.014;
 use warnings;
 
+use WWW::PipeViewer::ParseJSON;
+
 my %_ORDER = (
               'relevance'   => 'relevance',
               'rating'      => 'rating',
@@ -158,7 +160,7 @@ be set to a YouTube video ID.
 sub related_to_videoID {
     my ($self, $videoID) = @_;
 
-    my $watch_next_response = $self->parse_json_string($self->_get_video_next_info($videoID) // return {results => []});
+    my $watch_next_response = parse_json_string($self->_get_video_next_info($videoID) // return {results => []});
 
     my $related =
       eval { $watch_next_response->{contents}{twoColumnWatchNextResults}{secondaryResults}{secondaryResults}{results} }

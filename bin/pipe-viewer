@@ -50,6 +50,7 @@ my $DEVEL;
 use if ($DEVEL = -w __FILE__), lib => abs_path(__FILE__ . '/../../lib');
 
 use WWW::PipeViewer v0.3.1;
+use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::RegularExpressions;
 
 require Storable;
@@ -2178,7 +2179,7 @@ sub warn_cant_do {
         warn colored("\n[!] Can't $action video: " . sprintf($opt{youtube_video_url}, $videoID), 'bold red') . "\n";
 
         my %info = $yv_obj->_get_video_info($videoID);
-        my $resp = $yv_obj->parse_json_string($info{player_response} // next);
+        my $resp = parse_json_string($info{player_response} // next);
 
         if (eval { exists($resp->{playabilityStatus}) and $resp->{playabilityStatus}{status} =~ /error/i }) {
             warn colored("[+] Reason: $resp->{playabilityStatus}{reason}.", 'bold yellow') . "\n";
