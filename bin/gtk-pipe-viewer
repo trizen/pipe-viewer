@@ -2769,7 +2769,10 @@ sub display_results {
         die "No results...\n";
     }
 
-    $liststore->clear if $CONFIG{clear_search_list};
+    if ($CONFIG{clear_search_list}) {
+        $liststore->clear();
+        $treeview->get_vadjustment->set_value(0);
+    }
 
     if (@$items) {
         add_results_to_history($results) if not $from_history;
