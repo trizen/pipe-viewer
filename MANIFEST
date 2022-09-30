@@ -7,7 +7,6 @@ lib/WWW/PipeViewer/Channels.pm
 lib/WWW/PipeViewer/CommentThreads.pm
 lib/WWW/PipeViewer/DiskCache.pm
 lib/WWW/PipeViewer/GetCaption.pm
-lib/WWW/PipeViewer/GuideCategories.pm
 lib/WWW/PipeViewer/InitialData.pm
 lib/WWW/PipeViewer/Itags.pm
 lib/WWW/PipeViewer/ParseJSON.pm

@@ -54,9 +54,9 @@ sub new {
     my ($class, %opts) = @_;
 
     my $self = bless {
-                      thousand_separator => q{,},
-                      youtube_video_url_format => 'https://www.youtube.com/watch?v=%s',
-                      youtube_channel_url_format =>  'https://www.youtube.com/channel/%s',
+                      thousand_separator          => q{,},
+                      youtube_video_url_format    => 'https://www.youtube.com/watch?v=%s',
+                      youtube_channel_url_format  => 'https://www.youtube.com/channel/%s',
                       youtube_playlist_url_format => 'https://www.youtube.com/playlist?list=%s',
                      }, $class;
 
@@ -360,9 +360,9 @@ sub format_text {
     my $fat32safe = $opt{fat32safe};
 
     my %special_tokens = (
-        ID         => sub { $self->get_video_id($info) // $self->get_playlist_id($info) // $self->get_channel_id($info) },
-        AUTHOR     => sub { $self->get_channel_title($info) },
-        CHANNELID  => sub { $self->get_channel_id($info) },
+        ID        => sub { $self->get_video_id($info) // $self->get_playlist_id($info) // $self->get_channel_id($info) },
+        AUTHOR    => sub { $self->get_channel_title($info) },
+        CHANNELID => sub { $self->get_channel_id($info) },
 
         VIEWS       => sub { $self->get_views($info) },
         VIEWS_SHORT => sub { $self->get_views_approx($info) },
@@ -376,7 +376,7 @@ sub format_text {
         ITEMS       => sub { $self->set_thousands($self->get_playlist_item_count($info)) },
         ITEMS_SHORT => sub { $self->short_human_number($self->get_playlist_item_count($info)) },
 
-        LIKES    => sub { $self->get_likes($info) },
+        LIKES => sub { $self->get_likes($info) },
 
         DURATION    => sub { $self->get_duration($info) },
         TIME        => sub { $self->get_time($info) },
@@ -642,19 +642,23 @@ sub local_playlist_snippet {
     my @thumbnails;
 
     if (defined($video_id)) {
+#<<<
         my @video_thumbs = qw(
-                  default  120  90
-                mqdefault  320 180
-                hqdefault  480 360
-                sddefault  640 480
-            maxresdefault 1280 720
+          default        120  90
+          mqdefault      320 180
+          hqdefault      480 360
+          sddefault      640 480
+          maxresdefault 1280 720
         );
+#>>>
         while (scalar @video_thumbs) {
             (my $quality, my $width, my $height, @video_thumbs) = @video_thumbs;
-            push @thumbnails, scalar {
-                "url" => "https://i.ytimg.com/vi/$video_id/$quality.jpg",
-                'width' => $width, 'height' => $height,
-            };
+            push @thumbnails,
+              scalar {
+                      "url"    => "https://i.ytimg.com/vi/$video_id/$quality.jpg",
+                      'width'  => $width,
+                      'height' => $height,
+                     };
         }
     }
 
@@ -711,11 +715,13 @@ sub get_thumbnail {
 
     if ($info->{type} eq 'playlist') {
         $available_thumbs = $info->{playlistThumbnails} // eval {
+
             # Old extraction format.
             my %thumb = (
-                'url' => $info->{playlistThumbnail},
-                'width' => 320, 'height' => 180,
-            );
+                         'url'    => $info->{playlistThumbnail},
+                         'width'  => 320,
+                         'height' => 180,
+                        );
             [\%thumb];
         };
     }
@@ -730,19 +736,22 @@ sub get_thumbnail {
 
     ref($available_thumbs) eq 'ARRAY' or return '';
 
+#<<<
     # Sort available thumbnails by size (height first, then width).
     my @by_increasing_size = sort {
-        ($a->{height} // 0) <=> ($b->{height} // 0) ||
-        ($a->{width} // 0) <=> ($b->{width} // 0)
-    } map {
-        ref($_) eq 'ARRAY' ? @{$_} : $_
-    } @{$available_thumbs};
+           ($a->{height} // 0) <=> ($b->{height} // 0)
+        or ($a->{width}  // 0) <=> ($b->{width}  // 0)
+    } map { ref($_) eq 'ARRAY' ? @{$_} : $_ } @{$available_thumbs};
+#>>>
 
+#<<<
     # Choose smallest size equal or above requested.
     my $choice = first {
-        ($_->{width} // 0) >= $xsize &&
-        ($_->{height} // 0) >= $ysize
+            ($_->{width}  // 0) >= $xsize
+        and ($_->{height} // 0) >= $ysize
     } @by_increasing_size;
+#>>>
+
     # Fall back to the best available quality.
     $choice //= $by_increasing_size[-1];
 
@@ -751,8 +760,6 @@ sub get_thumbnail {
 
 sub get_channel_title {
     my ($self, $info) = @_;
-
-    #$info->{snippet}{channelTitle} || $self->get_channel_id($info);
     $info->{author} // $info->{title};
 }
 
@@ -1011,10 +1018,8 @@ sub get_likes {
 
 {
     no strict 'refs';
-    foreach my $pair ([playlist => {'playlist' => 1}],
-                      [channel      => {'channel'      => 1}],
-                      [video        => {'video'        => 1, 'playlistItem' => 1}],
-      ) {
+    foreach my $pair ([playlist => {'playlist' => 1}], [channel => {'channel' => 1}],
+                      [video => {'video' => 1, 'playlistItem' => 1}],) {
 
         *{__PACKAGE__ . '::' . 'is_' . $pair->[0]} = sub {
             my ($self, $item) = @_;

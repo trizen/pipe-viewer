@@ -57,11 +57,11 @@ Get popular videos from a category ID.
 =cut
 
 my %_CATEGORIES = (
-    gaming   => 'Gaming',
-    movies   => 'Movies',
-    music    => 'Music',
-    trending => undef,
-);
+                   gaming   => 'Gaming',
+                   movies   => 'Movies',
+                   music    => 'Music',
+                   trending => undef,
+                  );
 
 sub trending_videos_from_category {
     my ($self, $category) = @_;
@@ -143,7 +143,7 @@ sub _fallback_video_details {
             description   => $info->{description},
             lengthSeconds => $info->{duration},
 
-            likeCount    => $info->{like_count},
+            likeCount => $info->{like_count},
 
             category    => eval { $info->{categories}[0] } // $info->{category},
             publishDate => $info->{upload_date},
@@ -170,7 +170,7 @@ sub video_details {
     }
 
     my %video_info = $self->_get_video_info($id);
-    my $video = parse_json_string($video_info{player_response} // return $self->_fallback_video_details($id, $fields));
+    my $video      = parse_json_string($video_info{player_response} // return $self->_fallback_video_details($id, $fields));
 
     state %cache;
     my $extra_info = ($cache{$id} //= $self->yt_video_info(id => $id));

@@ -157,20 +157,20 @@ sub which_command {
 }
 
 my %symbols = (
-               thumbs_up   => '👍',
-               type        => '💡',
-               author      => '😃',
-               author_id   => '🤖',
-               average     => '📊',
-               category    => '🗃️',
-               play        => '▶️',
-               views       => '👀',
-               heart       => '❤️',
-               published   => '⏱️',
-               updated     => '✨',
-               numero      => '#️⃣',
-               video       => '🎞️',
-               subs        => '👪',
+               thumbs_up => '👍',
+               type      => '💡',
+               author    => '😃',
+               author_id => '🤖',
+               average   => '📊',
+               category  => '🗃️',
+               play      => '▶️',
+               views     => '👀',
+               heart     => '❤️',
+               published => '⏱️',
+               updated   => '✨',
+               numero    => '#️⃣',
+               video     => '🎞️',
+               subs      => '👪',
               );
 
 # Main configuration
@@ -356,14 +356,14 @@ $gui->connect_signals(undef);
 my %objects = (
 
     # Windows
-    '__MAIN__'          => \my $mainw,
-    'users_list_window' => \my $users_list_window,
-    'help_window'       => \my $help_window,
-    'preferences_window'=> \my $preferences_window,
-    'errors_window'     => \my $errors_window,
-    'aboutdialog1'      => \my $about_window,
-    'feeds_window'      => \my $feeds_window,
-    'warnings_window'   => \my $warnings_window,
+    '__MAIN__'           => \my $mainw,
+    'users_list_window'  => \my $users_list_window,
+    'help_window'        => \my $help_window,
+    'preferences_window' => \my $preferences_window,
+    'errors_window'      => \my $errors_window,
+    'aboutdialog1'       => \my $about_window,
+    'feeds_window'       => \my $feeds_window,
+    'warnings_window'    => \my $warnings_window,
 
     # Details window.
     'details_window'   => \my $details_window,
@@ -510,11 +510,11 @@ delete $CONFIG->{active_resolution_combobox};
     my $default_notebook_page = $CONFIG->{default_notebook_page};
     if (defined $default_notebook_page && looks_like_number($default_notebook_page)) {
         my %index_to_page_name = (
-            1 => 'settings',
-            2 => 'channel',
-            3 => 'categories',
-            4 => 'playlists',
-        );
+                                  1 => 'settings',
+                                  2 => 'channel',
+                                  3 => 'categories',
+                                  4 => 'playlists',
+                                 );
         $default_notebook_page = $index_to_page_name{$default_notebook_page} // 'settings';
         $CONFIG->{default_notebook_page} = $default_notebook_page;
     }
@@ -949,17 +949,17 @@ my %ResultsHistory = (
 $CONFIG{pipe_viewer} //= which_command('pipe-viewer') // 'pipe-viewer';
 
 my $yv_obj = WWW::PipeViewer->new(
-    cache_dir  => $CONFIG{cache_dir},
-    env_proxy  => $CONFIG{env_proxy},
-    http_proxy => $CONFIG{http_proxy},
-);
+                                  cache_dir  => $CONFIG{cache_dir},
+                                  env_proxy  => $CONFIG{env_proxy},
+                                  http_proxy => $CONFIG{http_proxy},
+                                 );
 
 my $yv_utils = WWW::PipeViewer::Utils->new(
-    youtube_video_url_format    => $CONFIG{youtube_video_url},
-    youtube_channel_url_format  => $CONFIG{youtube_channel_url},
-    youtube_playlist_url_format => $CONFIG{youtube_playlist_url},
-    thousand_separator          => $CONFIG{thousand_separator},
-);
+                                           youtube_video_url_format    => $CONFIG{youtube_video_url},
+                                           youtube_channel_url_format  => $CONFIG{youtube_channel_url},
+                                           youtube_playlist_url_format => $CONFIG{youtube_playlist_url},
+                                           thousand_separator          => $CONFIG{thousand_separator},
+                                          );
 
 # Spin button start with page
 $spin_start_with_page->set_value(1);
@@ -1126,7 +1126,7 @@ sub new_image_from_pixbuf {
 {
     $treeview->set_activate_on_single_click($CONFIG{single_click_play});
     $treeview->signal_connect('size-allocate', \&treeview_scroll_to_end) if $CONFIG{autoscroll_to_end};
-    $treeview->{'get-popup-menu'} = \&get_treeview_popup_menu;
+    $treeview->{'get-popup-menu'}       = \&get_treeview_popup_menu;
     $users_treeview->{'get-popup-menu'} = \&get_users_list_popup_menu;
 }
 
@@ -1614,40 +1614,46 @@ my $worker = WWW::PipeViewer::Worker->new(max(0, $DEBUG - 1));
 
 {
     my %config = (
-        config_dir  => $config_dir,
-        debug       => $DEBUG,
-        escape_utf8 => 1,
-    );
+                  config_dir  => $config_dir,
+                  debug       => $DEBUG,
+                  escape_utf8 => 1,
+                 );
 
-    foreach my $option_name (qw(
-        api_host bypass_age_gate_with_proxy cache_dir comments_order
-        cookie_file debug env_proxy force_fallback http_proxy prefer_av1
-        prefer_invidious prefer_mp4 region timeout user_agent ytdl ytdl_cmd
-        ytdlp_comments ytdlp_max_comments ytdlp_max_replies
-    )) {
+    foreach my $option_name (
+                             qw(
+                             api_host bypass_age_gate_with_proxy cache_dir comments_order
+                             cookie_file debug env_proxy force_fallback http_proxy prefer_av1
+                             prefer_invidious prefer_mp4 region timeout user_agent ytdl ytdl_cmd
+                             ytdlp_comments ytdlp_max_comments ytdlp_max_replies
+                             )
+      ) {
         $config{$option_name} = $CONFIG{$option_name};
     }
 
-    $worker->send_request(sub {}, 'setup', \%config);
+    $worker->send_request(sub { }, 'setup', \%config);
     $worker->process_next_reply();
 }
 
-my $worker_watch = Glib::IO->add_watch($worker->fileno(), ['in'], sub {
-    eval { $worker->process_next_reply() };
-    return 1;
-});
+my $worker_watch = Glib::IO->add_watch(
+    $worker->fileno(),
+    ['in'],
+    sub {
+        eval { $worker->process_next_reply() };
+        return 1;
+    }
+);
 
 # ---------------- Requests handling -------------------------- #
 
 # Request priorities (lower value -> higher priority).
 use constant {
-    REQUEST_PRIORITY_INFO           => 0,
-    REQUEST_PRIORITY_COMMENTS       => 1,
-    REQUEST_PRIORITY_DETAILS        => 1,
-    REQUEST_PRIORITY_DETAILS_THUMBS => 2,
-    REQUEST_PRIORITY_SEARCH         => 3,
-    REQUEST_PRIORITY_RESULTS_THUMBS => 4,
-};
+              REQUEST_PRIORITY_INFO           => 0,
+              REQUEST_PRIORITY_COMMENTS       => 1,
+              REQUEST_PRIORITY_DETAILS        => 1,
+              REQUEST_PRIORITY_DETAILS_THUMBS => 2,
+              REQUEST_PRIORITY_SEARCH         => 3,
+              REQUEST_PRIORITY_RESULTS_THUMBS => 4,
+             };
 
 my $search_request;
 my $results_thumbs_request;
@@ -1713,6 +1719,7 @@ sub fetch_thumbnails {
     my ($setter, $thumbnails, $request_ref, %request_options) = @_;
     $worker->abort_requests($$request_ref);
     return unless scalar @$thumbnails;
+
     # Group by URL, and build request arguments.
     my %thumbs_by_url;
     my @request_args;
@@ -1722,12 +1729,14 @@ sub fetch_thumbnails {
         }
         else {
             $thumbs_by_url{$thumb->{url}} = [$thumb];
-            push @request_args, {
+            push @request_args,
+              {
                 url  => $thumb->{url},
                 path => $thumb->{path},
-            };
+              };
         }
     }
+
     # Request missing thumbnails.
     $$request_ref = $worker->send_request(
         sub {
@@ -1773,24 +1782,28 @@ sub gtk_treeview_button_press {
 }
 
 sub gtk_treeview_popup_menu {
-    my ($widget) = @_;
+    my ($widget)  = @_;
     my $selection = $widget->get_selection;
     my $iter      = $selection->get_selected()           // return 0;
     my $menu      = $widget->{'get-popup-menu'}->($iter) // return 0;
     my $path      = $widget->get_model->get_path($iter);
     my $column    = $widget->get_column(1);
+
     # Ensure the selected row is visible.
     $widget->scroll_to_cell($path, $column, 0, 0, 0);
     my $rect = $widget->get_cell_area($path, $column);
+
     # When Gtk animations are enabled (`gtk-enable-animations=true`),
     # the coordinates reported won't be correct if the cell was not
     # already fully visible…
     if ($rect->{y} < 0) {
+
         # The cell was hiden, before the visible area,
         # or partially visible at the top of said area.
         $rect->{y} = 0;
     }
     elsif ($rect->{y} > $widget->get_bin_window->get_height) {
+
         # The cell was hiden, after the visible area,
         # or partially visible at the end of said area.
         $rect->{y} = $widget->get_bin_window->get_height - $rect->{height};
@@ -1821,7 +1834,7 @@ sub start_details_spinner {
 }
 
 sub stop_details_spinner {
-    die unless $details_spinner->{startcount} >= 0;
+    die                      unless $details_spinner->{startcount} >= 0;
     $details_spinner->stop() unless --$details_spinner->{startcount};
     return;
 }
@@ -2156,11 +2169,12 @@ sub users_list_button_press {
     if ($event->button != 1) {
         return gtk_treeview_button_press($widget, $event);
     }
+
     # Manually handle left clicks to prevent triggering editing
     # a username on double-click (instead of activating the row).
-    my $path = ($users_treeview->get_path_at_pos($event->x, $event->y))[0] // return 0;
+    my $path          = ($users_treeview->get_path_at_pos($event->x, $event->y))[0] // return 0;
     my $selected_path = $path->to_string;
-    state $double_click_time = Gtk3::Settings::get_default->get_property('gtk-double-click-time');
+    state $double_click_time  = Gtk3::Settings::get_default->get_property('gtk-double-click-time');
     state $prev_selected_path = -1;
     state $trigger_edit_timeout;
     if ($trigger_edit_timeout) {
@@ -2331,10 +2345,7 @@ sub videos_from_saved_channel {
 
 sub popular_uploads {
     my ($channel_id) = @_;
-    send_search_request(
-        "No popular uploads for channel: <<$channel_id>>",
-        'popular_videos', [$channel_id]
-    );
+    send_search_request("No popular uploads for channel: <<$channel_id>>", 'popular_videos', [$channel_id]);
     return;
 }
 
@@ -2403,19 +2414,19 @@ sub search {
     }
 
     send_search_request(
-        "No results for: $keywords",
-        'search_for',
-        [$CONFIG{search_for}, $keywords],
-        config => {
-            'channelId'     => $from_author_entry->get_text() || undef,
-            'date'          => $CONFIG{date},
-            'features'      => $CONFIG{features},
-            'maxResults'    => $CONFIG{maxResults},
-            'order'         => $CONFIG{order},
-            'page'          => $spin_start_with_page->get_value(),
-            'videoDuration' => $CONFIG{videoDuration},
-        }
-    );
+                        "No results for: $keywords",
+                        'search_for',
+                        [$CONFIG{search_for}, $keywords],
+                        config => {
+                                   'channelId'     => $from_author_entry->get_text() || undef,
+                                   'date'          => $CONFIG{date},
+                                   'features'      => $CONFIG{features},
+                                   'maxResults'    => $CONFIG{maxResults},
+                                   'order'         => $CONFIG{order},
+                                   'page'          => $spin_start_with_page->get_value(),
+                                   'videoDuration' => $CONFIG{videoDuration},
+                                  }
+                       );
 
     return 1;
 }
@@ -2465,7 +2476,8 @@ sub get_code {
         if ($CONFIG{audio_only}) {
             execute_cli_pipe_viewer("--id=$code")
               && highlight_watched_video($liststore, $iter);
-        } else {
+        }
+        else {
             play_video(parse_json_string($liststore->get($iter, 8)), $iter);
         }
         return;
@@ -2500,12 +2512,7 @@ sub get_code {
         }
     }
     else {
-        send_search_request(
-            'No more results',
-            'next_page',
-            [$code, $next_page_token],
-            append => 1,
-        );
+        send_search_request('No more results', 'next_page', [$code, $next_page_token], append => 1,);
     }
 
     my $label = '<big><b>' . ('=' x 20) . '</b></big>';
@@ -2554,8 +2561,7 @@ sub fit_to_dimensions {
 
 sub load_thumbnail {
     my ($path, $width, $height) = @_;
-    my $pixbuf = Gtk3::Gdk::Pixbuf->new_from_file_at_size($path, $width, $height)
-      // return;
+    my $pixbuf = Gtk3::Gdk::Pixbuf->new_from_file_at_size($path, $width, $height) // return;
     utime undef, undef, $path
       or warn "[!] Can't touch path <<$path>>: $!";
     return $pixbuf;
@@ -2594,9 +2600,11 @@ sub get_results_from_list {
 
     if ($args{page} * $maxResults < $totalResults) {
 
-        my $json_str = make_json_string({
-            %args, page => $args{page} + 1,
-        });
+        my $json_str = make_json_string(
+                                        {
+                                         %args, page => $args{page} + 1,
+                                        }
+                                       );
 
         state $has_rawdeflate = $CONFIG{remember_session} && eval {
             require MIME::Base64;
@@ -2645,14 +2653,11 @@ sub refresh_subscription_video_results {
         return get_results_from_list(entries => []);
     }
 
-    my $channel_index = 0;
+    my $channel_index   = 0;
     my $update_progress = sub {
-        $progressbar->set_text(sprintf(
-            "[%u/%u] Retrieving info for “%s”...",
-            $channel_index + 1,
-            scalar @channels,
-            $channels[$channel_index][1]
-        ));
+        $progressbar->set_text(
+             sprintf("[%u/%u] Retrieving info for “%s”...", $channel_index + 1, scalar @channels, $channels[$channel_index][1])
+        );
         $progressbar->set_fraction($channel_index / scalar @channels);
     };
 
@@ -2669,16 +2674,21 @@ sub refresh_subscription_video_results {
             if ($request->{keep_alive}) {
                 ++$channel_index;
                 $update_progress->();
-            } else {
+            }
+            else {
                 $search_request = undef;
                 $progressbar->set_fraction(1.0);
-                Glib::Idle->add(sub {
-                    update_subscriptions(\@items);
-                    display_subscription_videos(0);
-                    $progressbar->set_fraction(0.0);
-                    $progressbar->set_sensitive(0);
-                    $progressbar->set_text('');
-                }, [], Glib::G_PRIORITY_LOW);
+                Glib::Idle->add(
+                    sub {
+                        update_subscriptions(\@items);
+                        display_subscription_videos(0);
+                        $progressbar->set_fraction(0.0);
+                        $progressbar->set_sensitive(0);
+                        $progressbar->set_text('');
+                    },
+                    [],
+                    Glib::G_PRIORITY_LOW
+                );
             }
         },
         'fetch_subscriptions',
@@ -2699,9 +2709,9 @@ sub update_subscriptions {
 
     for my $video (@$items) {
         my $channel_id = $yv_utils->get_channel_id($video);
-        $subscriptions{$channel_id} = 1;
+        $subscriptions{$channel_id}     = 1;
         $subscriptions{lc($channel_id)} = 1;
-        $video->{timestamp} = [@$time];
+        $video->{timestamp}             = [@$time];
     }
 
     my $subscriptions_data = [];
@@ -2840,7 +2850,8 @@ sub display_results {
             $thumb->{path} = $THUMBNAILS_CACHE->path($thumb->{url});
             if (-e $thumb->{path}) {
                 $pixbuf = load_thumbnail($thumb->{path}, $thumb->{width}, $thumb->{height});
-            } else {
+            }
+            else {
                 $thumb->{row} = $liststore->get_string_from_iter($iter);
                 push @missing_thumbs, $thumb;
             }
@@ -2853,9 +2864,8 @@ sub display_results {
             sub {
                 my ($thumb) = @_;
                 return unless -e $thumb->{path};
-                my $pixbuf = load_thumbnail($thumb->{path}, $thumb->{width}, $thumb->{height})
-                  // return;
-                my $iter = $liststore->get_iter_from_string($thumb->{row});
+                my $pixbuf = load_thumbnail($thumb->{path}, $thumb->{width}, $thumb->{height}) // return;
+                my $iter   = $liststore->get_iter_from_string($thumb->{row});
                 $liststore->set($iter, [1], [$pixbuf]);
             },
             \@missing_thumbs,
@@ -2900,6 +2910,7 @@ sub get_thumbnail_info {
 
     # Clean URL of trackers and other junk
     $thumb{url} =~ s/\.(?:jpg|png|webp)\K\?.*//;
+
     # Prefer JPEG format over WebP if the later is not supported.
     $thumb{url} =~ s/\.webp\z/.jpg/ && $thumb{url} =~ s{/vi_webp/}{/vi/} unless $webp_supported;
 
@@ -3092,28 +3103,19 @@ $symbols{video}\t %s videos",
 
 sub list_playlist {
     my ($playlist_id) = @_;
-    send_search_request(
-        "[!] Inexistent playlist...",
-        'videos_from_playlist_id', [$playlist_id]
-    );
+    send_search_request("[!] Inexistent playlist...", 'videos_from_playlist_id', [$playlist_id]);
     return;
 }
 
 sub list_channel_videos {
     my ($channel) = @_;
-    send_search_request(
-        "[!] No videos for channel: $channel",
-        'uploads', [$channel]
-    );
+    send_search_request("[!] No videos for channel: $channel", 'uploads', [$channel]);
     return;
 }
 
 sub list_channel_playlists {
     my ($channel) = @_;
-    send_search_request(
-        "[!] No playlists for channel: $channel",
-        'playlists', [$channel]
-    );
+    send_search_request("[!] No playlists for channel: $channel", 'playlists', [$channel]);
     return;
 }
 
@@ -3257,7 +3259,7 @@ sub play_video {
         dash          => $CONFIG{dash},
 
         ignored_projections => $CONFIG{ignored_projections},
-      );
+    );
 
     $worker->send_request(
         sub {
@@ -3303,10 +3305,7 @@ sub play_video {
 sub list_category {
     my $iter   = $cat_treeview->get_selection->get_selected;
     my $cat_id = $cats_liststore->get($iter, 1);
-    send_search_request(
-        "No video found for categoryID: <$cat_id>",
-        'trending_videos_from_category', [$cat_id]
-    );
+    send_search_request("No video found for categoryID: <$cat_id>", 'trending_videos_from_category', [$cat_id]);
     return;
 }
 
@@ -3384,7 +3383,7 @@ sub make_youtube_url {
                     $type eq 'channel'  ? $CONFIG{youtube_channel_url}
                   : $type eq 'video'    ? $CONFIG{youtube_video_url}
                   : $type eq 'playlist' ? $CONFIG{youtube_playlist_url}
-                  :                     ()
+                  :                       ()
                  );
 
     if (defined $format) {
@@ -3528,10 +3527,7 @@ sub get_channel_id_for_selected_video {
 
 sub show_related_videos {
     my $video_id = get_selected_entry_code(type => 'video') // return;
-    send_search_request(
-        "No related video for videoID: <$video_id>",
-        'related_to_videoID', [$video_id]
-    );
+    send_search_request("No related video for videoID: <$video_id>", 'related_to_videoID', [$video_id]);
     return;
 }
 
@@ -3588,12 +3584,12 @@ sub display_comments {
 
         if (not $comment->{_hidden}) {
             $feeds_liststore->insert_with_values(
-                -1,
-                0 => $comment_text,
-                3 => $video_id,
-                4 => $comment_id,
-                7 => 1,
-            );
+                                                 -1,
+                                                 0 => $comment_text,
+                                                 3 => $video_id,
+                                                 4 => $comment_id,
+                                                 7 => 1,
+                                                );
         }
 
         if (exists($comment->{replies}) and ref($comment->{replies}) eq 'ARRAY') {
@@ -3626,24 +3622,24 @@ sub display_comments {
                                             );
 
                 $feeds_liststore->insert_with_values(
-                    -1,
-                    0 => $reply_text,
-                    3 => $video_id,
-                    4 => $reply_id,
-                    7 => 1,
-                );
+                                                     -1,
+                                                     0 => $reply_text,
+                                                     3 => $video_id,
+                                                     4 => $reply_id,
+                                                     7 => 1,
+                                                    );
             }
         }
     }
 
     if (defined $continuation) {
         $feeds_liststore->insert_with_values(
-            -1,
-            0 => "<big><b>LOAD MORE</b></big>",
-            1 => $url,
-            2 => $continuation,
-            7 => 1,
-        );
+                                             -1,
+                                             0 => "<big><b>LOAD MORE</b></big>",
+                                             1 => $url,
+                                             2 => $continuation,
+                                             7 => 1,
+                                            );
     }
 
     return 1;
@@ -3714,6 +3710,7 @@ sub display_relative_results {
     clear_search_requests();
     display_results($results_copy, 1);
     set_prev_next_results_sensitivity();
+
     # Restore vertical scrolling position: first reset it to zero,
     # and wait for the `size-allocate` signal before restoring the
     # final position, as the vertical adjustment is not yet properly
@@ -3770,7 +3767,8 @@ sub set_entry_details {
             foreach my $key (keys %$extra_info) {
                 $info->{$key} = $extra_info->{$key};
             }
-        } else {
+        }
+        else {
             start_details_spinner();
             $worker->abort_requests($details_request);
             $details_request = $worker->send_request(
@@ -3788,44 +3786,42 @@ sub set_entry_details {
         }
 
         @details1 = (
-            author    => $yv_utils->get_channel_title($info),
-            author_id => $yv_utils->get_channel_id($info),
-        );
+                     author    => $yv_utils->get_channel_title($info),
+                     author_id => $yv_utils->get_channel_id($info),
+                    );
         @details2 = (
-            published => $yv_utils->get_publication_date($info),
-            play      => $yv_utils->get_time($info),
-            thumbs_up => $yv_utils->get_likes($info),
-            views     => $yv_utils->get_views($info),
-            average   => $yv_utils->get_rating($info),
-        );
+                     published => $yv_utils->get_publication_date($info),
+                     play      => $yv_utils->get_time($info),
+                     thumbs_up => $yv_utils->get_likes($info),
+                     views     => $yv_utils->get_views($info),
+                     average   => $yv_utils->get_rating($info),
+                    );
     }
     elsif ($type eq 'playlist') {
         @details1 = (
-            author    => $yv_utils->get_channel_title($info),
-            author_id => $yv_utils->get_channel_id($info),
-            play      => $yv_utils->get_playlist_id($info),
-        );
-        @details2 = (
-            video     => $yv_utils->get_playlist_video_count($info),
-        );
+                     author    => $yv_utils->get_channel_title($info),
+                     author_id => $yv_utils->get_channel_id($info),
+                     play      => $yv_utils->get_playlist_id($info),
+                    );
+        @details2 = (video => $yv_utils->get_playlist_video_count($info),);
     }
     elsif ($type eq 'channel') {
         @details1 = (
-            author    => $yv_utils->get_channel_title($info),
-            author_id => $yv_utils->get_channel_id($info),
-        );
+                     author    => $yv_utils->get_channel_title($info),
+                     author_id => $yv_utils->get_channel_id($info),
+                    );
         @details2 = (
-            video => $yv_utils->get_playlist_video_count($info),
-            subs  => $yv_utils->get_subscriber_count($info),
-        );
+                     video => $yv_utils->get_playlist_video_count($info),
+                     subs  => $yv_utils->get_subscriber_count($info),
+                    );
     }
 
     my %humanize_number_fields = (
-        likes     => 1,
-        subs      => 1,
-        thumbs_up => 1,
-        views     => 1,
-    );
+                                  likes     => 1,
+                                  subs      => 1,
+                                  thumbs_up => 1,
+                                  views     => 1,
+                                 );
 
     for my $pair (pairs($details_flowbox1, \@details1, $details_flowbox2, \@details2)) {
         my ($flowbox, $fields) = @$pair;
@@ -3864,7 +3860,7 @@ sub set_entry_details {
         # Getting thumbs (start, middle, end).
         foreach my $nr (1 .. 3) {
 
-            my $thumb = get_thumbnail_info($info, 320, 180);
+            my $thumb  = get_thumbnail_info($info, 320, 180);
             my $widget = $gui->get_object("image$nr");
             $widget->set_size_request($thumb->{width}, $thumb->{height});
 
@@ -3879,7 +3875,8 @@ sub set_entry_details {
             my $pixbuf;
             if (-e $thumb->{path}) {
                 $pixbuf = load_thumbnail($thumb->{path}, $thumb->{width}, $thumb->{height});
-            } else {
+            }
+            else {
                 $thumb->{widget} = $widget;
                 push @missing_thumbs, $thumb;
                 start_details_spinner();
@@ -3892,8 +3889,7 @@ sub set_entry_details {
                 my ($thumb) = @_;
                 stop_details_spinner();
                 return unless -e $thumb->{path};
-                my $pixbuf = load_thumbnail($thumb->{path}, $thumb->{width}, $thumb->{height})
-                  // return;
+                my $pixbuf = load_thumbnail($thumb->{path}, $thumb->{width}, $thumb->{height}) // return;
                 $thumb->{widget}->set_from_pixbuf($pixbuf);
             },
             \@missing_thumbs,
@@ -3926,7 +3922,7 @@ sub on_mainw_destroy {
 
 {
     my $default_notebook_page = $CONFIG->{default_notebook_page};
-    for my $index (0..$notebook->get_n_pages-1) {
+    for my $index (0 .. $notebook->get_n_pages - 1) {
         my $page = $notebook->get_nth_page($index);
         if ($page->get('name') eq $default_notebook_page) {
             $notebook->set_current_page($index);

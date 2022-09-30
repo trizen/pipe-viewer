@@ -7,11 +7,11 @@ use warnings;
 use JSON qw(encode_json decode_json from_json);
 
 require Exporter;
-our @ISA = qw(Exporter);
+our @ISA    = qw(Exporter);
 our @EXPORT = qw(
-    make_json_string
-    parse_json_string
-    parse_utf8_json_string
+  make_json_string
+  parse_json_string
+  parse_utf8_json_string
 );
 
 =head1 NAME

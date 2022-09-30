@@ -4,7 +4,7 @@ use 5.014;
 use warnings;
 
 require Exporter;
-our @ISA = qw(Exporter);
+our @ISA    = qw(Exporter);
 our @EXPORT = qw(
   proto_uint
   proto_nested

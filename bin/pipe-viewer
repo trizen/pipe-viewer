@@ -724,11 +724,11 @@ my $yv_obj = WWW::PipeViewer->new(
 
 require WWW::PipeViewer::Utils;
 my $yv_utils = WWW::PipeViewer::Utils->new(
-    youtube_video_url_format => $opt{youtube_video_url},
-    youtube_channel_url_format => $opt{youtube_channel_url},
-    youtube_playlist_url_format => $opt{youtube_playlist_url},
-    thousand_separator => $opt{thousand_separator},
-);
+                                           youtube_video_url_format    => $opt{youtube_video_url},
+                                           youtube_channel_url_format  => $opt{youtube_channel_url},
+                                           youtube_playlist_url_format => $opt{youtube_playlist_url},
+                                           thousand_separator          => $opt{thousand_separator},
+                                          );
 
 {    # Apply the configuration file
     my %temp = %CONFIG;
@@ -3998,8 +3998,8 @@ sub print_video_info {
 
     $rep = 0 if $rep < 0;
 
-    my $likes    = $yv_utils->get_likes($video);
-    my $views    = $yv_utils->get_views($video);
+    my $likes = $yv_utils->get_likes($video);
+    my $views = $yv_utils->get_views($video);
 
     print(
           "\n$hr\n",
@@ -4007,15 +4007,15 @@ sub print_video_info {
           (
            map    { sprintf(q{-> } . "%-*s: %s\n", $opt{_colors} ? 18 : 10, _bold_color($_->[0]), $_->[1]) }
              grep { defined($_->[1]) } (
-                                        ['Channel'    => $yv_utils->get_channel_title($video)],
-                                        ['ChannelID'  => $yv_utils->get_channel_id($video)],
-                                        ['VideoID'    => $yv_utils->get_video_id($video)],
-                                        ['Category'   => $yv_utils->get_category_name($video)],
-                                        ['Duration'   => $yv_utils->get_time($video)],
-                                        ['Likes'      => $yv_utils->set_thousands($likes)],
-                                        ['Rating'     => $yv_utils->get_rating($video)],
-                                        ['Views'      => $yv_utils->set_thousands($views)],
-                                        ['Published'  => $yv_utils->get_publication_date($video)],
+                                        ['Channel'   => $yv_utils->get_channel_title($video)],
+                                        ['ChannelID' => $yv_utils->get_channel_id($video)],
+                                        ['VideoID'   => $yv_utils->get_video_id($video)],
+                                        ['Category'  => $yv_utils->get_category_name($video)],
+                                        ['Duration'  => $yv_utils->get_time($video)],
+                                        ['Likes'     => $yv_utils->set_thousands($likes)],
+                                        ['Rating'    => $yv_utils->get_rating($video)],
+                                        ['Views'     => $yv_utils->set_thousands($views)],
+                                        ['Published' => $yv_utils->get_publication_date($video)],
                                        )
           ),
           "$hr\n"
@@ -4488,6 +4488,8 @@ Hostname of an invidious instance. When set to C<"auto">, a random invidious ins
 List of public invidious instances:
 
     https://api.invidious.io/
+
+Tor instances are also supported if the C<socks5://127.0.0.1:9050> Tor proxy is available and the Perl module L<LWP::Protocol::socks> is installed.
 
 =head2 auto_captions
 

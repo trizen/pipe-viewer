@@ -13,10 +13,11 @@ sub new {
     -d $path
       or eval { make_path($path) }
       or carp "[!] Can't create path <<$path>>: $!";
-    return bless {
-        cache_dir => $path,
-        ext       => $ext,
-    }, $class;
+    return
+      bless {
+             cache_dir => $path,
+             ext       => $ext,
+            }, $class;
 }
 
 sub path {

@@ -38,7 +38,8 @@ sub channel_info {
         my $header = $self->_extract_channel_header($info) // return;
         $title = eval { $header->{title} }     // return;
         $id    = eval { $header->{channelId} } // eval { $header->{externalId} } // return;
-    } elsif ($info = $self->_get_results($self->_make_feed_url("channels/$channel"))) {
+    }
+    elsif ($info = $self->_get_results($self->_make_feed_url("channels/$channel"))) {
         $title = eval { $info->{results}->{author} }   // return;
         $id    = eval { $info->{results}->{authorId} } // return;
     }

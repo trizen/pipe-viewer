@@ -116,7 +116,8 @@ sub _extract_youtube_mix {
 
     $mix{playlistId} = eval { $info->{navigationEndpoint}{watchEndpoint}{playlistId} } || return;
 
-    $mix{playlistThumbnails} = _extract_thumbnails($header->{avatar}{thumbnails} // $info->{heroImage}{collageHeroImageRenderer}{leftThumbnail}{thumbnails});
+    $mix{playlistThumbnails} = _extract_thumbnails($header->{avatar}{thumbnails}
+                                                   // $info->{heroImage}{collageHeroImageRenderer}{leftThumbnail}{thumbnails});
 
     $mix{description} = _extract_description({title => $info});
 
@@ -270,13 +271,15 @@ sub _extract_itemSection_entry {
 
         $playlist{type} = 'playlist';
 
-        $playlist{title}              = _extract_title($info)       // return;
-        $playlist{playlistId}         = _extract_playlist_id($info) // return;
-        $playlist{author}             = _extract_author_name($info);
-        $playlist{authorId}           = _extract_channel_id($info);
-        $playlist{videoCount}         = _extract_video_count($info);
-        $playlist{playlistThumbnails} = _extract_thumbnails($info->{thumbnailRenderer}{playlistVideoThumbnailRenderer}{thumbnail}{thumbnails} // $info->{thumbnail}{thumbnails});
-        $playlist{description}        = _extract_description($info);
+        $playlist{title}      = _extract_title($info)       // return;
+        $playlist{playlistId} = _extract_playlist_id($info) // return;
+        $playlist{author}     = _extract_author_name($info);
+        $playlist{authorId}   = _extract_channel_id($info);
+        $playlist{videoCount} = _extract_video_count($info);
+        $playlist{playlistThumbnails} =
+          _extract_thumbnails($info->{thumbnailRenderer}{playlistVideoThumbnailRenderer}{thumbnail}{thumbnails}
+                              // $info->{thumbnail}{thumbnails});
+        $playlist{description} = _extract_description($info);
 
         return \%playlist;
     }
