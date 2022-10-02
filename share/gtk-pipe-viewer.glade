@@ -22,7 +22,7 @@ Author: Trizen https://github.com/trizen
 
 -->
 <interface>
-  <requires lib="gtk+" version="3.12"/>
+  <requires lib="gtk+" version="3.18"/>
   <!-- interface-license-type gplv3 -->
   <!-- interface-name GTK Pipe Viewer -->
   <!-- interface-description Search and play YouTube videos. -->
@@ -47,6 +47,12 @@ Author: Trizen https://github.com/trizen
     <property name="value">1</property>
     <property name="step-increment">1</property>
     <property name="page-increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="comments_vscroll">
+    <property name="upper">100</property>
+    <property name="step-increment">1</property>
+    <property name="page-increment">10</property>
+    <signal name="value-changed" handler="comments_vscroll_value_changed_cb" swapped="no"/>
   </object>
   <object class="GtkImage" id="download_icon3">
     <property name="visible">True</property>
@@ -153,26 +159,6 @@ Author: Trizen https://github.com/trizen
       <column type="guint"/>
       <!-- column-name pic_height -->
       <column type="guint"/>
-    </columns>
-  </object>
-  <object class="GtkListStore" id="liststore11">
-    <columns>
-      <!-- column-name comment -->
-      <column type="gchararray"/>
-      <!-- column-name url -->
-      <column type="gchararray"/>
-      <!-- column-name next_page_token -->
-      <column type="gchararray"/>
-      <!-- column-name video_id -->
-      <column type="gchararray"/>
-      <!-- column-name comment_id -->
-      <column type="gchararray"/>
-      <!-- column-name spinner_timer -->
-      <column type="guint"/>
-      <!-- column-name spinner_pulse -->
-      <column type="guint"/>
-      <!-- column-name show_comments -->
-      <column type="gboolean"/>
     </columns>
   </object>
   <object class="GtkListStore" id="liststore2">
@@ -1929,38 +1915,20 @@ and others... https://github.com/trizen/pipe-viewer/graphs/contributors</propert
           <object class="GtkScrolledWindow">
             <property name="visible">True</property>
             <property name="can-focus">True</property>
+            <property name="vadjustment">comments_vscroll</property>
             <property name="shadow-type">in</property>
             <child>
-              <object class="GtkTreeView" id="feeds_treeview">
+              <object class="GtkTextView" id="comments_view">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
-                <property name="model">liststore11</property>
-                <property name="search-column">0</property>
-                <signal name="row-activated" handler="comments_row_activated" swapped="no"/>
-                <child internal-child="selection">
-                  <object class="GtkTreeSelection"/>
-                </child>
-                <child>
-                  <object class="GtkTreeViewColumn" id="treeviewcolumn7">
-                    <property name="title" translatable="yes">Comments</property>
-                    <property name="clickable">True</property>
-                    <child>
-                      <object class="GtkCellRendererSpinner"/>
-                      <attributes>
-                        <attribute name="visible">5</attribute>
-                        <attribute name="active">5</attribute>
-                        <attribute name="pulse">6</attribute>
-                      </attributes>
-                    </child>
-                    <child>
-                      <object class="GtkCellRendererText" id="cellrenderertext6"/>
-                      <attributes>
-                        <attribute name="visible">7</attribute>
-                        <attribute name="markup">0</attribute>
-                      </attributes>
-                    </child>
-                  </object>
-                </child>
+                <property name="editable">False</property>
+                <property name="wrap-mode">word</property>
+                <property name="justification">fill</property>
+                <property name="bottom-margin">8</property>
+                <property name="cursor-visible">False</property>
+                <signal name="button-press-event" handler="comments_view_button_press_event_cb" swapped="no"/>
+                <signal name="focus-in-event" handler="comments_view_focus_in_event_cb" swapped="no"/>
+                <signal name="motion-notify-event" handler="comments_view_motion_notify_event_cb" swapped="no"/>
               </object>
             </child>
           </object>
