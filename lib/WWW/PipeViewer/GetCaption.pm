@@ -211,9 +211,9 @@ sub save_caption {
     return $srt_file if (-e $srt_file);
 
     # Get XML data, then transform it to SubRip data
-    my $url = $info->{baseUrl}                            // return;
-    my $xml = $self->{yv_obj}->lwp_get($url, simple => 1) // return;
-    my $srt = $self->xml2srt($xml)                        // return;
+    my $url = $info->{baseUrl}               // return;
+    my $xml = $self->{yv_obj}->lwp_get($url) // return;
+    my $srt = $self->xml2srt($xml)           // return;
 
     # Write the SubRib data to the $srt_file
     open(my $fh, '>:utf8', $srt_file) or return;

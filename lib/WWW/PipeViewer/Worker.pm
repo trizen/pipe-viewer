@@ -98,7 +98,7 @@ sub _handle_fetch_multiple_thumbnails {
 sub _handle_fetch_one_thumbnail {
     my ($self, $request) = @_;
     my $thumb = $request->{args};
-    my $data  = $self->{_yv_obj}->lwp_get($thumb->{url}, simple => 1);
+    my $data  = $self->{_yv_obj}->lwp_get($thumb->{url});
     if ($data) {
         my $tmppath = "$thumb->{path}.$$";
         open(my $fp, '>:raw', $tmppath)

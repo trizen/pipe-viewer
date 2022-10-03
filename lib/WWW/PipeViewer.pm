@@ -388,14 +388,7 @@ sub _warn_reponse_error {
 
 =head2 lwp_get($url, %opt)
 
-Get and return the content for $url.
-
-Where %opt can be:
-
-    simple => [bool]
-
-When the value of B<simple> is set to a true value, the
-authentication header will not be set in the HTTP request.
+Get and return the content for C<$url>.
 
 =cut
 
@@ -716,9 +709,9 @@ sub default_arguments {
     my ($self, %args) = @_;
 
     my %defaults = (
-        hl => 'en-US',
-        %args,
-    );
+                    hl => 'en-US',
+                    %args,
+                   );
 
     $self->list_to_url_arguments(%defaults);
 }
@@ -1150,7 +1143,7 @@ sub _old_get_video_info {
     my ($self, $videoID) = @_;
 
     my $url     = $self->get_video_info_url() . sprintf($self->get_video_info_args(), $videoID);
-    my $content = $self->lwp_get($url, simple => 1) // return;
+    my $content = $self->lwp_get($url) // return;
     my %info    = $self->parse_query_string($content);
 
     return %info;
@@ -1318,7 +1311,7 @@ sub get_streaming_urls {
                                                            hl            => "en",
                                                           );
 
-                %info = (player_response => $self->lwp_get($proxy_url, simple => 1));
+                %info = (player_response => $self->lwp_get($proxy_url));
             };
         }
 
