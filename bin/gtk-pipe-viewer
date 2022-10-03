@@ -227,7 +227,7 @@ my %CONFIG = (
     date             => 'anytime',
     region           => undef,
 
-    comments_order              => 'top',           # valid values: top, new
+    comments_order              => 'top',    # valid values: top, new
     comments_author_color       => undef,
     comments_date_color         => undef,
     comments_body_color         => undef,
@@ -371,9 +371,9 @@ my %objects = (
     'warnings_window'    => \my $warnings_window,
 
     # Comments window.
-    'feeds_window'     => \my $feeds_window,
-    'feeds_title'      => \my $feeds_title,
-    'comments_view'    => \my $comments_view,
+    'feeds_window'  => \my $feeds_window,
+    'feeds_title'   => \my $feeds_title,
+    'comments_view' => \my $comments_view,
 
     # Details window.
     'details_window'   => \my $details_window,
@@ -3491,7 +3491,7 @@ my %comments_requests;
 sub comments_buffer_delete_at_mark {
     my ($mark, $movement, @movement_args) = @_;
     my $start_iter = $comments_buffer->get_iter_at_mark($mark);
-    my $end_iter = $start_iter->copy();
+    my $end_iter   = $start_iter->copy();
     $end_iter->can($movement)->($end_iter, @movement_args);
     $comments_buffer->delete($start_iter, $end_iter);
     return;
@@ -3509,6 +3509,7 @@ sub comments_spinner_insert {
     $spinner->set_margin_top(8);
     $spinner->show();
     $comments_view->add_child_at_anchor($spinner, $comments_buffer->create_child_anchor($iter));
+
     # For some reason, starting the spinner directly does not always work…
     Glib::Idle->add(sub { $spinner->start() });
     return $spinner;
@@ -3521,9 +3522,11 @@ sub comments_spinner_delete {
 }
 
 sub comments_buffer_reset {
+
     # Swap buffer with a new pristine one.
     $comments_buffer = Gtk3::TextBuffer->new();
     $comments_view->set_buffer($comments_buffer);
+
     # And create all the necessary tags.
     for my $tag_spec (pairs(@COMMENTS_TAGS)) {
         my ($name, $attrs) = @$tag_spec;
@@ -3607,16 +3610,19 @@ sub comments_view_focus_in_event_cb {
 sub comments_replies_toggle {
     my ($mark) = @_;
     $mark->{expanded} = not $mark->{expanded};
+
     # Update the indicator.
     comments_buffer_delete_at_mark($mark, 'forward_char');
     my $iter      = $comments_buffer->get_iter_at_mark($mark);
     my $indicator = $mark->{expanded} ? $REPLIES_INDICATOR_COLLAPSE : $REPLIES_INDICATOR_EXPAND;
     $comments_buffer->insert_with_tags($iter, $indicator, @{$iter->get_toggled_tags(1)});
+
     # Toggle the replies' visibility.
     $iter->forward_to_tag_toggle($comments_buffer->{replies_tag});
     (my $end_iter = $iter->copy())->forward_to_tag_toggle($comments_buffer->{replies_tag});
     $comments_buffer->can(($mark->{expanded} ? 'remove' : 'apply') . '_tag_by_name')
       ->($comments_buffer, 'hidden', $iter, $end_iter);
+
     # Ditto with the spinner if present.
     $end_iter->backward_line();
     my $spinner = ($end_iter->get_child_anchor() // return)->get_widgets()->[0];
@@ -3642,67 +3648,92 @@ sub display_comments {
 
     foreach my $comment (@{$comments}) {
 
-        $insert->("\n") unless $iter->starts_line();
+        if (not $comment->{_hidden}) {
+            $insert->("\n") unless $iter->starts_line();
 
-        my $comment_id = $yv_utils->get_comment_id($comment);
+            my $comment_id = $yv_utils->get_comment_id($comment);
 
-        # Author.
-        $insert->($yv_utils->get_author($comment), qw(author));
-        $insert->(q{  });
+            # Author
+            $insert->($yv_utils->get_author($comment), qw(author));
+            $insert->(q{  });
 
-        # Date.
-        {
-            my $comment_url = sprintf "https://www.youtube.com/watch?v=%s&lc=%s", $video_id, $comment_id;
-            my $comment_age = $yv_utils->get_publication_age($comment);
-            if ($comment_age) {
-                $comment_age = "$comment_age ago" if $comment_age !~ / ago\b/;
+            # Date
+            {
+                my $comment_url = sprintf("https://www.youtube.com/watch?v=%s&lc=%s", $video_id, $comment_id);
+                my $comment_age = $yv_utils->get_publication_age($comment);
+                if ($comment_age) {
+                    $comment_age = "$comment_age ago" if $comment_age !~ / ago\b/;
+                }
+                else {
+                    $comment_age = $yv_utils->get_publication_date($comment) // 'unknown';
+                }
+                my $mark = $comments_buffer->create_mark(undef, $iter, 1);
+                $mark->{code} = sub { open_external_url($comment_url) };
+                $insert->($comment_age, qw(date hotspot));
+                $insert->("\n");
             }
-            else {
-                $comment_age = $yv_utils->get_publication_date($comment) // 'unknown';
-            }
-            my $mark = $comments_buffer->create_mark(undef, $iter, 1);
-            $mark->{code} = sub { open_external_url($comment_url) };
-            $insert->($comment_age, qw(date hotspot));
-            $insert->("\n");
+
+            # Body
+            $indent += 1;
+            $insert->($yv_utils->get_comment_content($comment) // q{}, qw(body));
+            $indent -= 1;
         }
 
+        # Replies from yt-dlp (with `ytdlp_comments => 1`)
+        if (defined($comment->{replies}) and ref($comment->{replies}) eq 'ARRAY') {
+            $indent += 1;
+            $insert->("\n");
+            my $replies_count = scalar @{$comment->{replies}};
+            my $replies_header =
+              sprintf('%s  %s %s', $REPLIES_INDICATOR_EXPAND, $replies_count, (($replies_count > 1) ? 'REPLIES' : 'REPLY'));
+            my $mark1 = $comments_buffer->create_mark(undef, $iter, 1);
+            $insert->($replies_header, qw(hotspot show_replies));
+            my $replies_indent = $indent += 1;
+            $insert->("\n", qw(hidden replies));
+            my $mark2 = $comments_buffer->create_mark(undef, $iter, 1);
+            $mark1->{expanded} = 0;
+            $mark1->{code}     = sub {
+                comments_replies_toggle($mark1);
+                $mark1->{code} = \&comments_replies_toggle;
+                $comments_buffer->insert_with_tags_by_name($comments_buffer->get_iter_at_mark($mark2), "\n", qw(replies));
+                display_comments({results => {comments => $comment->{replies}, videoId => $video_id}}, $mark2,
+                                 $replies_indent);
+            };
+            $indent -= 2;
+        }
 
-        # Body.
-        $indent += 1;
-        $insert->($yv_utils->get_comment_content($comment) // q{}, qw(body));
-        $indent -= 1;
-
-        # Replies.
-        next unless exists $comment->{replies} and ref($comment->{replies}) eq 'HASH';
-        $indent += 1;
-        $insert->("\n");
-        my $replies_continuation = $comment->{replies}{continuation};
-        my $replies_count        = $comment->{replies}{replyCount};
-        my $replies_header       = sprintf '%s  %s %s',
-          $REPLIES_INDICATOR_EXPAND, $replies_count,
-          $replies_count > 1 ? 'REPLIES' : 'REPLY';
-        my $mark1 = $comments_buffer->create_mark(undef, $iter, 1);
-        $insert->($replies_header, qw(hotspot show_replies));
-        my $replies_indent = $indent += 1;
-        $insert->("\n", qw(hidden replies));
-        my $mark2 = $comments_buffer->create_mark(undef, $iter, 1);
-        $mark1->{expanded} = 0;
-        $mark1->{code} = sub {
-            comments_replies_toggle($mark1);
-            $mark1->{code} = \&comments_replies_toggle;
-            $comments_buffer->insert_with_tags_by_name($comments_buffer->get_iter_at_mark($mark2), "\n", qw(replies));
-            comments_load(
-                          'next_page_with_token',
-                          [$url, $replies_continuation],
-                          error  => 'Failed to fetch replies.',
-                          indent => $replies_indent,
-                          mark   => $mark2,
-                         );
-        };
-        $indent -= 2;
+        # Replies from invidious
+        if (defined($comment->{replies}) and ref($comment->{replies}) eq 'HASH') {
+            $indent += 1;
+            $insert->("\n");
+            my $replies_continuation = $comment->{replies}{continuation};
+            my $replies_count        = $comment->{replies}{replyCount};
+            my $replies_header =
+              sprintf('%s  %s %s', $REPLIES_INDICATOR_EXPAND, $replies_count, (($replies_count > 1) ? 'REPLIES' : 'REPLY'));
+            my $mark1 = $comments_buffer->create_mark(undef, $iter, 1);
+            $insert->($replies_header, qw(hotspot show_replies));
+            my $replies_indent = $indent += 1;
+            $insert->("\n", qw(hidden replies));
+            my $mark2 = $comments_buffer->create_mark(undef, $iter, 1);
+            $mark1->{expanded} = 0;
+            $mark1->{code}     = sub {
+                comments_replies_toggle($mark1);
+                $mark1->{code} = \&comments_replies_toggle;
+                $comments_buffer->insert_with_tags_by_name($comments_buffer->get_iter_at_mark($mark2), "\n", qw(replies));
+                comments_load(
+                              'next_page_with_token',
+                              [$url, $replies_continuation],
+                              error  => 'Failed to fetch replies.',
+                              indent => $replies_indent,
+                              mark   => $mark2,
+                             );
+            };
+            $indent -= 2;
+        }
     }
 
-    # "Load more".
+    # "Load more" button
+    # FIXME: after expanding the replies for the last comment from the current page, the "Load more" button stops working.
     if (defined $continuation) {
         $insert->("\n") unless $iter->starts_line();
         my $mark1 = $comments_buffer->create_mark(undef, $iter, 1);
