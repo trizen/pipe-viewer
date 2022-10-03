@@ -981,6 +981,8 @@ sub apply_combobox_configuration {
     }
 }
 
+my $worker = WWW::PipeViewer::Worker->new(max(0, $DEBUG - 1));
+
 sub apply_configuration {
 
     # Fullscreen mode
@@ -1040,6 +1042,26 @@ sub apply_configuration {
 
     # Select text from text entry
     $search_entry->select_region(0, -1);
+
+    my %config = (
+                  config_dir  => $config_dir,
+                  debug       => $DEBUG,
+                  escape_utf8 => 1,
+                 );
+
+    foreach my $option_name (
+                             qw(
+                             api_host bypass_age_gate_with_proxy cache_dir comments_order
+                             cookie_file debug env_proxy force_fallback http_proxy prefer_av1
+                             prefer_invidious prefer_mp4 region timeout user_agent ytdl ytdl_cmd
+                             ytdlp_comments ytdlp_max_comments ytdlp_max_replies
+                             )
+      ) {
+        $config{$option_name} = $CONFIG{$option_name};
+    }
+
+    $worker->send_request(sub { }, 'setup', \%config);
+    $worker->process_next_reply();
 }
 
 # Apply the configuration file
@@ -1609,30 +1631,6 @@ $mainw->signal_connect(
 );
 
 # ---------------- Worker setup ------------------------------- #
-
-my $worker = WWW::PipeViewer::Worker->new(max(0, $DEBUG - 1));
-
-{
-    my %config = (
-                  config_dir  => $config_dir,
-                  debug       => $DEBUG,
-                  escape_utf8 => 1,
-                 );
-
-    foreach my $option_name (
-                             qw(
-                             api_host bypass_age_gate_with_proxy cache_dir comments_order
-                             cookie_file debug env_proxy force_fallback http_proxy prefer_av1
-                             prefer_invidious prefer_mp4 region timeout user_agent ytdl ytdl_cmd
-                             ytdlp_comments ytdlp_max_comments ytdlp_max_replies
-                             )
-      ) {
-        $config{$option_name} = $CONFIG{$option_name};
-    }
-
-    $worker->send_request(sub { }, 'setup', \%config);
-    $worker->process_next_reply();
-}
 
 my $worker_watch = Glib::IO->add_watch(
     $worker->fileno(),
