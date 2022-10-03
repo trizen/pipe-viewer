@@ -3572,7 +3572,7 @@ sub comments_view_button_press_event_cb {
     my ($x, $y) = $widget->window_to_buffer_coords('text', $event->x, $event->y);
     my $iter = $widget->get_iter_at_location($x, $y);
     return 0 unless $iter->has_tag($comments_buffer->{hotspot_tag});
-    $iter->backward_to_tag_toggle($comments_buffer->{hotspot_tag});
+    $iter->forward_to_tag_toggle($comments_buffer->{hotspot_tag});
     for my $mark (@{$iter->get_marks() // []}) {
         my $code = $mark->{code} // next;
         $code->($mark);
@@ -3645,6 +3645,11 @@ sub display_comments {
         my ($text, @tags) = @_;
         $comments_buffer->insert_with_tags_by_name($iter, $text, "indent_$indent", @tags);
     };
+    my $insert_hotspot = sub {
+        my ($text, @tags) = @_;
+        $insert->($text, 'hotspot', @tags);
+        return $comments_buffer->create_mark(undef, $iter, 1);
+    };
 
     foreach my $comment (@{$comments}) {
 
@@ -3667,9 +3672,8 @@ sub display_comments {
                 else {
                     $comment_age = $yv_utils->get_publication_date($comment) // 'unknown';
                 }
-                my $mark = $comments_buffer->create_mark(undef, $iter, 1);
+                my $mark = $insert_hotspot->($comment_age, qw(date));
                 $mark->{code} = sub { open_external_url($comment_url) };
-                $insert->($comment_age, qw(date hotspot));
                 $insert->("\n");
             }
 
@@ -3699,17 +3703,17 @@ sub display_comments {
             my $replies_header =
               sprintf('%s  %s %s', $REPLIES_INDICATOR_EXPAND, $replies_count, (($replies_count > 1) ? 'REPLIES' : 'REPLY'));
             my $mark1 = $comments_buffer->create_mark(undef, $iter, 1);
-            $insert->($replies_header, qw(hotspot show_replies));
+            $mark1->{expanded} = 0;
+            my $mark2 = $insert_hotspot->($replies_header, qw(show_replies));
             my $replies_indent = $indent += 1;
             $insert->("\n", qw(hidden replies));
-            my $mark2 = $comments_buffer->create_mark(undef, $iter, 1);
-            $mark1->{expanded} = 0;
-            $mark1->{code}     = sub {
+            my $mark3 = $comments_buffer->create_mark(undef, $iter, 1);
+            $mark2->{code}     = sub {
                 comments_replies_toggle($mark1);
-                $mark1->{code} = \&comments_replies_toggle;
-                $comments_buffer->insert_with_tags_by_name($comments_buffer->get_iter_at_mark($mark2), "\n", qw(replies));
+                $mark2->{code} = sub { comments_replies_toggle($mark1) };
+                $comments_buffer->insert_with_tags_by_name($comments_buffer->get_iter_at_mark($mark3), "\n", qw(replies));
                 if (ref($replies_continuation) eq 'HASH') {
-                    display_comments($replies_continuation, $mark2, $replies_indent);
+                    display_comments($replies_continuation, $mark3, $replies_indent);
                 }
                 else {
                     comments_load(
@@ -3717,7 +3721,7 @@ sub display_comments {
                                   [$url, $replies_continuation],
                                   error  => 'Failed to fetch replies.',
                                   indent => $replies_indent,
-                                  mark   => $mark2,
+                                  mark   => $mark3,
                                  );
                 }
             };
@@ -3726,13 +3730,11 @@ sub display_comments {
     }
 
     # "Load more" button
-    # FIXME: after expanding the replies for the last comment from the current page, the "Load more" button stops working.
     if (defined $continuation) {
         $insert->("\n") unless $iter->starts_line();
-        my $mark1 = $comments_buffer->create_mark(undef, $iter, 1);
-        $insert->('LOAD MORE', qw(hotspot load_more));
+        my $mark1 = $insert_hotspot->('LOAD MORE', qw(load_more));
         $mark1->{code} = sub {
-            comments_buffer_delete_at_mark($mark1, 'forward_to_line_end');
+            comments_buffer_delete_at_mark($mark1, 'set_line_offset', 0);
             comments_load(
                           'next_page_with_token', [$url, $continuation],
                           error  => 'Failed to fetch more comments.',
