@@ -315,6 +315,8 @@ my %CONFIG = (
 
 # $appname $version - configuration file
 
+use utf8;
+
 EOD
 
     # Save hash config to file
