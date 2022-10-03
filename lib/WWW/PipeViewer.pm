@@ -716,12 +716,9 @@ sub default_arguments {
     my ($self, %args) = @_;
 
     my %defaults = (
-
-        #part        => 'snippet',
-        #prettyPrint => 'false',
-        #maxResults  => $self->get_maxResults,
+        hl => 'en-US',
         %args,
-                   );
+    );
 
     $self->list_to_url_arguments(%defaults);
 }
