@@ -3572,7 +3572,7 @@ sub comments_view_button_press_event_cb {
     my ($x, $y) = $widget->window_to_buffer_coords('text', $event->x, $event->y);
     my $iter = $widget->get_iter_at_location($x, $y);
     return 0 unless $iter->has_tag($comments_buffer->{hotspot_tag});
-    $iter->backward_to_tag_toggle($comments_buffer->{hotspot_tag});
+    $iter->forward_to_tag_toggle($comments_buffer->{hotspot_tag});
     for my $mark (@{$iter->get_marks() // []}) {
         my $code = $mark->{code} // next;
         $code->($mark);
@@ -3645,101 +3645,96 @@ sub display_comments {
         my ($text, @tags) = @_;
         $comments_buffer->insert_with_tags_by_name($iter, $text, "indent_$indent", @tags);
     };
+    my $insert_hotspot = sub {
+        my ($text, @tags) = @_;
+        $insert->($text, 'hotspot', @tags);
+        return $comments_buffer->create_mark(undef, $iter, 1);
+    };
 
     foreach my $comment (@{$comments}) {
 
-        if (not $comment->{_hidden}) {
-            $insert->("\n") unless $iter->starts_line();
+        next if $comment->{_hidden};
 
-            my $comment_id = $yv_utils->get_comment_id($comment);
+        $insert->("\n") unless $iter->starts_line();
 
-            # Author
-            $insert->($yv_utils->get_author($comment), qw(author));
-            $insert->(q{  });
+        my $comment_id = $yv_utils->get_comment_id($comment);
 
-            # Date
-            {
-                my $comment_url = sprintf("https://www.youtube.com/watch?v=%s&lc=%s", $video_id, $comment_id);
-                my $comment_age = $yv_utils->get_publication_age($comment);
-                if ($comment_age) {
-                    $comment_age = "$comment_age ago" if $comment_age !~ / ago\b/;
-                }
-                else {
-                    $comment_age = $yv_utils->get_publication_date($comment) // 'unknown';
-                }
-                my $mark = $comments_buffer->create_mark(undef, $iter, 1);
-                $mark->{code} = sub { open_external_url($comment_url) };
-                $insert->($comment_age, qw(date hotspot));
-                $insert->("\n");
+        # Author
+        $insert->($yv_utils->get_author($comment), qw(author));
+        $insert->(q{  });
+
+        # Date
+        {
+            my $comment_url = sprintf("https://www.youtube.com/watch?v=%s&lc=%s", $video_id, $comment_id);
+            my $comment_age = $yv_utils->get_publication_age($comment);
+            if ($comment_age) {
+                $comment_age = "$comment_age ago" if $comment_age !~ / ago\b/;
             }
-
-            # Body
-            $indent += 1;
-            $insert->($yv_utils->get_comment_content($comment) // q{}, qw(body));
-            $indent -= 1;
+            else {
+                $comment_age = $yv_utils->get_publication_date($comment) // 'unknown';
+            }
+            my $mark = $insert_hotspot->($comment_age, qw(date));
+            $mark->{code} = sub { open_external_url($comment_url) };
+            $insert->("\n");
         }
+
+        # Body
+        $indent += 1;
+        $insert->($yv_utils->get_comment_content($comment) // q{}, qw(body));
+        $indent -= 1;
+
+        my $replies_count;
+        my $replies_continuation;
 
         # Replies from yt-dlp (with `ytdlp_comments => 1`)
         if (defined($comment->{replies}) and ref($comment->{replies}) eq 'ARRAY') {
-            $indent += 1;
-            $insert->("\n");
-            my $replies_count = scalar @{$comment->{replies}};
-            my $replies_header =
-              sprintf('%s  %s %s', $REPLIES_INDICATOR_EXPAND, $replies_count, (($replies_count > 1) ? 'REPLIES' : 'REPLY'));
-            my $mark1 = $comments_buffer->create_mark(undef, $iter, 1);
-            $insert->($replies_header, qw(hotspot show_replies));
-            my $replies_indent = $indent += 1;
-            $insert->("\n", qw(hidden replies));
-            my $mark2 = $comments_buffer->create_mark(undef, $iter, 1);
-            $mark1->{expanded} = 0;
-            $mark1->{code}     = sub {
-                comments_replies_toggle($mark1);
-                $mark1->{code} = \&comments_replies_toggle;
-                $comments_buffer->insert_with_tags_by_name($comments_buffer->get_iter_at_mark($mark2), "\n", qw(replies));
-                display_comments({results => {comments => $comment->{replies}, videoId => $video_id}}, $mark2,
-                                 $replies_indent);
-            };
-            $indent -= 2;
+            $replies_count        = scalar @{$comment->{replies}};
+            $replies_continuation = {results => {comments => $comment->{replies}, videoId => $video_id}};
+        }
+        # Replies from invidious
+        elsif (defined($comment->{replies}) and ref($comment->{replies}) eq 'HASH') {
+            $replies_count        = $comment->{replies}{replyCount};
+            $replies_continuation = $comment->{replies}{continuation};
         }
 
-        # Replies from invidious
-        if (defined($comment->{replies}) and ref($comment->{replies}) eq 'HASH') {
+        if ($replies_count) {
             $indent += 1;
             $insert->("\n");
-            my $replies_continuation = $comment->{replies}{continuation};
-            my $replies_count        = $comment->{replies}{replyCount};
             my $replies_header =
               sprintf('%s  %s %s', $REPLIES_INDICATOR_EXPAND, $replies_count, (($replies_count > 1) ? 'REPLIES' : 'REPLY'));
             my $mark1 = $comments_buffer->create_mark(undef, $iter, 1);
-            $insert->($replies_header, qw(hotspot show_replies));
+            $mark1->{expanded} = 0;
+            my $mark2 = $insert_hotspot->($replies_header, qw(show_replies));
             my $replies_indent = $indent += 1;
             $insert->("\n", qw(hidden replies));
-            my $mark2 = $comments_buffer->create_mark(undef, $iter, 1);
-            $mark1->{expanded} = 0;
-            $mark1->{code}     = sub {
+            my $mark3 = $comments_buffer->create_mark(undef, $iter, 1);
+            $mark2->{code}     = sub {
                 comments_replies_toggle($mark1);
-                $mark1->{code} = \&comments_replies_toggle;
-                $comments_buffer->insert_with_tags_by_name($comments_buffer->get_iter_at_mark($mark2), "\n", qw(replies));
-                comments_load(
-                              'next_page_with_token',
-                              [$url, $replies_continuation],
-                              error  => 'Failed to fetch replies.',
-                              indent => $replies_indent,
-                              mark   => $mark2,
-                             );
+                $mark2->{code} = sub { comments_replies_toggle($mark1) };
+                $comments_buffer->insert_with_tags_by_name($comments_buffer->get_iter_at_mark($mark3), "\n", qw(replies));
+                if (ref($replies_continuation) eq 'HASH') {
+                    display_comments($replies_continuation, $mark3, $replies_indent);
+                }
+                else {
+                    comments_load(
+                                  'next_page_with_token',
+                                  [$url, $replies_continuation],
+                                  error  => 'Failed to fetch replies.',
+                                  indent => $replies_indent,
+                                  mark   => $mark3,
+                                 );
+                }
             };
             $indent -= 2;
         }
     }
 
     # "Load more" button
-    # FIXME: after expanding the replies for the last comment from the current page, the "Load more" button stops working.
     if (defined $continuation) {
         $insert->("\n") unless $iter->starts_line();
-        my $mark1 = $comments_buffer->create_mark(undef, $iter, 1);
-        $insert->('LOAD MORE', qw(hotspot load_more));
+        my $mark1 = $insert_hotspot->('LOAD MORE', qw(load_more));
         $mark1->{code} = sub {
-            comments_buffer_delete_at_mark($mark1, 'forward_to_line_end');
+            comments_buffer_delete_at_mark($mark1, 'set_line_offset', 0);
             comments_load(
                           'next_page_with_token', [$url, $continuation],
                           error  => 'Failed to fetch more comments.',
