@@ -1777,10 +1777,9 @@ sub gtk_widget_hide {
 sub gtk_treeview_button_press {
     my ($widget, $event) = @_;
     return 0 if $event->button != 3;
-    my $selection = $widget->get_selection;
-    my $path      = ($widget->get_path_at_pos($event->x, $event->y))[0] // return 0;
-    $selection->select_path($path);
-    my $iter = $selection->get_selected()           // return 0;
+    my $path = ($widget->get_path_at_pos($event->x, $event->y))[0] // return 0;
+    $widget->set_cursor($path, undef, 0);
+    my $iter = $widget->get_model()->get_iter($path);
     my $menu = $widget->{'get-popup-menu'}->($iter) // return 0;
     $menu->popup(undef, undef, undef, undef, $event->button, $event->time);
     return 1;
