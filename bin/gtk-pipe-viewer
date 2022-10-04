@@ -3653,35 +3653,35 @@ sub display_comments {
 
     foreach my $comment (@{$comments}) {
 
-        if (not $comment->{_hidden}) {
-            $insert->("\n") unless $iter->starts_line();
+        next if $comment->{_hidden};
 
-            my $comment_id = $yv_utils->get_comment_id($comment);
+        $insert->("\n") unless $iter->starts_line();
 
-            # Author
-            $insert->($yv_utils->get_author($comment), qw(author));
-            $insert->(q{  });
+        my $comment_id = $yv_utils->get_comment_id($comment);
 
-            # Date
-            {
-                my $comment_url = sprintf("https://www.youtube.com/watch?v=%s&lc=%s", $video_id, $comment_id);
-                my $comment_age = $yv_utils->get_publication_age($comment);
-                if ($comment_age) {
-                    $comment_age = "$comment_age ago" if $comment_age !~ / ago\b/;
-                }
-                else {
-                    $comment_age = $yv_utils->get_publication_date($comment) // 'unknown';
-                }
-                my $mark = $insert_hotspot->($comment_age, qw(date));
-                $mark->{code} = sub { open_external_url($comment_url) };
-                $insert->("\n");
+        # Author
+        $insert->($yv_utils->get_author($comment), qw(author));
+        $insert->(q{  });
+
+        # Date
+        {
+            my $comment_url = sprintf("https://www.youtube.com/watch?v=%s&lc=%s", $video_id, $comment_id);
+            my $comment_age = $yv_utils->get_publication_age($comment);
+            if ($comment_age) {
+                $comment_age = "$comment_age ago" if $comment_age !~ / ago\b/;
             }
-
-            # Body
-            $indent += 1;
-            $insert->($yv_utils->get_comment_content($comment) // q{}, qw(body));
-            $indent -= 1;
+            else {
+                $comment_age = $yv_utils->get_publication_date($comment) // 'unknown';
+            }
+            my $mark = $insert_hotspot->($comment_age, qw(date));
+            $mark->{code} = sub { open_external_url($comment_url) };
+            $insert->("\n");
         }
+
+        # Body
+        $indent += 1;
+        $insert->($yv_utils->get_comment_content($comment) // q{}, qw(body));
+        $indent -= 1;
 
         my $replies_count;
         my $replies_continuation;
