@@ -22,7 +22,7 @@ sub new {
 
 sub path {
     my ($self, $url) = @_;
-    my $digest = md5_hex($url);
+    my $digest = md5_hex($url // return);
     return "$self->{cache_dir}/$digest$self->{ext}";
 }
 

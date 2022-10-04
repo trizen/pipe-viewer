@@ -1728,6 +1728,7 @@ sub fetch_thumbnails {
     my %thumbs_by_url;
     my @request_args;
     for my $thumb (@$thumbnails) {
+        $thumb->{url} // next;
         if ($thumbs_by_url{$thumb->{url}}) {
             push @{$thumbs_by_url{$thumb->{url}}}, $thumb;
         }
@@ -2791,7 +2792,7 @@ sub display_results {
             my $pixbuf;
             my $thumb = get_thumbnail_info($item);
             $thumb->{path} = $THUMBNAILS_CACHE->path($thumb->{url});
-            if (-e $thumb->{path}) {
+            if (defined($thumb->{path}) and -e $thumb->{path}) {
                 $pixbuf = load_thumbnail($thumb->{path}, $thumb->{width}, $thumb->{height});
             }
             else {
@@ -2847,7 +2848,7 @@ sub get_thumbnail_info {
     unless ($xsize && $ysize) {
         ($xsize, $ysize) = @THUMBNAILS_SIZE;
     }
-    my %thumb = %{$yv_utils->get_thumbnail($entry, $xsize, $ysize) // return};
+    my %thumb = %{$yv_utils->get_thumbnail($entry, $xsize, $ysize) || return};
 
     ($thumb{width}, $thumb{height}) = fit_to_dimensions($thumb{width}, $thumb{height}, $xsize, $ysize);
 
@@ -3691,6 +3692,7 @@ sub display_comments {
             $replies_count        = scalar @{$comment->{replies}};
             $replies_continuation = {results => {comments => $comment->{replies}, videoId => $video_id}};
         }
+
         # Replies from invidious
         elsif (defined($comment->{replies}) and ref($comment->{replies}) eq 'HASH') {
             $replies_count        = $comment->{replies}{replyCount};
@@ -3704,11 +3706,11 @@ sub display_comments {
               sprintf('%s  %s %s', $REPLIES_INDICATOR_EXPAND, $replies_count, (($replies_count > 1) ? 'REPLIES' : 'REPLY'));
             my $mark1 = $comments_buffer->create_mark(undef, $iter, 1);
             $mark1->{expanded} = 0;
-            my $mark2 = $insert_hotspot->($replies_header, qw(show_replies));
+            my $mark2          = $insert_hotspot->($replies_header, qw(show_replies));
             my $replies_indent = $indent += 1;
             $insert->("\n", qw(hidden replies));
             my $mark3 = $comments_buffer->create_mark(undef, $iter, 1);
-            $mark2->{code}     = sub {
+            $mark2->{code} = sub {
                 comments_replies_toggle($mark1);
                 $mark2->{code} = sub { comments_replies_toggle($mark1) };
                 $comments_buffer->insert_with_tags_by_name($comments_buffer->get_iter_at_mark($mark3), "\n", qw(replies));
