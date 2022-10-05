@@ -1779,6 +1779,7 @@ sub gtk_treeview_button_press {
     return 0 if $event->button != 3;
     my $path = ($widget->get_path_at_pos($event->x, $event->y))[0] // return 0;
     $widget->set_cursor($path, undef, 0);
+    $widget->grab_focus();
     my $iter = $widget->get_model()->get_iter($path);
     my $menu = $widget->{'get-popup-menu'}->($iter) // return 0;
     $menu->popup(undef, undef, undef, undef, $event->button, $event->time);
