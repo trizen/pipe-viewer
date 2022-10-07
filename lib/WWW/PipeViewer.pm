@@ -1467,10 +1467,6 @@ sub post_as_json {
 sub next_page_with_token {
     my ($self, $url, $token) = @_;
 
-    if (ref($token) eq 'CODE') {
-        return $token->();
-    }
-
     if ($token =~ /^ytdlp:comments:(.*?):(\d+):(.*?):(.*)/) {
         my ($video_id, $page, $prev_root_comment_id, $prev_comment_id) = ($1, $2, $3, $4);
         return $self->comments_from_ytdlp($video_id, $page, $prev_root_comment_id, $prev_comment_id);

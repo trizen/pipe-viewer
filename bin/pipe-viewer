@@ -2116,7 +2116,7 @@ sub general_options {
     if ($option =~ /^(?:q|quit|exit)\z/) {
         main_quit(0);
     }
-    elsif ($option =~ /^(?:n|next)\z/ and (defined($url) or ref($token) eq 'CODE')) {
+    elsif ($option =~ /^(?:n|next)\z/ and defined($url)) {
         if ($has_token) {
             if (defined $token) {
                 my $request = $yv_obj->next_page($url, $token);
@@ -4109,7 +4109,7 @@ sub print_videos {
                     }
                 }
                 else {
-                    if (defined($url) or ref($token) eq 'CODE') {
+                    if (defined($url)) {
                         __SUB__->($yv_obj->next_page($url, $token), auto => 1);
                     }
                     else {
@@ -4164,7 +4164,7 @@ sub print_videos {
                 press_enter_to_continue();
             }
             elsif ($opt =~ /^(?:n|next)\z/) {
-                if (defined($url) or ref($token) eq 'CODE') {
+                if (defined($url)) {
                     my $request = $yv_obj->next_page($url, $token);
                     __SUB__->($request, @keywords ? (auto => 1) : ());
                 }

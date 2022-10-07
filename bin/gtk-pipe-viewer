@@ -2473,12 +2473,6 @@ sub make_row_description {
 sub append_next_page {
     my ($url, $token) = @_;
 
-    if (ref($token) ne 'CODE') {
-        $url // return;
-    }
-
-    $token // return;    # no next page is available
-
     my $iter = $liststore->append;
 
     $liststore->set(
@@ -2817,13 +2811,8 @@ sub display_results {
         );
     }
 
-    if (ref($results->{results}) eq 'HASH' and exists($results->{results}{continuation})) {
-        if (defined $results->{results}{continuation}) {
-            append_next_page($url, $results->{results}{continuation});
-        }
-    }
-    else {
-        append_next_page($url);
+    if (ref($results->{results}) eq 'HASH' and $results->{results}{continuation}) {
+        append_next_page($url, $results->{results}{continuation});
     }
 }
 
