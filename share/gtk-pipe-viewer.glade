@@ -29,7 +29,7 @@ Author: Trizen https://github.com/trizen
   <!-- interface-copyright Copyright \302\251 2010-2022 Trizen -->
   <!-- interface-authors Trizen https://github.com/trizen -->
   <object class="GtkAdjustment" id="adjustment1">
-    <property name="lower">1</property>
+    <property name="lower">20</property>
     <property name="upper">50</property>
     <property name="step-increment">1</property>
     <property name="page-increment">10</property>
