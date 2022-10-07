@@ -20,16 +20,6 @@ WWW::PipeViewer::CommentThreads - Retrieve comments threads.
 
 =cut
 
-sub _make_commentThreads_url {
-    my ($self, %opts) = @_;
-    return
-      $self->_make_feed_url(
-                            'commentThreads',
-                            pageToken => $self->page_token,
-                            %opts
-                           );
-}
-
 sub comments_from_ytdlp {
     my ($self, $video_id, $page, $prev_root_comment_id, $prev_comment_id) = @_;
 
