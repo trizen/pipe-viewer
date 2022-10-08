@@ -20,36 +20,6 @@ WWW::PipeViewer::Videos - videos handler.
 
 =cut
 
-sub _make_videos_url {
-    my ($self, %opts) = @_;
-    return $self->_make_feed_url('videos', %opts);
-}
-
-{
-    no strict 'refs';
-    foreach my $part (
-                      qw(
-                      id
-                      snippet
-                      contentDetails
-                      fileDetails
-                      player
-                      liveStreamingDetails
-                      processingDetails
-                      recordingDetails
-                      statistics
-                      status
-                      suggestions
-                      topicDetails
-                      )
-      ) {
-        *{__PACKAGE__ . '::' . 'video_' . $part} = sub {
-            my ($self, $id) = @_;
-            return $self->_get_results($self->_make_videos_url(id => $id, part => $part));
-        };
-    }
-}
-
 =head2 trending_videos_from_category($category_id)
 
 Get popular videos from a category ID.
