@@ -1666,39 +1666,57 @@ use constant {
              };
 
 my $search_request;
+my $search_progress;
 my $results_thumbs_request;
 my $details_request;
 my $details_thumbs_request;
 
-my $progress_timer;
-
-sub start_spinning {
-    $progressbar->pulse();
-    $progressbar->set_text('');
-    $progressbar->set_sensitive(1);
-    $progress_timer = Glib::Timeout->add(
-        80,
-        sub {
-            $progressbar->pulse();
-            return 1;
-        }
-    );
-}
-
-sub stop_spinning {
-    if ($progress_timer) {
-        Glib::Source->remove($progress_timer);
-        $progress_timer = undef;
+sub toggle_progress {
+    my ($mode, $enable) = @_;
+    my $step = $enable ? 1 : -1;
+    state $bar_count   = 0;
+    state $pulse_count = 0;
+    state $pulse_timer = 0;
+    if ($mode eq 'bar') {
+        $bar_count += $step;
+        die unless $bar_count >= 0;
     }
-    $progressbar->set_fraction(0.0);
-    $progressbar->set_sensitive(0);
-    $progressbar->set_text('');
+    elsif ($mode eq 'pulse') {
+        $pulse_count += $step;
+        die unless $pulse_count >= 0;
+    }
+    else {
+        die "invalid progress mode: $mode";
+    }
+    if ($pulse_count && !$pulse_timer) {
+        $progressbar->pulse();
+        $pulse_timer = Glib::Timeout->add(
+            80,
+            sub {
+                $progressbar->pulse();
+                return 1;
+            }
+        );
+    }
+    elsif (!$pulse_count && $pulse_timer) {
+        $progressbar->set_fraction($progressbar->get_fraction());
+        Glib::Source->remove($pulse_timer);
+        $pulse_timer = 0;
+    }
+    if ($pulse_count || $bar_count) {
+        $progressbar->set_sensitive(1);
+    }
+    else {
+        $progressbar->set_sensitive(0);
+        $progressbar->set_fraction(0.0);
+        $progressbar->set_text('');
+    }
 }
 
 sub clear_search_requests {
+    toggle_progress($search_progress, 0) if $search_progress;
     $worker->abort_requests($search_request, $results_thumbs_request);
-    $search_request = $results_thumbs_request = undef;
-    stop_spinning();
+    $search_progress = $search_request = $results_thumbs_request = undef;
     return;
 }
 
@@ -1706,13 +1724,13 @@ sub send_search_request {
     my ($error_message, $method, $args, %options) = @_;
     save_search_results_position();
     clear_search_requests();
-    start_spinning();
+    toggle_progress($search_progress = 'pulse', 1);
     $worker->abort_requests($search_request);
     $search_request = $worker->send_request(
         sub {
             my ($result, $request) = @_;
-            $search_request = undef;
-            stop_spinning();
+            toggle_progress('pulse', 0);
+            $search_progress = $search_request = undef;
             die "$error_message\n" unless ($yv_utils->has_entries($result));
             display_results($result);
         },
@@ -2321,12 +2339,18 @@ sub check_keywords {
     my ($key) = @_;
 
     if ($key =~ /$get_video_id_re/o) {
+        toggle_progress('pulse', 1);
         $worker->send_request(
             sub {
                 my ($info) = @_;
                 if (ref($info) eq 'HASH' and keys %$info) {
                     play_video($info);
                 }
+                # Note: we do that after calling `play_video`,
+                # to ensure the pulse does not stutter (since
+                # it will be kept enabled while retrieving the
+                # streaming URLs).
+                toggle_progress('pulse', 0);
             },
             'video_details',
             [$+{video_id}],
@@ -2627,7 +2651,7 @@ sub refresh_subscription_video_results {
         $progressbar->set_fraction($channel_index / scalar @channels);
     };
 
-    $progressbar->set_sensitive(1);
+    toggle_progress($search_progress = 'bar', 1);
     $update_progress->();
 
     my @items;
@@ -2642,15 +2666,13 @@ sub refresh_subscription_video_results {
                 $update_progress->();
             }
             else {
-                $search_request = undef;
+                $search_progress = $search_request = undef;
                 $progressbar->set_fraction(1.0);
                 Glib::Idle->add(
                     sub {
                         update_subscriptions(\@items);
                         display_subscription_videos(0);
-                        $progressbar->set_fraction(0.0);
-                        $progressbar->set_sensitive(0);
-                        $progressbar->set_text('');
+                        toggle_progress('bar', 0);
                     },
                     [],
                     Glib::G_PRIORITY_LOW
@@ -3227,9 +3249,13 @@ sub play_video {
         ignored_projections => $CONFIG{ignored_projections},
     );
 
+    toggle_progress('pulse', 1);
+
     $worker->send_request(
         sub {
             my ($streaming) = @_;
+
+            toggle_progress('pulse', 0);
 
             if (ref($streaming->{streaming}) ne 'HASH') {
                 die "[!] Can't play this video: no streaming URL has been found!\n";
