@@ -2480,7 +2480,7 @@ sub get_code {
     my $new_results;
     my $next_page_token = $liststore->get($iter, 5);
 
-    if (substr($next_page_token, 0, 4) eq 'json') {
+    if (defined($next_page_token) and substr($next_page_token, 0, 4) eq 'json') {
         my ($format, $json_data) = split(' ', $next_page_token, 2);
 
         if ($format eq 'json-deflate') {
@@ -2502,7 +2502,7 @@ sub get_code {
         }
     }
     else {
-        send_search_request('No more results', 'next_page', [$code, $next_page_token], append => 1,);
+        send_search_request('No more results', 'next_page', [$code, $next_page_token], append => 1);
     }
 
     my $label = '<big><b>' . ('=' x 20) . '</b></big>';
@@ -2520,11 +2520,7 @@ sub make_row_description {
 sub append_next_page {
     my ($url, $token) = @_;
 
-    if (ref($token) ne 'CODE') {
-        $url // return;
-    }
-
-    $token // return;    # no next page is available
+    # $token // return;    # no next page is available
 
     my $iter = $liststore->append;
 
