@@ -127,11 +127,6 @@ sub _extract_youtube_mix {
     return \%mix;
 }
 
-sub _extract_author_name {
-    my ($info) = @_;
-    eval { $info->{longBylineText}{runs}[0]{text} } // eval { $info->{shortBylineText}{runs}[0]{text} };
-}
-
 sub _extract_video_id {
     my ($info) = @_;
     eval { $info->{videoId} } || eval { $info->{navigationEndpoint}{watchEndpoint}{videoId} } || undef;
@@ -160,16 +155,37 @@ sub _extract_published_text {
     return $text;
 }
 
+sub _extract_author_name {
+    my ($info) = @_;
+#<<<
+       eval { $info->{longBylineText}{runs}[0]{text} }
+    // eval { $info->{shortBylineText}{runs}[0]{text} }
+    // eval { ($info->{channelThumbnail}{channelThumbnailWithLinkRenderer}{navigationEndpoint}{commandMetadata}{webCommandMetadata}{url} // '') =~ s{.*/([^/]+)\z}{$1}r };
+#>>>
+}
+
 sub _extract_channel_id {
     my ($info) = @_;
-    eval      { $info->{channelId} }
+#<<<
+         eval { $info->{channelId} }
       // eval { $info->{shortBylineText}{runs}[0]{navigationEndpoint}{browseEndpoint}{browseId} }
-      // eval { $info->{navigationEndpoint}{browseEndpoint}{browseId} };
+      // eval { $info->{navigationEndpoint}{browseEndpoint}{browseId} }
+      // eval { $info->{channelThumbnail}{channelThumbnailWithLinkRenderer}{navigationEndpoint}{browseEndpoint}{browseId} };
+#>>>
 }
 
 sub _extract_view_count_text {
     my ($info) = @_;
     eval { $info->{shortViewCountText}{runs}[0]{text} };
+}
+
+sub _extract_view_count {
+    my ($info) = @_;
+#<<<
+         _human_number_to_int(eval { $info->{viewCountText}{runs}[0]{text} } || 0)
+      || _human_number_to_int(eval { ($info->{headline}{accessibility}{accessibilityData}{label} // '') =~ m{(\S+) views} ? $1 : undef } || 0)
+      || _human_number_to_int(eval { $info->{shortViewCountText}{runs}[0]{text} } || 0);
+#>>>
 }
 
 sub _extract_thumbnails {
@@ -187,19 +203,21 @@ sub _extract_thumbnails {
 
 sub _extract_title {
     my ($info) = @_;
-    eval { $info->{title}{runs}[0]{text} } // eval { $info->{title}{accessibility}{accessibilityData}{label} };
+#<<<
+         eval { $info->{title}{runs}[0]{text} }
+      // eval { $info->{title}{accessibility}{accessibilityData}{label} }
+      // eval { $info->{headline}{runs}[0]{text} };
+#>>>
 }
 
 sub _extract_description {
     my ($info) = @_;
 
-    # FIXME: this is not the video description
-    eval { $info->{title}{accessibility}{accessibilityData}{label} };
-}
-
-sub _extract_view_count {
-    my ($info) = @_;
-    _human_number_to_int(eval { $info->{viewCountText}{runs}[0]{text} } || 0);
+    # This is not the video description...
+#<<<
+         eval { $info->{title}{accessibility}{accessibilityData}{label} }
+      // eval { $info->{headline}{accessibility}{accessibilityData}{label} };
+#>>>
 }
 
 sub _extract_video_count {
@@ -230,10 +248,12 @@ sub _extract_itemSection_entry {
     }
 
     # Video
-    if (exists($data->{compactVideoRenderer}) or exists($data->{playlistVideoRenderer})) {
+    if (   exists($data->{compactVideoRenderer})
+        or exists($data->{playlistVideoRenderer})
+        or exists($data->{videoWithContextRenderer})) {
 
         my %video;
-        my $info = $data->{compactVideoRenderer} // $data->{playlistVideoRenderer};
+        my $info = $data->{compactVideoRenderer} // $data->{playlistVideoRenderer} // $data->{videoWithContextRenderer};
 
         $video{type} = 'video';
 
@@ -264,10 +284,11 @@ sub _extract_itemSection_entry {
     }
 
     # Playlist
-    if ($args{type} ne 'video' and exists $data->{compactPlaylistRenderer}) {
+    if ($args{type} ne 'video' and (exists($data->{compactPlaylistRenderer}) or exists($data->{playlistWithContextRenderer})))
+    {
 
         my %playlist;
-        my $info = $data->{compactPlaylistRenderer};
+        my $info = $data->{compactPlaylistRenderer} // $data->{playlistWithContextRenderer};
 
         $playlist{type} = 'playlist';
 
@@ -285,10 +306,10 @@ sub _extract_itemSection_entry {
     }
 
     # Channel
-    if ($args{type} ne 'video' and exists $data->{compactChannelRenderer}) {
+    if ($args{type} ne 'video' and (exists($data->{compactChannelRenderer}) or exists($data->{channelWithContextRenderer}))) {
 
         my %channel;
-        my $info = $data->{compactChannelRenderer};
+        my $info = $data->{compactChannelRenderer} // $data->{channelWithContextRenderer};
 
         $channel{type} = 'channel';
 
@@ -1005,9 +1026,9 @@ sub yt_browse_next_page {
                                     browserVersion   => "83.0",
                                     clientFormFactor => "LARGE_FORM_FACTOR",
                                     clientName       => "MWEB",
-                                    clientVersion    => "2.20210308.03.00",
-                                    deviceMake       => "Generic",
-                                    deviceModel      => "Android 11.0",
+                                    clientVersion    => "2.20221013.07.00",
+                                    deviceMake       => "Mozilla",
+                                    deviceModel      => "Firefox for Android",
                                     hl               => "en",
                                     mainAppWebInfo   => {
                                                        graftUrl => $url,
@@ -1036,8 +1057,11 @@ sub yt_browse_next_page {
                   );
 
     my $content = $self->post_as_json(
-                $self->get_m_youtube_url . '/youtubei/v1/browse?key=' . _unscramble('1HUCiSlOalFEcYQSS8_9q1LW4y8JAwI2zT_qA_G'),
-                \%request) // return;
+                                      $self->get_m_youtube_url
+                                        . _unscramble('o/ebbrky?u1wi//evsuyto=e')
+                                        . _unscramble('1HUCiSlOalFEcYQSS8_9q1LW4y8JAwI2zT_qA_G'),
+                                      \%request
+                                     ) // return;
 
     my $hash = parse_json_string($content);
 
@@ -1078,22 +1102,22 @@ sub yt_search_next_page {
                                   "browserVersion"   => "83.0",
                                   "clientFormFactor" => "LARGE_FORM_FACTOR",
                                   "clientName"       => "MWEB",
-                                  "clientVersion"    => "2.20201030.01.00",
-                                  "deviceMake"       => "generic",
-                                  "deviceModel"      => "android 11.0",
+                                  "clientVersion"    => "2.20221013.07.00",
+                                  "deviceMake"       => "Mozilla",
+                                  "deviceModel"      => "Firefox for Android",
                                   "gl"               => "US",
                                   "hl"               => "en",
                                   "mainAppWebInfo"   => {
-                                                       "graftUrl" => "https://m.youtube.com/results?search_query=youtube"
+                                                       "graftUrl" => $url,
                                                       },
                                   "osName"             => "Android",
                                   "osVersion"          => "11",
                                   "platform"           => "TABLET",
                                   "playerType"         => "UNIPLAYER",
                                   "screenDensityFloat" => 1,
-                                  "screenHeightPoints" => 420,
+                                  "screenHeightPoints" => 600,
                                   "screenPixelDensity" => 1,
-                                  "screenWidthPoints"  => 1442,
+                                  "screenWidthPoints"  => 1800,
                                   "userAgent" => "Mozilla/5.0 (Android 11; Tablet; rv:83.0) Gecko/83.0 Firefox/83.0,gzip(gfe)",
                                   "userInterfaceTheme" => "USER_INTERFACE_THEME_LIGHT",
                                   "utcOffsetMinutes"   => 0,

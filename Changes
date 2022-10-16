@@ -5,6 +5,15 @@
 
 [CHANGELOG]
 
+Version 0.4.1
+
+- GUI: progress bar pulse when playing a video. (by @benoit-pierre)
+- GUI: improved handling of text entries. (by @benoit-pierre)
+- GUI: fixed some focusing issues. (by @benoit-pierre)
+- GUI: use `mqdefault` thumbnails for related videos. (instead of `hqdefault`)
+- GUI: append the "next page" entry for results from invidious.
+- CLI: remove the incomplete `mkv` file when `ffmpeg` fails.
+
 Version 0.4.0
 
 - GUI: moved network calls to a dedicated process. (by @benoit-pierre)

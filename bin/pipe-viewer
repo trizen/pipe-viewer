@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  pipe-viewer
 #  Fork: 30 October 2020
-#  Edit: 04 October 2022
+#  Edit: 16 October 2022
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -49,7 +49,7 @@ use Cwd qw(abs_path);
 my $DEVEL;
 use if ($DEVEL = -w __FILE__), lib => abs_path(__FILE__ . '/../../lib');
 
-use WWW::PipeViewer v0.4.0;
+use WWW::PipeViewer v0.4.1;
 use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::RegularExpressions;
 
@@ -809,7 +809,7 @@ usage: $execname [options] ([url] | [keywords])
    --hdr!               : search only for HDR videos
    --live!              : search only for live videos
    --vr180!             : search only for VR180 videos
-   --vd=s               :set the video definition (any, hd, or 4k)
+   --vd=s               : set the video definition (any, hd, or 4k)
    --4k                 : shortcut for --video-definition=hd
    --hd                 : shortcut for --video-definition=4k
    --dimension=s        : set video dimension (any or 3d)

@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  GTK Pipe Viewer
 #  Fork: 30 October 2020
-#  Edit: 04 October 2022
+#  Edit: 16 October 2022
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -34,7 +34,7 @@ use Cwd qw(abs_path);
 my $DEVEL;
 use if ($DEVEL = -w __FILE__), lib => abs_path(__FILE__ . '/../../lib');
 
-use WWW::PipeViewer v0.4.0;
+use WWW::PipeViewer v0.4.1;
 use WWW::PipeViewer::DiskCache;
 use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::RegularExpressions;
@@ -195,16 +195,16 @@ my %CONFIG = (
     video_player_selected => undef,    # autodetect it later
 
     # GUI options
-    show_thumbs                 => 1,
-    thumbnail_size              => '224x126',
-    clear_search_list           => 1,
-    default_notebook_page       => 'settings',
-    mainw_size                  => '700x400',
-    mainw_maximized             => 0,
-    mainw_fullscreen            => 0,
-    mainw_centered              => 0,
-    hpaned_width                => 250,
-    hpaned_position             => 420,
+    show_thumbs           => 1,
+    thumbnail_size        => '224x126',
+    clear_search_list     => 1,
+    default_notebook_page => 'settings',
+    mainw_size            => '700x400',
+    mainw_maximized       => 0,
+    mainw_fullscreen      => 0,
+    mainw_centered        => 0,
+    hpaned_width          => 250,
+    hpaned_position       => 420,
 
     # Pipe options
     split_videos     => 1,
@@ -2346,6 +2346,7 @@ sub check_keywords {
                 if (ref($info) eq 'HASH' and keys %$info) {
                     play_video($info);
                 }
+
                 # Note: we do that after calling `play_video`,
                 # to ensure the pulse does not stutter (since
                 # it will be kept enabled while retrieving the
@@ -2519,6 +2520,8 @@ sub make_row_description {
 
 sub append_next_page {
     my ($url, $token) = @_;
+
+    $url // return;
 
     # $token // return;    # no next page is available
 

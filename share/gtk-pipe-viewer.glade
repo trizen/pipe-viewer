@@ -1193,6 +1193,9 @@ When the specified resolution is not found, the best available resolution is use
                                     <property name="model">liststore4</property>
                                     <property name="search-column">0</property>
                                     <signal name="row-activated" handler="list_category" swapped="no"/>
+                                    <child internal-child="selection">
+                                      <object class="GtkTreeSelection"/>
+                                    </child>
                                     <child>
                                       <object class="GtkTreeViewColumn" id="treeviewcolumn6">
                                         <property name="resizable">True</property>
@@ -1263,6 +1266,9 @@ When the specified resolution is not found, the best available resolution is use
                                             <property name="can-focus">True</property>
                                             <property name="model">liststore6</property>
                                             <signal name="row-activated" handler="list_local_playlist" swapped="no"/>
+                                            <child internal-child="selection">
+                                              <object class="GtkTreeSelection"/>
+                                            </child>
                                             <child>
                                               <object class="GtkTreeViewColumn" id="treeviewcolumn4">
                                                 <property name="title" translatable="yes">Icon</property>
@@ -1385,6 +1391,7 @@ When the specified resolution is not found, the best available resolution is use
 Ovidiu D. Nițan &lt;nitanovidiu@gmail.com&gt;
 Jookia https://github.com/Jookia
 Andreas Hrubak https://github.com/bAndie91
+Benoit Pierre https://github.com/benoit-pierre
 and others... https://github.com/trizen/pipe-viewer/graphs/contributors</property>
     <property name="artists">PosixRU (main logo) https://zenway.ru/page/gtk-youtube-viewer</property>
     <property name="logo-icon-name">image-missing</property>
