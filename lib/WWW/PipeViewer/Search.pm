@@ -245,7 +245,7 @@ sub related_to_videoID {
                 map {
                     scalar {
                             quality => 'medium',
-                            url     => $_->{url},
+                            url     => ($_->{url} =~ s{/hqdefault\.jpg}{/mqdefault.jpg}r),
                             width   => $_->{width},
                             height  => $_->{height},
                            }
