@@ -116,9 +116,6 @@ my %valid_options = (
 #<<<
     # No input value allowed
     api_path         => {valid => q[], default => '/api/v1/'},
-    video_info_url   => {valid => q[], default => 'https://www.youtube.com/get_video_info'},
-    oauth_url        => {valid => q[], default => 'https://accounts.google.com/o/oauth2/'},
-    video_info_args  => {valid => q[], default => '?video_id=%s&el=detailpage&ps=default&eurl=&gl=US&hl=en&html5=1&c=TVHTML5&cver=6.20180913'},
     www_content_type => {valid => q[], default => 'application/x-www-form-urlencoded'},
     m_youtube_url    => {valid => q[], default => 'https://m.youtube.com'},
     youtubei_url     => {valid => q[], default => 'https://youtubei.googleapis.com/youtubei/v1/%s?key=' . reverse("8Wcq11_9Y_wliCGLHETS4Q8UqlS2JF_OAySazIA")},
@@ -905,6 +902,8 @@ Returns back a list of key-value pairs.
 sub parse_query_string {
     my ($self, $str, %opt) = @_;
 
+    # Unused for now, but it may be useful in the future.
+
     if (not defined($str)) {
         return;
     }
@@ -989,51 +988,6 @@ sub _check_streaming_urls {
     }
 
     return 1;
-}
-
-sub _old_extract_streaming_urls {
-    my ($self, $info, $videoID) = @_;
-
-    if ($self->get_debug) {
-        say STDERR ":: Using `url_encoded_fmt_stream_map` to extract the streaming URLs...";
-    }
-
-    my %stream_map    = $self->parse_query_string($info->{url_encoded_fmt_stream_map}, multi => 1);
-    my %adaptive_fmts = $self->parse_query_string($info->{adaptive_fmts},              multi => 1);
-
-    if ($self->get_debug >= 2) {
-        require Data::Dump;
-        Data::Dump::pp(\%stream_map);
-        Data::Dump::pp(\%adaptive_fmts);
-    }
-
-    my @results;
-
-    push @results, $self->_group_keys_with_values(%stream_map);
-    push @results, $self->_group_keys_with_values(%adaptive_fmts);
-
-    $self->_check_streaming_urls($videoID, \@results);
-
-    if ($info->{livestream} or $info->{live_playback}) {
-
-        if ($self->get_debug) {
-            say STDERR ":: Live stream detected...";
-        }
-
-        if (my @formats = $self->_fallback_extract_urls($videoID)) {
-            @results = @formats;
-        }
-        elsif (exists $info->{hlsvp}) {
-            push @results,
-              {
-                itag => 38,
-                type => 'video/ts',
-                url  => $info->{hlsvp},
-              };
-        }
-    }
-
-    return @results;
 }
 
 sub _extract_streaming_urls {
@@ -1137,16 +1091,6 @@ sub _get_youtubei_content {
     my $content = $self->post_as_json($url, $endpoint eq 'next' ? \%web : \%android);
 
     return $content;
-}
-
-sub _old_get_video_info {
-    my ($self, $videoID) = @_;
-
-    my $url     = $self->get_video_info_url() . sprintf($self->get_video_info_args(), $videoID);
-    my $content = $self->lwp_get($url) // return;
-    my %info    = $self->parse_query_string($content);
-
-    return %info;
 }
 
 sub _get_video_info {
