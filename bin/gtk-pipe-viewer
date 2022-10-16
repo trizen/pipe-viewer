@@ -2523,7 +2523,9 @@ sub append_next_page {
 
     $url // return;
 
-    # $token // return;    # no next page is available
+    if (not defined $token) {
+        $url =~ m{^https://} or return;
+    }
 
     my $iter = $liststore->append;
 
