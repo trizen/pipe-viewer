@@ -183,7 +183,7 @@ sub _extract_view_count {
     my ($info) = @_;
 #<<<
          _human_number_to_int(eval { $info->{viewCountText}{runs}[0]{text} } || 0)
-      || _human_number_to_int(eval { ($info->{headline}{accessibility}{accessibilityData}{label} // '') =~ m{(\S+) views} ? $1 : undef } || 0)
+      || _human_number_to_int(eval { ($info->{headline}{accessibility}{accessibilityData}{label} // '') =~ m{.* (\S+) views\b} ? $1 : undef } || 0)
       || _human_number_to_int(eval { $info->{shortViewCountText}{runs}[0]{text} } || 0);
 #>>>
 }
@@ -405,7 +405,8 @@ sub _extract_sectionList_results {
         }
 
         # Playlist videos
-        if (eval { ref($entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer}{contents}) eq 'ARRAY' }) {
+        if (    eval { ref($entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer}) eq 'HASH' }
+            and eval { ref($entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer}{contents}) eq 'ARRAY' }) {
             my $res = $entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer};
             push @results, $self->_parse_itemSection($res, %args);
             push @results, $self->_parse_itemSection_nextpage($res, %args);
@@ -422,6 +423,13 @@ sub _extract_sectionList_results {
             }
         }
 
+        # Video results (v2)
+        if (exists($entry->{richItemRenderer}) and ref($entry->{richItemRenderer}) eq 'HASH') {
+            my $res = $entry->{richItemRenderer}{content};
+            push @results, $self->_parse_itemSection({contents => [$res]}, %args);
+            push @results, $self->_parse_itemSection_nextpage($res, %args);
+        }
+
         # Video results
         if (exists $entry->{itemSectionRenderer}) {
             my $res = $entry->{itemSectionRenderer};
@@ -434,13 +442,23 @@ sub _extract_sectionList_results {
 
             my $info  = $entry->{continuationItemRenderer};
             my $token = eval { $info->{continuationEndpoint}{continuationCommand}{token} };
+            my $type  = eval { $info->{continuationEndpoint}{commandMetadata}{webCommandMetadata}{apiUrl} };
 
             if (defined($token)) {
-                push @results,
-                  scalar {
-                          type  => 'nextpage',
-                          token => "ytsearch:$args{type}:$token",
-                         };
+                if ($type =~ m{/browse\z}) {
+                    push @results,
+                      scalar {
+                              type  => 'nextpage',
+                              token => "ytbrowse:$args{type}:$token",
+                             };
+                }
+                else {
+                    push @results,
+                      scalar {
+                              type  => 'nextpage',
+                              token => "ytsearch:$args{type}:$token",
+                             };
+                }
             }
         }
     }
@@ -464,6 +482,24 @@ sub _add_author_to_results {
 
     my $channel_id   = eval { $header->{channelId} } // eval { $header->{externalId} };
     my $channel_name = eval { $header->{title} };
+
+    if (not defined($channel_id)) {
+        if (eval { ref($data->{responseContext}{serviceTrackingParams}) eq 'ARRAY' }) {
+            foreach my $entry (@{$data->{responseContext}{serviceTrackingParams}}) {
+                ref($entry) eq 'HASH' or next;
+                if (exists($entry->{params}) and ref($entry->{params}) eq 'ARRAY') {
+                    foreach my $param (@{$entry->{params}}) {
+                        if (($param->{key} // '') eq 'browse_id') {
+                            $channel_id = $param->{value};
+                            last;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    $channel_name //= $channel_id;
 
     foreach my $result (@$results) {
         if (ref($result) eq 'HASH') {
@@ -495,13 +531,23 @@ sub _find_sectionList {
         return undef;
     }
 
-    eval {
-        (
-         grep {
-             eval { exists($_->{tabRenderer}{content}{sectionListRenderer}{contents}) }
-         } @{$data->{contents}{singleColumnBrowseResultsRenderer}{tabs}}
-        )[0]{tabRenderer}{content}{sectionListRenderer};
-    } // undef;
+    my $section = (
+        eval {
+            (
+             grep {
+                 eval { exists($_->{tabRenderer}{content}{sectionListRenderer}{contents}) }
+             } @{$data->{contents}{singleColumnBrowseResultsRenderer}{tabs}}
+            )[0]{tabRenderer}{content}{sectionListRenderer};
+        } // eval {
+            (
+             grep {
+                 eval { exists($_->{tabRenderer}{content}{richGridRenderer}{contents}) }
+             } @{$data->{contents}{singleColumnBrowseResultsRenderer}{tabs}}
+            )[0]{tabRenderer}{content}{richGridRenderer};
+          } // undef
+    );
+
+    return $section;
 }
 
 sub _extract_channel_uploads {
@@ -1079,7 +1125,7 @@ sub yt_browse_next_page {
 
     if (!@results) {
         @results =
-          $self->_extract_sectionList_results(eval { $hash->{continuationContents}{sectionListContinuation} } // undef, %args);
+          $self->_extract_sectionList_results(eval { $hash->{continuationContents}{sectionListContinuation} } // $res, %args);
     }
 
     $self->_add_author_to_results($hash, \@results, %args);
