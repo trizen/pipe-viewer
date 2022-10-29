@@ -5,6 +5,11 @@
 
 [CHANGELOG]
 
+Version 0.4.2
+
+- Support for `richItemRenderer` channel video results.
+- GUI: allow the "next page" entry to be pressed multiple times (in case of network error).
+
 Version 0.4.1
 
 - GUI: progress bar pulse when playing a video. (by @benoit-pierre)

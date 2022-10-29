@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  GTK Pipe Viewer
 #  Fork: 30 October 2020
-#  Edit: 16 October 2022
+#  Edit: 30 October 2022
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -34,7 +34,7 @@ use Cwd qw(abs_path);
 my $DEVEL;
 use if ($DEVEL = -w __FILE__), lib => abs_path(__FILE__ . '/../../lib');
 
-use WWW::PipeViewer v0.4.1;
+use WWW::PipeViewer v0.4.2;
 use WWW::PipeViewer::DiskCache;
 use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::RegularExpressions;
@@ -2478,7 +2478,6 @@ sub get_code {
         return;
     }
 
-    my $new_results;
     my $next_page_token = $liststore->get($iter, 5);
 
     if (defined($next_page_token) and substr($next_page_token, 0, 4) eq 'json') {
@@ -2495,9 +2494,15 @@ sub get_code {
             $json_data = $buffer;
         }
 
-        my $data = parse_json_string($json_data);
-        $new_results = get_results_from_list(%$data);
-        unless ($yv_utils->has_entries($new_results)) {
+        my $data        = parse_json_string($json_data);
+        my $new_results = get_results_from_list(%$data);
+
+        if ($yv_utils->has_entries($new_results)) {
+            my $label = '<big><b>' . ('=' x 20) . '</b></big>';
+            $liststore->set($iter, 0 => $label, 3 => "");
+            display_results($new_results);
+        }
+        else {
             $liststore->remove($iter);
             die "No more results\n";
         }
@@ -2505,11 +2510,6 @@ sub get_code {
     else {
         send_search_request('No more results', 'next_page', [$code, $next_page_token], append => 1);
     }
-
-    my $label = '<big><b>' . ('=' x 20) . '</b></big>';
-    $liststore->set($iter, 0 => $label, 3 => "");
-
-    display_results($new_results) if $new_results;
 
     return;
 }
