@@ -810,7 +810,7 @@ sub get_rating {
     my $views = $self->get_views($info);
     my $rating;
 
-    if ($likes and $views and $views >= $likes) {
+    if ($likes and $views and $views >= 1 and $views >= $likes) {
         $rating = sprintf("%.2g%%", log($likes + 1) / log($views + 1) * 100);
     }
 

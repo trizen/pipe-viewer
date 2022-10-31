@@ -3480,6 +3480,7 @@ my $REPLIES_INDICATOR_COLLAPSE = '▴';
 
 # Note: the behavior when multiple tags with conflicting
 # attributes are applied to the same range is undefined.
+# FIXME: figure out why 'ltr' doesn't work and make it work. (#137)
 my @COMMENTS_TAGS = (
                      author => {
                                 foreground         => $CONFIG{comments_author_color},
@@ -3487,6 +3488,7 @@ my @COMMENTS_TAGS = (
                                 pixels_below_lines => 8,
                                 scale              => 1.2,
                                 weight             => 700,
+                                direction          => 'ltr',
                                },
                      date => {
                               foreground => $CONFIG{comments_date_color},
@@ -3495,6 +3497,7 @@ my @COMMENTS_TAGS = (
                      body => {
                               foreground   => $CONFIG{comments_body_color},
                               right_margin => 16,
+                              direction    => 'ltr',
                              },
                      hotspot      => {},
                      show_replies => {
@@ -3539,10 +3542,12 @@ sub comments_buffer_delete_at_mark {
 
 sub comments_spinner_insert {
     my ($mark, $indent) = @_;
+
     my $iter        = $comments_buffer->get_iter_at_mark($mark);
     my $indent_tag  = $comments_buffer->{"indent_${indent}_tag"};
     my $left_margin = $indent_tag->get_property('left_margin');
     my $spinner     = Gtk3::Spinner->new();
+
     $spinner->{mark} = $mark;
     $spinner->set_margin_left($left_margin);
     $spinner->set_margin_bottom(4);
@@ -3801,9 +3806,9 @@ sub set_comments {
 sub show_comments_window {
     my ($videoID, $iter) = get_selected_entry_code(type => 'video');
     $videoID // return;
-    my $info = $liststore->get($iter, 0);
-    my ($video_title) = $info =~ m{^.*?(<big><b>.*?</b></big>)}s;
-    $feeds_title->set_markup("<big>$video_title</big>");
+    my $info        = parse_json_string($liststore->get($iter, 8));
+    my $video_title = encode_entities($yv_utils->get_title($info));
+    $feeds_title->set_markup(reflow_text("<big><big><b>$video_title</b></big></big>"));
     $feeds_title->set_tooltip_markup("$video_title");
     $feeds_window->show;
     set_comments();
@@ -3921,7 +3926,7 @@ sub set_entry_details {
 
     $title = encode_entities($title);
 
-    $details_title->set_label("<big><big><b>$title</b></big></big>");
+    $details_title->set_markup(reflow_text("<big><big><b>$title</b></big></big>"));
     $details_title->set_tooltip_markup("<b>$title</b>");
 
     my $text_info;
@@ -4004,7 +4009,9 @@ sub set_entry_details {
                 $value   = $yv_utils->short_human_number($value);
                 $tooltip = $yv_utils->set_thousands($raw_value) if $value ne $raw_value;
             }
-            my $label = Gtk3::Label->new("$symbols{$symbol}  $value");
+            my $label = Gtk3::Label->new();
+            $value = encode_entities($value);
+            $label->set_markup(reflow_text("$symbols{$symbol}  <b>$value</b>"));
             $label->set_tooltip_text($tooltip) if $tooltip;
             $label->set_selectable(1);
             $label->set_xalign(0.0);
