@@ -369,17 +369,18 @@ my %objects = (
     'aboutdialog1'       => \my $about_window,
     'warnings_window'    => \my $warnings_window,
 
-    # Comments window.
+    # Comments window
     'feeds_window'  => \my $feeds_window,
     'feeds_title'   => \my $feeds_title,
     'comments_view' => \my $comments_view,
 
-    # Details window.
-    'details_window'   => \my $details_window,
-    'details_flowbox1' => \my $details_flowbox1,
-    'details_flowbox2' => \my $details_flowbox2,
-    'details_spinner'  => \my $details_spinner,
-    'details_title'    => \my $details_title,
+    # Details window
+    'details_window'       => \my $details_window,
+    'details_flowbox1'     => \my $details_flowbox1,
+    'details_flowbox2'     => \my $details_flowbox2,
+    'details_spinner'      => \my $details_spinner,
+    'details_title'        => \my $details_title,
+    'description_textview' => \my $description_textview,
 
     # Others
     'treeview1'              => \my $users_treeview,
@@ -3805,12 +3806,16 @@ sub set_comments {
 
 sub show_comments_window {
     my ($videoID, $iter) = get_selected_entry_code(type => 'video');
+
     $videoID // return;
+
     my $info        = parse_json_string($liststore->get($iter, 8));
     my $video_title = encode_entities($yv_utils->get_title($info));
+
     $feeds_title->set_markup(reflow_text("<big><big><b>$video_title</b></big></big>"));
     $feeds_title->set_tooltip_markup("$video_title");
     $feeds_window->show;
+
     set_comments();
     return 1;
 }
@@ -4073,7 +4078,7 @@ sub set_entry_details {
     }
 
     # Setting textview description
-    set_text($gui->get_object('description_textview'), $yv_utils->get_description($info));
+    set_text($description_textview, $yv_utils->get_description($info));
 
     return 1;
 }
