@@ -597,6 +597,22 @@ sub select_good_invidious_instances {
 sub _find_working_instance {
     my ($self, $candidates, $extra_candidates) = @_;
 
+    my $current_instance_file = File::Spec->catfile($self->get_config_dir, 'current_instance.json');
+
+    # Return the most recent working instance
+    if (open(my $fh, '<:raw', $current_instance_file)) {
+        my $instance = parse_json_string(
+            do {
+                local $/;
+                scalar <$fh>;
+            }
+        );
+        close $fh;
+        if (ref($instance) eq 'ARRAY' and time - $instance->[1]{_time} <= 3600) {
+            return $instance;
+        }
+    }
+
     require List::Util;
     state $yv_utils = WWW::PipeViewer::Utils->new();
 
@@ -613,6 +629,14 @@ sub _find_working_instance {
         my $results = $self->search_videos('test');
 
         if ($yv_utils->has_entries($results)) {
+
+            # Save the current working instance
+            if (open(my $fh, '>:raw', $current_instance_file)) {
+                $instance->[1]{_time} = time;
+                say $fh make_json_string($instance);
+                close $fh;
+            }
+
             return $instance;
         }
     }
@@ -626,7 +650,7 @@ sub pick_random_instance {
     my @candidates       = $self->select_good_invidious_instances();
     my @extra_candidates = $self->select_good_invidious_instances(lax => 1);
 
-    if ($self->get_prefer_invidious) {
+    if (1 or $self->get_prefer_invidious) {
         if (defined(my $instance = $self->_find_working_instance(\@candidates, \@extra_candidates))) {
             return $instance;
         }
