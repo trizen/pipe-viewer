@@ -597,6 +597,7 @@ sub select_good_invidious_instances {
 sub _find_working_instance {
     my ($self, $candidates, $extra_candidates) = @_;
 
+    require File::Spec;
     my $current_instance_file = File::Spec->catfile($self->get_config_dir, 'current_instance.json');
 
     # Return the most recent working instance
@@ -626,12 +627,13 @@ sub _find_working_instance {
         local $self->{api_host}         = $uri;
         local $self->{prefer_invidious} = 1;
 
+        my $t0      = time;
         my $results = $self->search_videos('test');
 
         if ($yv_utils->has_entries($results)) {
 
             # Save the current working instance
-            if (open(my $fh, '>:raw', $current_instance_file)) {
+            if (time - $t0 <= 5 and open(my $fh, '>:raw', $current_instance_file)) {
                 $instance->[1]{_time} = time;
                 say $fh make_json_string($instance);
                 close $fh;
