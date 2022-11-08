@@ -1076,8 +1076,6 @@ sub _extract_streaming_urls {
             say STDERR ":: Live stream detected...";
         }
 
-        @results = $self->_fallback_extract_urls($videoID);
-
         if (!@results) {
             push @results,
               {
@@ -1086,6 +1084,10 @@ sub _extract_streaming_urls {
                 url  => $json->{streamingData}{hlsManifestUrl},
               };
         }
+    }
+
+    if (!@results) {
+        @results = $self->_fallback_extract_urls($videoID);
     }
 
     return @results;
