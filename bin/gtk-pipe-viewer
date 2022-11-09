@@ -1611,21 +1611,39 @@ HELP_TEXT
 
 # ------------------- Accels ------------------- #
 
-# Main window
-my $accel = Gtk3::AccelGroup->new;
-$accel->connect(ord('e'), ['control-mask'], ['visible'], \&enqueue_video);
-$accel->connect(ord('q'), ['control-mask'], ['visible'], \&on_mainw_destroy);
-$accel->connect(ord('y'), ['control-mask'], ['visible'], \&run_cli_pipe_viewer);
-$accel->connect(ord('d'), ['control-mask'], ['visible'], \&show_details_window);
+{
+    # Main window
+    my $accel = Gtk3::AccelGroup->new;
 
-#$accel->connect(ord('c'), ['control-mask'], ['visible'], \&show_comments_window);
-$accel->connect(ord('s'), ['control-mask'], ['visible'], \&add_user_to_favorites);
-$accel->connect(ord('r'), ['control-mask'], ['visible'], \&show_related_videos);
-$accel->connect(ord('m'), ['control-mask'], ['visible'], \&show_videos_from_selected_author);
-$accel->connect(ord('k'), ['control-mask'], ['visible'], \&show_playlists_from_selected_author);
-$accel->connect(0xffff,   ['lock-mask'],    ['visible'], \&delete_selected_row);
-$accel->connect(0xffc8,   ['lock-mask'],    ['visible'], \&maximize_unmaximize_mainw);
-$mainw->add_accel_group($accel);
+    # 'CTRL+...' keybinds
+    $accel->connect(ord('e'), ['control-mask'], ['visible'], \&enqueue_video);
+    $accel->connect(ord('q'), ['control-mask'], ['visible'], \&on_mainw_destroy);
+    $accel->connect(ord('y'), ['control-mask'], ['visible'], \&run_cli_pipe_viewer);
+    $accel->connect(ord('d'), ['control-mask'], ['visible'], \&show_details_window);
+    ##$accel->connect(ord('c'), ['control-mask'], ['visible'], \&show_comments_window);
+    $accel->connect(ord('s'), ['control-mask'], ['visible'], \&add_user_to_favorites);
+    $accel->connect(ord('r'), ['control-mask'], ['visible'], \&show_related_videos);
+    $accel->connect(ord('m'), ['control-mask'], ['visible'], \&show_videos_from_selected_author);
+    $accel->connect(ord('k'), ['control-mask'], ['visible'], \&show_playlists_from_selected_author);
+
+    # 'DEL' key
+    $accel->connect(0xffff, ['lock-mask'], ['visible'], \&remove_selected_row);
+
+    # 'F11' key
+    $accel->connect(0xffc8, ['lock-mask'], ['visible'], \&maximize_unmaximize_mainw);
+
+    $mainw->add_accel_group($accel);
+}
+
+{
+    # "Saved channels" window
+    my $accel = Gtk3::AccelGroup->new;
+
+    # 'DEL' key
+    $accel->connect(0xffff, ['lock-mask'], ['visible'], \&remove_selected_username);
+
+    $users_list_window->add_accel_group($accel);
+}
 
 # Support for navigating back and forth using the side buttons of the mouse
 $mainw->signal_connect(
@@ -1924,7 +1942,7 @@ sub save_configuration {
     return 1;
 }
 
-sub delete_selected_row {
+sub remove_selected_row {
     my (undef, $iter) = get_selected_entry_code();
     $iter // return;
     $liststore->remove($iter);
@@ -2081,36 +2099,12 @@ set_local_playlists();
 
 # ------------ Usernames list window ------------ #
 sub set_usernames {
+
     if (-e $CONFIG{saved_channels_file}) {
         %channels = ((map { @$_ } $yv_utils->read_channels_from_file($CONFIG{saved_channels_file})), %channels);
     }
     else {
-        # Default channels
-        %channels = (
-                     'UC1_uAIS3r8Vu6JjXWvastJg' => 'Mathologer',
-                     'UCSju5G2aFaWMqn-_0YBtq5A' => 'Stand-Up Maths',
-                     'UC-WICcSW1k3HsScuXxDrp0w' => 'Curry On!',
-                     'UCShHFwKyhcDo3g7hr4f1R8A' => 'World Science Festival',
-                     'UCYO_jab_esuFRV4b17AJtAw' => '3Blue1Brown',
-                     'UCWnPjmqvljcafA0z2U1fwKQ' => 'Confreaks',
-                     'UC_QIfHvN9auy2CoOdSfMWDw' => 'Strange Loop',
-                     'UCseUQK4kC3x2x543nHtGpzw' => 'Brian Will',
-                     'UC9-y-6csu5WGm29I7JiwpnA' => 'Computerphile',
-                     'UCoxcjq-8xIDTYp3uz647V5A' => 'Numberphile',
-                     'UCvBqzzvUBLCs8Y7Axb-jZew' => 'Sixty Symbols',
-                     'UC6107grRI4m0o2-emgoDnAA' => 'SmarterEveryDay',
-                     'UCF6F8LdCSWlRwQm_hfA2bcQ' => 'Coding Math',
-                     'UC1znqKFL3jeR0eoA0pHpzvw' => 'SpaceRip',
-                     'UCvjgXvBlbQiydffZU7m1_aw' => 'The Coding Train',
-                     'UC0wbcfzV-bHhABbWGXKHwdg' => 'Utah Open Source',
-                     'UCotwjyJnb-4KW7bmsOoLfkg' => 'Art of the Problem',
-                     'UC7y4qaRSb5w2O8cCHOsKZDw' => 'YAPC NA',
-                     'UCGHZpIpAWJQ-Jy_CeCdXhMA' => 'Cool Worlds',
-                     'UCmG6gHgD8JaEZVxuHWJijGQ' => 'UConn Mathematics',
-                     'UC81mayGa63QaJE1SjKIYp0w' => 'metaRising',
-                     'UCSHZKyawb77ixDdsGog4iWA' => 'Lex Fridman',
-                     'UCBa659QWEk1AI4Tg--mrJ2A' => 'Tom Scott',
-                    );
+        %channels = map { @$_ } $yv_utils->default_channels;
     }
 
     if (-e $CONFIG{subscribed_channels_file}) {
@@ -2640,8 +2634,9 @@ sub videos_from_data_file {
 sub refresh_subscription_video_results {
 
     my @channels = $yv_utils->read_channels_from_file($CONFIG{subscribed_channels_file});
+
     if (not @channels) {
-        warn "\n[!] No subscribed channels...\n";
+        die "\n[!] No subscribed channels...\n";
         return get_results_from_list(entries => []);
     }
 
