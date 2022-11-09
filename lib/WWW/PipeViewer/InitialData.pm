@@ -475,6 +475,34 @@ sub _extract_channel_header {
     eval { $data->{header}{c4TabbedHeaderRenderer} } // eval { $data->{metadata}{channelMetadataRenderer} };
 }
 
+sub _extract_channel_tabs {
+    my ($self, $hash) = @_;
+
+    my %channel_tabs;
+    my $section_list = $self->_find_sectionList($hash);
+
+    if (defined($section_list) and ref($section_list) eq 'HASH' and exists($section_list->{header})) {
+        my $header = $section_list->{header};
+        if (ref($header) eq 'HASH' and exists($header->{feedFilterChipBarRenderer})) {
+            my $chip_bar = $header->{feedFilterChipBarRenderer};
+            if (ref($chip_bar) eq 'HASH' and exists($chip_bar->{contents}) and ref($chip_bar->{contents}) eq 'ARRAY') {
+                foreach my $entry (@{$chip_bar->{contents}}) {
+                    ref($entry) eq 'HASH' or next;
+                    my $item = $entry->{chipCloudChipRenderer} // next;
+                    ref($item) eq 'HASH' or next;
+                    my $text = $item->{text} // next;
+                    if (ref($text) eq 'HASH') {
+                        $text = $text->{simpleText} // next;
+                    }
+                    $channel_tabs{$text} = {%$item};
+                }
+            }
+        }
+    }
+
+    return %channel_tabs;
+}
+
 sub _add_author_to_results {
     my ($self, $data, $results, %args) = @_;
 
@@ -617,6 +645,7 @@ sub _channel_data {
 
     my %params = (hl => "en");
 
+    # This no longer works
     if (defined(my $sort = $args{sort_by})) {
         if ($sort eq 'popular') {
             $params{sort} = 'p';
@@ -933,6 +962,10 @@ sub yt_channel_search {
 
 Latest uploads for a given channel ID or username.
 
+Additionally, for getting the popular videos, call the function with the arguments:
+
+    sort_by => 'popular',
+
 =cut
 
 sub yt_channel_uploads {
@@ -940,6 +973,19 @@ sub yt_channel_uploads {
     my ($url, $hash) = $self->_channel_data($channel, %args, type => 'videos');
 
     $hash // return;
+
+    # Popular videos
+    if (defined($args{sort_by}) and $args{sort_by} eq 'popular') {
+        my %channel_tabs = $self->_extract_channel_tabs($hash);
+        foreach my $key (keys %channel_tabs) {
+            $key =~ /popular/i or next;
+            my $value = $channel_tabs{$key};
+            ref($value) eq 'HASH' or next;
+            my $token          = eval { $value->{navigationEndpoint}{continuationCommand}{token} } // next;
+            my $popular_videos = $self->yt_browse_request($url, $token, %args, type => 'video');
+            return $popular_videos;
+        }
+    }
 
     my @results = $self->_extract_channel_uploads($hash, %args, type => 'video');
     $self->_prepare_results_for_return(\@results, %args, url => $url);
@@ -1062,7 +1108,7 @@ sub yt_playlist_next_page {
     $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
-sub yt_browse_next_page {
+sub yt_browse_request {
     my ($self, $url, $token, %args) = @_;
 
     my %request = (
@@ -1113,8 +1159,14 @@ sub yt_browse_next_page {
 
     my $res =
       eval    { $hash->{continuationContents}{playlistVideoListContinuation} }
-      // eval { $hash->{continuationContents}{itemSectionContinuation} }
-      // eval { {contents => $hash->{onResponseReceivedActions}[0]{appendContinuationItemsAction}{continuationItems}} }
+      // eval { $hash->{continuationContents}{itemSectionContinuation} } // do {
+        my $v = eval { $hash->{onResponseReceivedActions}[0]{appendContinuationItemsAction}{continuationItems} };
+        defined($v) ? scalar {contents => $v} : undef;
+      }
+      // do {
+        my $v = eval { $hash->{onResponseReceivedActions}[0]{reloadContinuationItemsCommand}{continuationItems} };
+        defined($v) ? scalar {contents => $v} : undef;
+      }
       // undef;
 
     my @results = $self->_parse_itemSection($res, %args);

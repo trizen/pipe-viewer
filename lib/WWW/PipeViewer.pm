@@ -1462,7 +1462,7 @@ sub next_page_with_token {
 
     if ($token =~ /^yt(search|browse):(\w+):(.*)/) {
         if ($1 eq 'browse') {
-            return $self->yt_browse_next_page($url, $3, type => $2, url => $url);
+            return $self->yt_browse_request($url, $3, type => $2, url => $url);
         }
         else {
             return $self->yt_search_next_page($url, $3, type => $2, url => $url);
