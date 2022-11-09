@@ -327,13 +327,13 @@ sub _extract_itemSection_entry {
 }
 
 sub _parse_itemSection {
-    my ($self, $entry, %args) = @_;
+    my ($self, $data, %args) = @_;
 
-    eval { ref($entry->{contents}) eq 'ARRAY' } || return;
+    eval { ref($data->{contents}) eq 'ARRAY' } || return;
 
     my @results;
 
-    foreach my $entry (@{$entry->{contents}}) {
+    foreach my $entry (@{$data->{contents}}) {
 
         my $item = $self->_extract_itemSection_entry($entry, %args);
 
@@ -342,15 +342,21 @@ sub _parse_itemSection {
         }
     }
 
-    if (exists($entry->{continuations}) and ref($entry->{continuations}) eq 'ARRAY') {
+    if (exists($data->{continuations}) and ref($data->{continuations}) eq 'ARRAY') {
 
-        my $token = eval { $entry->{continuations}[0]{nextContinuationData}{continuation} };
+        my $token = eval { $data->{continuations}[0]{nextContinuationData}{continuation} };
 
         if (defined($token)) {
             push @results,
               scalar {
                       type  => 'nextpage',
-                      token => "ytplaylist:$args{type}:$token",
+                      token => "ytplaylist:$args{type}:"
+                        . make_json_string(
+                                           scalar {
+                                                   token => $token,
+                                                   args  => {},
+                                                  }
+                                          ),
                      };
         }
     }
@@ -375,7 +381,19 @@ sub _parse_itemSection_nextpage {
                 return
                   scalar {
                           type  => 'nextpage',
-                          token => "ytbrowse:$args{type}:$token",
+                          token => "ytbrowse:$args{type}:"
+                            . make_json_string(
+                                               scalar {
+                                                       token => $token,
+                                                       args  => {
+                                                                (
+                                                                 defined($args{author_name})
+                                                                 ? (author_name => $args{author_name})
+                                                                 : ()
+                                                                )
+                                                               },
+                                                      }
+                                              ),
                          };
             }
         }
@@ -409,7 +427,8 @@ sub _extract_sectionList_results {
             and eval { ref($entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer}{contents}) eq 'ARRAY' }) {
             my $res = $entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer};
             push @results, $self->_parse_itemSection($res, %args);
-            push @results, $self->_parse_itemSection_nextpage($res, %args);
+            push @results,
+              $self->_parse_itemSection_nextpage($res, %args, (@results ? (author_name => $results[-1]{author}) : ()));
             next;
         }
 
@@ -446,17 +465,30 @@ sub _extract_sectionList_results {
 
             if (defined($token)) {
                 if ($type =~ m{/browse\z}) {
+
                     push @results,
                       scalar {
                               type  => 'nextpage',
-                              token => "ytbrowse:$args{type}:$token",
+                              token => "ytbrowse:$args{type}:"
+                                . make_json_string(
+                                                   scalar {
+                                                           token => $token,
+                                                           args  => {},
+                                                          }
+                                                  ),
                              };
                 }
                 else {
                     push @results,
                       scalar {
                               type  => 'nextpage',
-                              token => "ytsearch:$args{type}:$token",
+                              token => "ytsearch:$args{type}:"
+                                . make_json_string(
+                                                   scalar {
+                                                           token => $token,
+                                                           args  => {},
+                                                          }
+                                                  )
                              };
                 }
             }
@@ -509,7 +541,7 @@ sub _add_author_to_results {
     my $header = $self->_extract_channel_header($data, %args);
 
     my $channel_id   = eval { $header->{channelId} } // eval { $header->{externalId} };
-    my $channel_name = eval { $header->{title} };
+    my $channel_name = eval { $header->{title} }     // $args{author_name};
 
     if (not defined($channel_id)) {
         if (eval { ref($data->{responseContext}{serviceTrackingParams}) eq 'ARRAY' }) {
@@ -533,6 +565,21 @@ sub _add_author_to_results {
         if (ref($result) eq 'HASH') {
             $result->{author}   = $channel_name if defined($channel_name);
             $result->{authorId} = $channel_id   if defined($channel_id);
+        }
+    }
+
+    if (@$results and defined($channel_name) and $results->[-1]{type} eq 'nextpage') {
+        my $token = $results->[-1]{token};
+        if (defined($token) and $token =~ /^ytbrowse:(\w+):(.*)/s) {
+
+            my $type = $1;
+            my $json = $2;
+
+            if ($json =~ /^\{/) {
+                my $info = parse_json_string($json);
+                $info->{args}{author_name} = $channel_name;
+                $results->[-1]{token} = "ytbrowse:$type:" . make_json_string($info);
+            }
         }
     }
 
@@ -974,6 +1021,9 @@ sub yt_channel_uploads {
 
     $hash // return;
 
+    my @results     = $self->_extract_channel_uploads($hash, %args, type => 'video');
+    my $author_name = @results ? $results[0]->{author} : undef;
+
     # Popular videos
     if (defined($args{sort_by}) and $args{sort_by} eq 'popular') {
         my %channel_tabs = $self->_extract_channel_tabs($hash);
@@ -982,12 +1032,11 @@ sub yt_channel_uploads {
             my $value = $channel_tabs{$key};
             ref($value) eq 'HASH' or next;
             my $token          = eval { $value->{navigationEndpoint}{continuationCommand}{token} } // next;
-            my $popular_videos = $self->yt_browse_request($url, $token, %args, type => 'video');
+            my $popular_videos = $self->yt_browse_request($url, $token, %args, type => 'video', author_name => $author_name);
             return $popular_videos;
         }
     }
 
-    my @results = $self->_extract_channel_uploads($hash, %args, type => 'video');
     $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 

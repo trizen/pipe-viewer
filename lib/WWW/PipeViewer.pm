@@ -1460,17 +1460,29 @@ sub next_page_with_token {
         return $self->comments_from_ytdlp($video_id, $page, $prev_root_comment_id, $prev_comment_id);
     }
 
-    if ($token =~ /^yt(search|browse):(\w+):(.*)/) {
-        if ($1 eq 'browse') {
-            return $self->yt_browse_request($url, $3, type => $2, url => $url);
+    if ($token =~ /^yt(search|browse|playlist):(\w+):(.*)/s) {
+
+        my $method = $1;
+        my $type   = $2;
+        my $json   = $3;
+
+        my $info = (($json =~ /^\{/) ? parse_json_string($json) : {token => $json, args => {}});
+
+        my $method_name;
+        if ($method eq 'browse') {
+            $method_name = 'yt_browse_request';
+        }
+        elsif ($method eq 'search') {
+            $method_name = 'yt_search_next_page';
+        }
+        elsif ($method eq 'playlist') {
+            $method_name = 'yt_playlist_next_page';
         }
         else {
-            return $self->yt_search_next_page($url, $3, type => $2, url => $url);
+            die "[BUG] Invalid method: <<$method>>";
         }
-    }
 
-    if ($token =~ /^ytplaylist:(\w+):(.*)/) {
-        return $self->yt_playlist_next_page($url, $2, type => $1, url => $url);
+        return $self->$method_name($url, $info->{token}, type => $type, url => $url, %{$info->{args}});
     }
 
     if ($url =~ m{^https://m\.youtube\.com}) {
