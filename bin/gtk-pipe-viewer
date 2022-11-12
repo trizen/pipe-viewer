@@ -1155,6 +1155,7 @@ sub new_image_from_pixbuf {
 # Setting application icons
 {
     $gui->get_object('username_list')->set_image(new_image_from_pixbuf('icon_from_pixbuf', $user_icon_pixbuf));
+    $gui->get_object('subscription_videos')->set_image(new_image_from_pixbuf('icon_from_pixbuf', $feed_icon_pixbuf));
 }
 
 # Treeview signals
