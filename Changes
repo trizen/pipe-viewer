@@ -5,6 +5,18 @@
 
 [CHANGELOG]
 
+Version 0.4.3
+
+- Added basic GET cache in `lwp_get()`.
+- Fixed the support for popular videos from a channel.
+- Fixed the extraction of the author name in `/browse` requests.
+- Ckeck search keywords for a playlist ID and for a channel ID.
+- CLI: added the `:p=i` option for playlist results.
+- GUI: added the `DEL` keybind in the "Saved channels" window to remove the selected channel.
+- Extract livestream URL with the fallback method only when our code fails.
+- Remember a working invidious instance and reuse it across multiple sessions for 1 hour.
+- Memoize the output of yt-dlp/youtube-dl and reuse it.
+
 Version 0.4.2
 
 - Support for `richItemRenderer` channel video results.
