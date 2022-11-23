@@ -254,6 +254,9 @@ my %CONFIG = (
     bypass_age_gate_with_proxy => 0,
     ignored_projections        => [],
 
+    # Parallel options
+    get_subscriptions_in_parallel => 0,
+
     # Conversion options
     convert_cmd         => 'ffmpeg -i *IN* *OUT*',
     convert_to          => undef,
@@ -2918,44 +2921,91 @@ sub print_local_subscription_videos {
         return;
     }
 
-    my %subscriptions;
-
     print "\n" if @channels;
 
     require Time::Piece;
     my $time = Time::Piece->new();
 
     my @items;
-    foreach my $i (0 .. $#channels) {
 
-        local $| = 1;
-        printf("[%d/%d] Retrieving info for $channels[$i][1]...\r", $i + 1, $#channels + 1);
+    if ($opt{get_subscriptions_in_parallel} and eval { require Parallel::ForkManager; 1 }) {
 
-        my $id      = $channels[$i][0]      // next;
-        my $uploads = $yv_obj->uploads($id) // next;
+        say ":: Retrieving subscription videos...";
 
-        my $videos = $uploads->{results} // [];
+        # Max number of processes
+        my $pm = Parallel::ForkManager->new(30);
 
-        if (ref($videos) eq 'HASH' and exists $videos->{videos}) {
-            $videos = $videos->{videos};
+        $pm->set_waitpid_blocking_sleep(0.1);
+
+        # Data structure retrieval and handling
+        $pm->run_on_finish(
+            sub {
+                my ($pid, $exit_code, $ident, $exit_signal, $core_dump, $videos) = @_;
+                if (defined($videos) and ref($videos) eq 'ARRAY') {
+                    push @items, @$videos;
+                }
+            }
+        );
+
+        foreach my $i (0 .. $#channels) {
+
+            my $id  = $channels[$i][0] // next;
+            my $pid = $pm->start($id)  // next;
+            next if ($pid != 0);
+
+            my $uploads = $yv_obj->uploads($id) // next;
+            my $videos  = $uploads->{results}   // [];
+
+            if (ref($videos) eq 'HASH' and exists $videos->{videos}) {
+                $videos = $videos->{videos};
+            }
+
+            if (ref($videos) eq 'HASH' and exists $videos->{entries}) {
+                $videos = $videos->{entries};
+            }
+
+            if (ref($videos) ne 'ARRAY') {
+                next;
+            }
+
+            foreach my $video (@$videos) {
+                $video->{timestamp} = [@$time];
+            }
+
+            $pm->finish(0, $videos);
         }
 
-        if (ref($videos) eq 'HASH' and exists $videos->{entries}) {
-            $videos = $videos->{entries};
+        $pm->wait_all_children;
+    }
+    else {
+        foreach my $i (0 .. $#channels) {
+
+            local $| = 1;
+            printf("[%d/%d] Retrieving info for $channels[$i][1]...\r", $i + 1, $#channels + 1);
+
+            my $id      = $channels[$i][0]      // next;
+            my $uploads = $yv_obj->uploads($id) // next;
+
+            my $videos = $uploads->{results} // [];
+
+            if (ref($videos) eq 'HASH' and exists $videos->{videos}) {
+                $videos = $videos->{videos};
+            }
+
+            if (ref($videos) eq 'HASH' and exists $videos->{entries}) {
+                $videos = $videos->{entries};
+            }
+
+            if (ref($videos) ne 'ARRAY') {
+                next;
+            }
+
+            foreach my $video (@$videos) {
+                $video->{timestamp} = [@$time];
+            }
+
+            push @items, @$videos;
         }
-
-        if (ref($videos) ne 'ARRAY') {
-            next;
-        }
-
-        $subscriptions{$id} = 1;
-        $subscriptions{lc($id)} = 1;
-
-        foreach my $video (@$videos) {
-            $video->{timestamp} = [@$time];
-        }
-
-        push @items, @$videos;
     }
 
     print "\n" if @items;
@@ -2973,6 +3023,8 @@ sub print_local_subscription_videos {
         my %seen;
         grep { !$seen{$yv_utils->get_video_id($_)}++ } @$subscriptions_data;
     };
+
+    my %subscriptions = ((map { @$_ } @channels), (map { lc($_->[0]) => 1 } @channels));
 
     # Remove videos from unsubscribed channels
     @$subscriptions_data = grep {
