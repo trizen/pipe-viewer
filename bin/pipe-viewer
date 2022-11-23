@@ -3006,9 +3006,9 @@ sub print_local_subscription_videos {
 
             push @items, @$videos;
         }
-    }
 
-    print "\n" if @items;
+        print "\n" if @items;
+    }
 
     my $subscriptions_data = [];
 

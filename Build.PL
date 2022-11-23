@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Module::Build;
 
-my $gtk  = grep { /^--?gtk3?\z/ } @ARGV;
+my $gtk = grep { /^--?gtk3?\z/ } @ARGV;
 
 my $builder = Module::Build->new(
 
@@ -19,18 +19,18 @@ my $builder = Module::Build->new(
                        'Test::More' => 0,
                       },
 
-    extra_manify_args => { utf8 => 1 },
+    extra_manify_args => {utf8 => 1},
 
     configure_requires => {
                            'Module::Build' => 0,
                           },
 
     get_options => {
-        'gtk3' => {
-                   type  => '!',
-                   store => \$gtk,
-                  },
-    },
+                    'gtk3' => {
+                               type  => '!',
+                               store => \$gtk,
+                              },
+                   },
 
     requires => {
         'perl'                  => 5.016,
@@ -64,21 +64,18 @@ my $builder = Module::Build->new(
     },
 
     recommends => {
-                   'LWP::UserAgent::Cached'  => 0,    # local cache support
-                   'Term::ReadLine::Gnu'     => 0,    # for better STDIN support (+history)
-                   'JSON::XS'                => 0,    # faster JSON to HASH conversion
-                   'Unicode::GCString'       => 0,    # fixed-width formatting
+        'LWP::UserAgent::Cached' => 0,         # local cache support
+        'Term::ReadLine::Gnu'    => 0,         # for better STDIN support (+history)
+        'JSON::XS'               => 0,         # faster JSON to HASH conversion
+        'Unicode::GCString'      => 0,         # fixed-width formatting
+        'Parallel::ForkManager'  => '2.02',    # for the `*_parallel` options
                   },
 
     add_to_cleanup     => ['WWW-PipeViewer-*'],
     create_makefile_pl => 'traditional',
 );
 
-$builder->script_files(
-                       ['bin/pipe-viewer',
-                        ($gtk ? ('bin/gtk-pipe-viewer') : ()),
-                       ]
-                      );
+$builder->script_files(['bin/pipe-viewer', ($gtk ? ('bin/gtk-pipe-viewer') : ()),]);
 
 $builder->share_dir('share') if $gtk;
 $builder->create_build_script();
