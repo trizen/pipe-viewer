@@ -63,6 +63,40 @@ sub uploads {
     return $self->_get_results($url);
 }
 
+=head2 streams($channel_id)
+
+Get the livestreams for a given channel ID.
+
+=cut
+
+sub streams {
+    my ($self, $channel_id) = @_;
+
+    if (my $results = $self->yt_channel_streams($channel_id)) {
+        return $results;
+    }
+
+    my $url = $self->_make_feed_url("channels/$channel_id/streams");    # FIXME
+    return $self->_get_results($url);
+}
+
+=head2 shorts($channel_id)
+
+Get the shorts for a given channel ID.
+
+=cut
+
+sub shorts {
+    my ($self, $channel_id) = @_;
+
+    if (my $results = $self->yt_channel_shorts($channel_id)) {
+        return $results;
+    }
+
+    my $url = $self->_make_feed_url("channels/$channel_id/shorts");    # FIXME
+    return $self->_get_results($url);
+}
+
 =head2 popular_videos($channel_id)
 
 Get the most popular videos for a given channel ID.
@@ -81,6 +115,23 @@ sub popular_videos {
     }
 
     my $url = $self->_make_feed_url("channels/$channel_id/videos", sort_by => 'popular');
+    return $self->_get_results($url);
+}
+
+=head2 popular_streams($channel_id)
+
+Get the most popular livestreams for a given channel ID.
+
+=cut
+
+sub popular_streams {
+    my ($self, $channel_id) = @_;
+
+    if (my $results = $self->yt_channel_streams($channel_id, sort_by => 'popular')) {
+        return $results;
+    }
+
+    my $url = $self->_make_feed_url("channels/$channel_id/streams", sort_by => 'popular');    # FIXME
     return $self->_get_results($url);
 }
 

@@ -535,6 +535,30 @@ sub _extract_channel_tabs {
     return %channel_tabs;
 }
 
+sub _extract_videos_from_channel_data {
+    my ($self, $url, $hash, %args) = @_;
+
+    $hash // return;
+
+    my @results     = $self->_extract_channel_uploads($hash, %args, type => 'video');
+    my $author_name = @results ? $results[0]->{author} : undef;
+
+    # Popular videos
+    if (defined($args{sort_by}) and $args{sort_by} eq 'popular') {
+        my %channel_tabs = $self->_extract_channel_tabs($hash);
+        foreach my $key (keys %channel_tabs) {
+            $key =~ /popular/i or next;
+            my $value = $channel_tabs{$key};
+            ref($value) eq 'HASH' or next;
+            my $token          = eval { $value->{navigationEndpoint}{continuationCommand}{token} } // next;
+            my $popular_videos = $self->yt_browse_request($url, $token, %args, type => 'video', author_name => $author_name);
+            return $popular_videos;
+        }
+    }
+
+    $self->_prepare_results_for_return(\@results, %args, url => $url);
+}
+
 sub _add_author_to_results {
     my ($self, $data, $results, %args) = @_;
 
@@ -1018,26 +1042,39 @@ Additionally, for getting the popular videos, call the function with the argumen
 sub yt_channel_uploads {
     my ($self, $channel, %args) = @_;
     my ($url, $hash) = $self->_channel_data($channel, %args, type => 'videos');
+    $self->_extract_videos_from_channel_data($url, $hash, %args);
+}
 
-    $hash // return;
+=head2 yt_channel_streams($channel, %args)
 
-    my @results     = $self->_extract_channel_uploads($hash, %args, type => 'video');
-    my $author_name = @results ? $results[0]->{author} : undef;
+Latest streams for a given channel ID or username.
 
-    # Popular videos
-    if (defined($args{sort_by}) and $args{sort_by} eq 'popular') {
-        my %channel_tabs = $self->_extract_channel_tabs($hash);
-        foreach my $key (keys %channel_tabs) {
-            $key =~ /popular/i or next;
-            my $value = $channel_tabs{$key};
-            ref($value) eq 'HASH' or next;
-            my $token          = eval { $value->{navigationEndpoint}{continuationCommand}{token} } // next;
-            my $popular_videos = $self->yt_browse_request($url, $token, %args, type => 'video', author_name => $author_name);
-            return $popular_videos;
-        }
-    }
+Additionally, for getting the popular streams, call the function with the arguments:
 
-    $self->_prepare_results_for_return(\@results, %args, url => $url);
+    sort_by => 'popular',
+
+=cut
+
+sub yt_channel_streams {
+    my ($self, $channel, %args) = @_;
+    my ($url, $hash) = $self->_channel_data($channel, %args, type => 'streams');
+    $self->_extract_videos_from_channel_data($url, $hash, %args);
+}
+
+=head2 yt_channel_shorts($channel, %args)
+
+Latest short videos for a given channel ID or username.
+
+Additionally, for getting the popular short videos, call the function with the arguments:
+
+    sort_by => 'popular',
+
+=cut
+
+sub yt_channel_shorts {
+    my ($self, $channel, %args) = @_;
+    my ($url, $hash) = $self->_channel_data($channel, %args, type => 'shorts');
+    $self->_extract_videos_from_channel_data($url, $hash, %args);
 }
 
 =head2 yt_channel_info($channel, %args)

@@ -1371,17 +1371,27 @@ sub get_treeview_popup_menu {
             my $item = 'Gtk3::ImageMenuItem'->new("Uploads");
             $item->signal_connect(activate => sub { list_channel_videos($channel_id) });
             $item->set_property(tooltip_text => "Show the most recent videos from this author");
+            $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-videos-symbolic", q{menu}));
+            $item->show;
+            $author->append($item);
+        }
+
+        # Recent shorts from this author
+        {
+            my $item = 'Gtk3::ImageMenuItem'->new("Shorts");
+            $item->signal_connect(activate => sub { list_channel_shorts($channel_id) });
+            $item->set_property(tooltip_text => "Show the most recent shorts from this author");
             $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-shared-symbolic", q{menu}));
             $item->show;
             $author->append($item);
         }
 
-        # Most popular uploads from this author
+        # Recent streams from this author
         {
-            my $item = 'Gtk3::ImageMenuItem'->new("Popular");
-            $item->signal_connect(activate => sub { popular_uploads($channel_id) });
-            $item->set_property(tooltip_text => "Show the most popular videos from this author");
-            $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-videos-symbolic", q{menu}));
+            my $item = 'Gtk3::ImageMenuItem'->new("Streams");
+            $item->signal_connect(activate => sub { list_channel_streams($channel_id) });
+            $item->set_property(tooltip_text => "Show the most recent streams from this author");
+            $item->set_image('Gtk3::Image'->new_from_icon_name("media-record-symbolic", q{menu}));
             $item->show;
             $author->append($item);
         }
@@ -1392,6 +1402,33 @@ sub get_treeview_popup_menu {
             $item->signal_connect(activate => \&show_playlists_from_selected_author);
             $item->set_property(tooltip_text => "Show playlists created by this author");
             $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-documents-symbolic", q{menu}));
+            $item->show;
+            $author->append($item);
+        }
+
+        # Separator
+        {
+            my $item = 'Gtk3::SeparatorMenuItem'->new;
+            $item->show;
+            $author->append($item);
+        }
+
+        # Most popular videos from this author
+        {
+            my $item = 'Gtk3::ImageMenuItem'->new("Popular videos");
+            $item->signal_connect(activate => sub { popular_uploads($channel_id) });
+            $item->set_property(tooltip_text => "Show the most popular videos from this author");
+            $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-favorite", q{menu}));
+            $item->show;
+            $author->append($item);
+        }
+
+        # Most popular streams from this author
+        {
+            my $item = 'Gtk3::ImageMenuItem'->new("Popular streams");
+            $item->signal_connect(activate => sub { popular_streams($channel_id) });
+            $item->set_property(tooltip_text => "Show the most popular livestreams from this author");
+            $item->set_image('Gtk3::Image'->new_from_icon_name("media-record", q{menu}));
             $item->show;
             $author->append($item);
         }
@@ -2342,6 +2379,12 @@ sub popular_uploads {
     return;
 }
 
+sub popular_streams {
+    my ($channel_id) = @_;
+    send_search_request("No popular livestreams for channel: <<$channel_id>>", 'popular_streams', [$channel_id]);
+    return;
+}
+
 sub get_selected_entry_code {
     my (%options) = @_;
     my $iter = $treeview->get_selection->get_selected // return;
@@ -3123,6 +3166,18 @@ sub list_playlist {
 sub list_channel_videos {
     my ($channel) = @_;
     send_search_request("[!] No videos for channel: $channel", 'uploads', [$channel]);
+    return;
+}
+
+sub list_channel_streams {
+    my ($channel) = @_;
+    send_search_request("[!] No livestreams for channel: $channel", 'streams', [$channel]);
+    return;
+}
+
+sub list_channel_shorts {
+    my ($channel) = @_;
+    send_search_request("[!] No short videos for channel: $channel", 'shorts', [$channel]);
     return;
 }
 
