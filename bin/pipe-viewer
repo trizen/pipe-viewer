@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  pipe-viewer
 #  Fork: 30 October 2020
-#  Edit: 12 November 2022
+#  Edit: 30 November 2022
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -49,7 +49,7 @@ use Cwd qw(abs_path);
 my $DEVEL;
 use if ($DEVEL = -w __FILE__), lib => abs_path(__FILE__ . '/../../lib');
 
-use WWW::PipeViewer v0.4.3;
+use WWW::PipeViewer v0.4.4;
 use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::RegularExpressions;
 

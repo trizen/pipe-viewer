@@ -5,6 +5,17 @@
 
 [CHANGELOG]
 
+Version 0.4.4
+
+- CLI: added the `--shorts=s` and `--popular-shorts=s` command-line options.
+- CLI: added the `:shorts=i` and `:popular-shorts=i` STDIN options.
+- CLI: added the `--streams=s` and `--popular-streams=s` command-line options.
+- CLI: added the `:streams=i` and `:popular-streams=i` STDIN options.
+- CLI: added the `get_subscriptions_in_parallel` config-option (disabled by default)
+- GUI: Added the `Author -> {Streams, Shorts, Popular streams}`.
+- GUI: added the `Copy YouTube URL` right-click menu entry.
+- Added support for the new format of YouTube usernames starting with `@`.
+
 Version 0.4.3
 
 - Added basic GET cache in `lwp_get()`.
