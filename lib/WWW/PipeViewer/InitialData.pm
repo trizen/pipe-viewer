@@ -707,7 +707,10 @@ sub _channel_data {
 
     my $url = $self->get_m_youtube_url;
 
-    if ($yv_utils->is_channelID($channel)) {
+    if ($channel =~ /^\@/) {
+        $url .= "/$channel/$args{type}";
+    }
+    elsif ($yv_utils->is_channelID($channel)) {
         $url .= "/channel/$channel/$args{type}";
     }
     else {

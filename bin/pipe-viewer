@@ -383,7 +383,8 @@ my $channels_help = <<"CHANNELS_HELP" . $general_help;
 
 # Select a channel
 <number>           : latest uploads from channel
-:us=i              : latest streams from channel
+:streams=i :us=i   : latest streams from channel
+:shorts=i          : latest shorts from channel
 :ps=i              : popular streams from channel
 :pv=i :popular=i   : popular uploads from channel
 :p=i  :playlists=i : playlists from channel
@@ -410,7 +411,8 @@ $control_options
 :c(omments)=i     : display video comments
 :r(elated)=i      : display related videos
 :u(ploads)=i      : display author's latest uploads
-:us=i             : display author's latest streams
+:streams=i :us=i  : display author's latest streams
+:shorts=i         : display author's latest shorts
 :pv=i :popular=i  : display author's popular uploads
 :ps=i             : display author's popular streams
 :p(laylists)=i    : display author's playlists
@@ -772,8 +774,10 @@ usage: $execname [options] ([url] | [keywords])
  * Videos
    -uv --uploads=s      : list videos uploaded by a specific channel or user
    -us --streams=s      : list livestream videos by a specific channel or user
+       --shorts=s       : list short videos by a specific channel or user
    -pv --popular=s      : list the most popular videos from a specific channel
    -ps --pstreams=s     : list the most popular streams from a specific channel
+       --pshorts=s      : list the most popular shorts from a specific channel
    -id --videoids=s,s   : play YouTube videos by their IDs
    -rv --related=s      : show related videos for a video ID or URL
    -sv --search-videos  : search for YouTube videos (default mode)
@@ -939,7 +943,7 @@ usage: $execname [options] ([url] | [keywords])
                           If authentication is required,
                           use 'proto://user:pass\@domain.tld:port/'
    --split-videos!      : include or exclude the itags for split videos
-   --dash!              : include or exclude segmented DASH streams
+   --dash!              : include or exclude segmented DASH videos
    --ytdl!              : use youtube-dl for videos with encrypted signatures
                           `--no-ytdl` will use invidious instances
    --ytdl-cmd=s         : yt-dlp / youtube-dl command (default: $CONFIG{ytdl_cmd})
@@ -1404,6 +1408,22 @@ sub apply_configuration {
         }
     }
 
+    if (defined $opt->{shorts}) {
+        my $str = delete $opt->{shorts};
+
+        if ($str) {
+            if (my $id = extract_channel_id($str)) {
+                print_videos($yv_obj->shorts($id));
+            }
+            else {
+                warn_invalid("username or channel ID", $str);
+            }
+        }
+        else {
+            warn_invalid("username or channel ID", $str);
+        }
+    }
+
     if (defined $opt->{popular_videos}) {
         my $str = delete $opt->{popular_videos};
 
@@ -1439,6 +1459,25 @@ sub apply_configuration {
             }
 
             print_videos($yv_obj->popular_streams($id));
+        }
+        else {
+            warn_invalid("username or channel ID", $str);
+        }
+    }
+
+    if (defined $opt->{popular_shorts}) {
+        my $str = delete $opt->{popular_shorts};
+
+        if (my $id = extract_channel_id($str)) {
+
+            if (not $yv_utils->is_channelID($id)) {
+                $id = $yv_obj->channel_id_from_username($id) // do {
+                    warn_invalid("username or channel ID", $id);
+                    undef;
+                };
+            }
+
+            print_videos($yv_obj->popular_shorts($id));
         }
         else {
             warn_invalid("username or channel ID", $str);
@@ -1558,6 +1597,7 @@ sub parse_arguments {
 
         'uploads|U|user|user-videos|uv|u=s' => \$opt{uploads},
         'streams|user-streams|us=s'         => \$opt{streams},
+        'shorts|user-shorts=s'              => \$opt{shorts},
         'favorites|F'                       => \$opt{favorites},
         'playlists|P|user-playlists|up:s'   => \$opt{playlists},
         'likes|L|user-likes'                => \$opt{likes},
@@ -1573,6 +1613,7 @@ sub parse_arguments {
         'related-videos|rv=s'           => \$opt{related_videos},
         'popular-videos|popular|pv:s'   => \$opt{popular_videos},
         'popular-streams|pstreams|ps=s' => \$opt{popular_streams},
+        'popular-shorts|pshorts=s'      => \$opt{popular_shorts},
 
         'cookie-file|cookies=s'          => \$opt{cookie_file},
         'user-agent|agent=s'             => \$opt{user_agent},
@@ -2529,19 +2570,21 @@ sub print_channels {
             }
 
             # :us=i, :streams=i
-            elsif ($opt =~ /^(?:us|streams)${digit_or_equal_re}(.*)/) {
-                if (my @nums = get_valid_numbers($#{$channels}, $1)) {
+            # :shorts=i
+            elsif ($opt =~ /^(us|streams|shorts)${digit_or_equal_re}(.*)/) {
+                my $type = $1;
+                if (my @nums = get_valid_numbers($#{$channels}, $2)) {
 
                     foreach my $id (@nums) {
 
                         my $channel_id = $yv_utils->get_channel_id($channels->[$id]);
-                        my $request    = $yv_obj->streams($channel_id);
+                        my $request    = ($type =~ /shorts/) ? $yv_obj->shorts($channel_id) : $yv_obj->streams($channel_id);
 
                         if ($yv_utils->has_entries($request)) {
                             print_videos($request);
                         }
                         else {
-                            warn_no_results('streams');
+                            warn_no_results($type =~ /shorts/ ? 'shorts' : 'streams');
                         }
                     }
                 }
@@ -2572,20 +2615,23 @@ sub print_channels {
                 }
             }
 
-            # :ps=i, :popular-streams=i
-            elsif ($opt =~ /^(?:ps|pstreams|popular-streams)${digit_or_equal_re}(.*)/) {
-                if (my @nums = get_valid_numbers($#{$channels}, $1)) {
+            # :ps=i, :pstreams=i, :popular-streams=i
+            # :pshorts=i, :popular-shorts=i
+            elsif ($opt =~ /^(ps|pstreams|popular-streams|pshorts|popular-shorts)${digit_or_equal_re}(.*)/) {
+                my $type = $1;
+                if (my @nums = get_valid_numbers($#{$channels}, $2)) {
 
                     foreach my $id (@nums) {
 
                         my $channel_id = $yv_utils->get_channel_id($channels->[$id]);
-                        my $request    = $yv_obj->popular_streams($channel_id);
+                        my $request =
+                          ($type =~ /shorts/) ? $yv_obj->popular_shorts($channel_id) : $yv_obj->popular_streams($channel_id);
 
                         if ($yv_utils->has_entries($request)) {
                             print_videos($request);
                         }
                         else {
-                            warn_no_results('popular streams');
+                            warn_no_results('popular ' . ($type =~ /shorts/ ? 'shorts' : 'streams'));
                         }
                     }
                 }
@@ -4369,16 +4415,18 @@ sub print_videos {
             }
 
             # :streams=i, :us=i
-            elsif ($opt =~ /^(?:streams|us)${digit_or_equal_re}(.*)/) {
-                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+            # :shorts=i
+            elsif ($opt =~ /^(streams|us|shorts)${digit_or_equal_re}(.*)/) {
+                my $type = $1;
+                if (my @nums = get_valid_numbers($#{$videos}, $2)) {
                     foreach my $id (@nums) {
                         my $channel_id = $yv_utils->get_channel_id($videos->[$id]);
-                        my $request    = $yv_obj->streams($channel_id);
+                        my $request    = ($type =~ /shorts/) ? $yv_obj->shorts($channel_id) : $yv_obj->streams($channel_id);
                         if ($yv_utils->has_entries($request)) {
                             __SUB__->($request);
                         }
                         else {
-                            warn_no_results('stream');
+                            warn_no_results($type =~ /shorts/ ? 'shorts' : 'streams');
                         }
                     }
                 }
@@ -4434,17 +4482,20 @@ sub print_videos {
                 }
             }
 
-            # :ps=i, :popular-streams=i
-            elsif ($opt =~ /^(?:ps|pstreams|popular-streams)${digit_or_equal_re}(.*)/) {
-                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+            # :ps=i, :pstreams=i, :popular-streams=i
+            # :pshorts=i, :popular-shorts=i
+            elsif ($opt =~ /^(ps|pstreams|popular-streams|pshorts|popular-shorts)${digit_or_equal_re}(.*)/) {
+                my $type = $1;
+                if (my @nums = get_valid_numbers($#{$videos}, $2)) {
                     foreach my $id (@nums) {
                         my $channel_id = $yv_utils->get_channel_id($videos->[$id]);
-                        my $request    = $yv_obj->popular_streams($channel_id);
+                        my $request =
+                          ($type =~ /shorts/) ? $yv_obj->popular_shorts($channel_id) : $yv_obj->popular_streams($channel_id);
                         if ($yv_utils->has_entries($request)) {
                             __SUB__->($request);
                         }
                         else {
-                            warn_no_results('popular streams');
+                            warn_no_results('popular ' . ($type =~ /shorts/ ? 'shorts' : 'streams'));
                         }
                     }
                 }

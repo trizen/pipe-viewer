@@ -1081,7 +1081,7 @@ sub get_likes {
 sub is_channelID {
     my ($self, $id) = @_;
     $id || return;
-    $id =~ /^UC[-a-zA-Z0-9_]{22}\z/;
+    $id =~ /^UC[-a-zA-Z0-9_]{22}\z/ or $id =~ /^\@[-a-zA-Z0-9_]+\z/;
 }
 
 sub is_playlistID {

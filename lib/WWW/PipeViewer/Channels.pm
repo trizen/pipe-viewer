@@ -135,6 +135,23 @@ sub popular_streams {
     return $self->_get_results($url);
 }
 
+=head2 popular_shorts($channel_id)
+
+Get the most popular shorts for a given channel ID.
+
+=cut
+
+sub popular_shorts {
+    my ($self, $channel_id) = @_;
+
+    if (my $results = $self->yt_channel_shorts($channel_id, sort_by => 'popular')) {
+        return $results;
+    }
+
+    my $url = $self->_make_feed_url("channels/$channel_id/shorts", sort_by => 'popular');    # FIXME
+    return $self->_get_results($url);
+}
+
 =head2 channels_info($channel_id)
 
 Return information for the comma-separated list of the YouTube channel ID(s).
