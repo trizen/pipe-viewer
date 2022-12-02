@@ -321,6 +321,7 @@ sub set_lwp_useragent {
     require LWP::ConnCache;
     state $cache = LWP::ConnCache->new;
     $cache->total_capacity(undef);    # no limit
+    $agent->conn_cache($cache);
 
     state $accepted_encodings = do {
         require HTTP::Message;
@@ -333,7 +334,6 @@ sub set_lwp_useragent {
     $agent->default_header('Accept-Language' => 'en-US,en;q=0.5');
     $agent->default_header('Connection'      => 'keep-alive');
     $agent->default_header('Upgrade-Insecure-Requests' => '1');
-    $agent->conn_cache($cache);
     $agent->proxy(['http', 'https'], $self->get_http_proxy) if defined($self->get_http_proxy);
 
     my $cookie_file = $self->get_cookie_file;

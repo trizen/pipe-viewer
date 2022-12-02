@@ -3063,6 +3063,10 @@ sub print_local_subscription_videos {
 
     if ($opt{get_subscriptions_in_parallel} and eval { require Parallel::ForkManager; 1 }) {
 
+        # Disable connection cache, as it fails when parallel requests are made
+        my $lwp = $yv_obj->{lwp} // $yv_obj->set_lwp_useragent();
+        $lwp->conn_cache(undef);
+
         say ":: Retrieving subscription videos...";
 
         # Max number of processes
