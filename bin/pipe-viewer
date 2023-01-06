@@ -417,6 +417,7 @@ $control_options
 :ps=i             : display author's popular streams
 :p(laylists)=i    : display author's playlists
 :subscribe=i      : subscribe to author's channel
+:w=i :mark=i      : save video in the watched history
 :(dis)like=i      : like or dislike a video
 :fav(orite)=i     : favorite a video
 :autoplay=i       : autoplay mode, starting from video i
@@ -4574,6 +4575,14 @@ sub print_videos {
             elsif ($opt =~ /^r(?:elated)?${digit_or_equal_re}(.*)/) {
                 if (my ($id) = get_valid_numbers($#{$videos}, $1)) {
                     get_and_print_related_videos($yv_utils->get_video_id($videos->[$id]));
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+            elsif ($opt =~ /^(?:w|mark)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    save_watched_video($yv_utils->get_video_id($videos->[$_]), $videos->[$_]) for @nums;
                 }
                 else {
                     warn_no_thing_selected('video');
