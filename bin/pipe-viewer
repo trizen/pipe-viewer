@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  pipe-viewer
 #  Fork: 30 October 2020
-#  Edit: 30 November 2022
+#  Edit: 25 January 2023
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -82,7 +82,10 @@ my $term_width = 80;
 my %WATCHED_VIDEOS;
 
 # Unchangeable data goes here
-my %constant = (win32 => ($^O eq 'MSWin32' ? 1 : 0));    # doh
+my %constant = (
+                win32   => (lc($^O) eq 'mswin32' ? 1 : 0),
+                android => (lc($^O) eq 'android' ? 1 : 0),
+               );
 
 my $home_dir;
 my $xdg_config_home = $ENV{XDG_CONFIG_HOME};
@@ -164,31 +167,48 @@ sub which_command {
 my %CONFIG = (
 
     video_players => {
-                      vlc => {
-                              cmd     => q{vlc},
-                              srt     => q{--sub-file=*SUB*},
-                              audio   => q{--input-slave=*AUDIO*},
-                              fs      => q{--fullscreen},
-                              arg     => q{--quiet --play-and-exit --no-video-title-show --input-title-format=*TITLE* *VIDEO*},
-                              novideo => q{--intf=dummy --novideo},
-                             },
-                      mpv => {
-                              cmd     => q{mpv},
-                              srt     => q{--sub-file=*SUB*},
-                              audio   => q{--audio-file=*AUDIO*},
-                              fs      => q{--fullscreen},
-                              arg     => q{--really-quiet --force-media-title=*TITLE* --no-ytdl *VIDEO*},
-                              novideo => q{--no-video},
-                             },
-                     },
+
+        (
+         $constant{android}
+         ? (
+            vlc => {
+                arg =>
+"start -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -a android.intent.action.VIEW -d *VIDEO*",
+                cmd     => "am",
+                fs      => "",
+                novideo => "",
+                srt     => "",
+            }
+           )
+         : (
+            vlc => {
+                    cmd     => q{vlc},
+                    srt     => q{--sub-file=*SUB*},
+                    audio   => q{--input-slave=*AUDIO*},
+                    fs      => q{--fullscreen},
+                    arg     => q{--quiet --play-and-exit --no-video-title-show --input-title-format=*TITLE* *VIDEO*},
+                    novideo => q{--intf=dummy --novideo},
+                   }
+           )
+        ),
+
+        mpv => {
+                cmd     => q{mpv},
+                srt     => q{--sub-file=*SUB*},
+                audio   => q{--audio-file=*AUDIO*},
+                fs      => q{--fullscreen},
+                arg     => q{--really-quiet --force-media-title=*TITLE* --no-ytdl *VIDEO*},
+                novideo => q{--no-video},
+               },
+    },
 
     video_player_selected => (
-        $constant{win32}
+        ($constant{win32} || $constant{android})
         ? 'vlc'
         : undef    # auto-defined
     ),
 
-    split_videos => 1,
+    split_videos => $constant{android} ^ 1,
 
     # YouTube options
     dash          => 1,        # may load slow
@@ -417,7 +437,7 @@ $control_options
 :ps=i             : display author's popular streams
 :p(laylists)=i    : display author's playlists
 :subscribe=i      : subscribe to author's channel
-:w=i :mark=i      : save video in the watched history
+:w=i :mark=i      : add video to watched history
 :(dis)like=i      : like or dislike a video
 :fav(orite)=i     : favorite a video
 :autoplay=i       : autoplay mode, starting from video i
@@ -4013,6 +4033,7 @@ sub play_videos {
             if (not download_video($streaming, $video)) {
                 return;
             }
+            save_watched_video($video_id, $video);
         }
         elsif (length($opt{extract_info})) {
             my $fh = $opt{extract_info_fh} // \*STDOUT;
@@ -4044,9 +4065,10 @@ sub play_videos {
                 $opt{auto_next_page} = 0;
                 return;
             }
+
+            save_watched_video($video_id, $video);
         }
 
-        save_watched_video($video_id, $video);
         press_enter_to_continue() if $opt{confirm};
     }
 
