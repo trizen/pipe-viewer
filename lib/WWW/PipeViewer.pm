@@ -1084,7 +1084,8 @@ sub _extract_streaming_urls {
             push @results,
               {
                 itag => 38,
-                type => "video/ts",
+                type => "video/mp4",
+                wkad => 1,
                 url  => $json->{streamingData}{hlsManifestUrl},
               };
         }
@@ -1391,6 +1392,7 @@ sub get_streaming_urls {
           {
             itag => 38,
             type => "video/mp4",
+            wkad => 1,
             url  => "https://www.youtube.com/watch?v=$videoID",
           };
     }
