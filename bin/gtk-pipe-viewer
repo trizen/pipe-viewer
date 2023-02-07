@@ -281,6 +281,7 @@ my %CONFIG = (
     pipe_viewer        => undef,
     pipe_viewer_args   => [],
 
+    bypass_age_gate_native     => 0,
     bypass_age_gate_with_proxy => 0,
     ignored_projections        => [],
 
@@ -1064,10 +1065,11 @@ sub apply_configuration {
 
     foreach my $option_name (
                              qw(
-                             api_host bypass_age_gate_with_proxy cache_dir comments_order
+                             api_host cache_dir comments_order
                              cookie_file debug env_proxy force_fallback http_proxy prefer_av1
                              prefer_invidious prefer_mp4 region timeout user_agent ytdl ytdl_cmd
                              ytdlp_comments ytdlp_max_comments ytdlp_max_replies
+                             bypass_age_gate_native bypass_age_gate_with_proxy
                              )
       ) {
         $config{$option_name} = $CONFIG{$option_name};

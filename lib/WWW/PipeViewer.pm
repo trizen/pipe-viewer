@@ -109,6 +109,7 @@ my %valid_options = (
     prefer_av1                 => {valid => [1, 0], default => 0},
     prefer_invidious           => {valid => [1, 0], default => 0},
     force_fallback             => {valid => [1, 0], default => 0},
+    bypass_age_gate_native     => {valid => [1, 0], default => 0},
     bypass_age_gate_with_proxy => {valid => [1, 0], default => 0},
 
     api_host => {valid => qr/\w/, default => "auto"},
@@ -1268,16 +1269,18 @@ sub get_streaming_urls {
     if (not defined $json->{streamingData}) {
         say STDERR ":: Trying to bypass age-restricted gate..." if $self->get_debug;
 
-        my @fallback_methods = (
-            sub {
+        my @fallback_methods;
+
+        if ($self->get_bypass_age_gate_native) {
+            push @fallback_methods, sub {
                 %info =
                   $self->_get_video_info(
                                          $videoID,
                                          "clientName"    => "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
                                          "clientVersion" => "2.0"
                                         );
-              },
-        );
+            };
+        }
 
         if ($self->get_bypass_age_gate_with_proxy) {
 
