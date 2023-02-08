@@ -5,6 +5,13 @@
 
 [CHANGELOG]
 
+Version 0.4.5
+
+- CLI: added basic support for Android, playing videos with the VLC player.
+- CLI: added the `:w=i` STDIN option for saving a video to watch history.
+- Added the `bypass_age_gate_native` config-option. (disabled by default)
+- Fixed the downloading of livestreams with `yt-dlp`.
+
 Version 0.4.4
 
 - CLI: added the `--shorts=s` and `--popular-shorts=s` command-line options.
