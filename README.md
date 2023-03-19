@@ -21,6 +21,7 @@ This fork parses the YouTube website directly and relies on the invidious instan
 
 * Alpine Linux: `doas apk add pipe-viewer`
 * Arch Linux (AUR): https://aur.archlinux.org/packages/pipe-viewer-git/
+* Debian/Ubuntu (MPR): Latest stable version https://mpr.makedeb.org/packages/pipe-viewer .Latest dev version https://mpr.makedeb.org/packages/pipe-viewer-git . MPR is like the AUR, but for Debian/Ubuntu. You need to install makedeb first https://www.makedeb.org/ .
 * Void Linux: `sudo xbps-install pipe-viewer`
 * Parabola GNU/Linux-libre: `pacman -S pipe-viewer`
 * Gentoo Linux (kske overlay): `eselect repository enable kske && emerge -av net-misc/pipe-viewer`
