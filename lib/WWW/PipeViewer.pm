@@ -792,7 +792,6 @@ sub _extract_from_invidious {
         @instances = qw(
           invidious.snopyta.org
           invidious.fdn.fr
-          invidious.namazso.eu
           vid.puffyan.us
           invidious.flokinet.to
         );
