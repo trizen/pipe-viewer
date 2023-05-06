@@ -69,6 +69,7 @@ my $builder = Module::Build->new(
         'JSON::XS'               => 0,         # faster JSON to HASH conversion
         'Unicode::GCString'      => 0,         # fixed-width formatting
         'Parallel::ForkManager'  => '2.02',    # for the `*_parallel` options
+        'Text::Unidecode'        => 0,         # for the `fat32safe` option
                   },
 
     add_to_cleanup     => ['WWW-PipeViewer-*'],
