@@ -1107,18 +1107,20 @@ sub _get_youtubei_content {
 
     require Time::Piece;
 
-    my %android = (
-                   "videoId" => $videoID,
-                   "context" => {
-                                 "client" => {
-                                              "hl"            => "en",
-                                              "gl"            => "US",
-                                              "clientName"    => "ANDROID",
-                                              "clientVersion" => "16.20",
-                                              %args,
-                                             }
-                                },
-                  );
+#<<<
+    #~ my %android = (
+                   #~ "videoId" => $videoID,
+                   #~ "context" => {
+                                 #~ "client" => {
+                                              #~ "hl"            => "en",
+                                              #~ "gl"            => "US",
+                                              #~ "clientName"    => "ANDROID",
+                                              #~ "clientVersion" => "16.20",
+                                              #~ %args,
+                                             #~ }
+                                #~ },
+                  #~ );
+#>>>
 
     my %web = (
                "videoId" => $videoID,
@@ -1127,11 +1129,24 @@ sub _get_youtubei_content {
                                           "hl"            => "en",
                                           "gl"            => "US",
                                           "clientName"    => "WEB",
-                                          "clientVersion" => sprintf("2.%s.05.00", Time::Piece->new(time)->strftime("%Y%m%d")),
+                                          "clientVersion" => sprintf("2.%s.03.00", Time::Piece->new(time)->strftime("%Y%m%d")),
                                           %args,
                                          }
                             },
               );
+
+    my %android = (
+                   "videoId" => $videoID,
+                   "context" => {
+                                 "client" => {
+                                          "hl"            => "en",
+                                          "gl"            => "US",
+                                          "clientName"    => "MWEB",
+                                          "clientVersion" => sprintf("2.%s.03.00", Time::Piece->new(time)->strftime("%Y%m%d")),
+                                          %args,
+                                 }
+                                },
+                  );
 
     my $content = $self->post_as_json($url, $endpoint eq 'next' ? \%web : \%android);
 
