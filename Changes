@@ -5,6 +5,12 @@
 
 [CHANGELOG]
 
+Version 0.4.6
+
+- Fixed the internal extracting of streaming URLs.
+- Extended `fat32safe` option to convert Unicode characters to ASCII equivalent when `Text::Unidecode` is available.
+- Recognize several more audio itags.
+
 Version 0.4.5
 
 - CLI: added basic support for Android, playing videos with the VLC player.
