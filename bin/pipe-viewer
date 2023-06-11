@@ -49,7 +49,7 @@ use Cwd qw(abs_path);
 my $DEVEL;
 use if ($DEVEL = -w __FILE__), lib => abs_path(__FILE__ . '/../../lib');
 
-use WWW::PipeViewer v0.4.6;
+use WWW::PipeViewer v0.4.7;
 use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::RegularExpressions;
 

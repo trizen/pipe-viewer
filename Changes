@@ -5,6 +5,10 @@
 
 [CHANGELOG]
 
+Version 0.4.7
+
+- Fixed the slow loading of videos, when using the internal extraction method of streaming URLs.
+
 Version 0.4.6
 
 - Fixed the internal extracting of streaming URLs.
