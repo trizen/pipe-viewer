@@ -371,7 +371,7 @@ sub set_lwp_useragent {
         my $cookies = HTTP::Cookies->new();
 
         # Consent cookie
-        $cookies->set_cookie(0, "CONSENT", "YES+cb-m.20221015-14-p0.en+FX+096",
+        $cookies->set_cookie(0, "CONSENT", "YES-m.20230726-14-p0.en+FX+096",
                              "/", ".youtube.com", undef, 0, 1, '21' . join('', map { int(rand(10)) } 1 .. 8),
                              0, {});
 
