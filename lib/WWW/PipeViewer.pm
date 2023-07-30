@@ -370,9 +370,23 @@ sub set_lwp_useragent {
 
         my $cookies = HTTP::Cookies->new();
 
-        # Consent cookie
-        $cookies->set_cookie(0, "CONSENT", "YES-m.20230726-14-p0.en+FX+096",
-                             "/", ".youtube.com", undef, 0, 1, '21' . join('', map { int(rand(10)) } 1 .. 8),
+        # Consent cookies
+        $cookies->set_cookie(0, "CONSENT", "PENDING+233", "/", ".youtube.com", undef, 0, 1,
+                             "17" . join('', map { int(rand(10)) } 1 .. 8),
+                             0, {});
+
+        $cookies->set_cookie(0, "PREF", "tz=UTC", "/", ".youtube.com", undef, 0, 1,
+                             "17" . join('', map { int(rand(10)) } 1 .. 8),
+                             0, {});
+
+        # TODO: make the token random
+        $cookies->set_cookie(0, "SOCS", "CAESEwgDEgk1NTE1MDQ0NTkaAmVuIAEaBgiA0JamBg",
+                             "/", ".youtube.com", undef, 0, 1, "17" . join('', map { int(rand(10)) } 1 .. 8),
+                             0, {});
+
+        # TODO: make the token random
+        $cookies->set_cookie(0, "__Secure-YEC", "CgtCWUtqdVpZQXJUNCiL3pmmBg%3D%3D",
+                             "/", ".youtube.com", undef, 0, 1, "17" . join('', map { int(rand(10)) } 1 .. 8),
                              0, {});
 
         $agent->cookie_jar($cookies);
