@@ -5,6 +5,10 @@
 
 [CHANGELOG]
 
+Version 0.4.8
+
+- Fixed the "CONSENT" cookie (which no longer worked due to YouTube changes).
+
 Version 0.4.7
 
 - Fixed the slow loading of videos, when using the internal extraction method of streaming URLs.
