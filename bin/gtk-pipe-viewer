@@ -3251,7 +3251,7 @@ sub get_player_command {
 sub prepend_video_data_to_file {
     my ($video_data, $file) = @_;
 
-    my $videos = [@{eval { Storable::retrieve($file) } // []}];
+    my $videos = eval { Storable::retrieve($file) } // [];
 
     if (ref($video_data) ne 'HASH') {
         return;
