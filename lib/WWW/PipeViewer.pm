@@ -1339,7 +1339,7 @@ sub get_streaming_urls {
                                                            hl            => "en",
                                                           );
 
-                %info = (player_response => $self->lwp_get($proxy_url));
+                %info = (player_response => $self->lwp_get($proxy_url) // undef);
             };
         }
 
