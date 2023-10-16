@@ -115,6 +115,7 @@ sub get_itags {
                   {value => 312, format => 'mp4',  split => 1, hfr  => 1},             # mp4 hls HFR (v)
                   {value => 232, format => 'mp4',  split => 1, live => 1},             # mp4 hls (v) (live)
                   {value => 635, format => 'webm', split => 1, hfr  => 1},             # vp9 hls HFR (v)
+                  {value => 311, format => 'mp4',  split => 1, hfr  => 1},             # mp4 hls HFR (v)
                  ],
 
         '480' => [{value => 244, format => 'webm', split => 1},                        # webm (v)
@@ -133,7 +134,6 @@ sub get_itags {
                   {value => 697, format => 'av1',  split => 1, hdr => 1},              # av1 HDR (v)
                   {value => 612, format => 'webm', split => 1, hfr => 1},              # vp9 hls HFR (v)
                   {value => 609, format => 'webm', split => 1},                        # vp9 hls (v)
-                  {value => 311, format => 'mp4',  split => 1, hfr => 1},              # mp4 hls HFR (v)
                   {value => 634, format => 'webm', split => 1},                        # vp9 hls (v)
                  ],
 
