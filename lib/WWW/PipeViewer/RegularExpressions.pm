@@ -27,11 +27,9 @@ our $non_digit_or_opt_re = qr{^(?!$range_num_re)(?>[0-9]{1,3}[^0-9]|[0-9]{4}|[^0
 
 # Generic name
 my $generic_name_re = qr/[a-zA-Z0-9_.\-]{11,64}/;
-our $valid_channel_id_re =
-  qr{^(?:.*/(?:channel|c)/)?(?<channel_id>\@?(?:[%\w]+(?:[-.]++[%\w]++)*|$generic_name_re))(?:/.*)?\z};
+our $valid_channel_id_re = qr{^(?:.*/(?:channel|c)/)?(?<channel_id>\@?(?:[%\w]+(?:[-.]++[%\w]++)*|$generic_name_re))(?:/.*)?\z};
 
-our $get_channel_videos_id_re =
-  qr{^.*/(?:(?:channel|c)/|(?=\@))(?<channel_id>\@?(?:[%\w]+(?:[-.]++[%\w]++)*|$generic_name_re))};
+our $get_channel_videos_id_re    = qr{^.*/(?:(?:channel|c)/|(?=\@))(?<channel_id>\@?(?:[%\w]+(?:[-.]++[%\w]++)*|$generic_name_re))};
 our $get_channel_playlists_id_re = qr{$get_channel_videos_id_re/playlists};
 
 our $get_username_videos_re    = qr{^.*/user/(?<username>[-.\w]+)};
@@ -40,7 +38,7 @@ our $get_username_playlists_re = qr{$get_username_videos_re/playlists};
 # Video ID
 my $video_id_re = qr/[0-9A-Za-z_\-]{11}/;
 our $valid_video_id_re = qr{^$video_id_re\z};
-our $get_video_id_re = qr{(?:%3F|%2F|\b)(?>v|embed|shorts|youtu(?:\\)?[.]be)(?>(?:\\)?[=/]|%3D|%2F)(?<video_id>$video_id_re)};
+our $get_video_id_re   = qr{(?:%3F|%2F|\b)(?>v|embed|shorts|youtu(?:\\)?[.]be)(?>(?:\\)?[=/]|%3D|%2F)(?<video_id>$video_id_re)};
 
 # Playlist ID
 our $valid_playlist_id_re = qr{^$generic_name_re\z};

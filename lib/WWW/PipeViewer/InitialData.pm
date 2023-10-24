@@ -116,8 +116,7 @@ sub _extract_youtube_mix {
 
     $mix{playlistId} = eval { $info->{navigationEndpoint}{watchEndpoint}{playlistId} } || return;
 
-    $mix{playlistThumbnails} = _extract_thumbnails($header->{avatar}{thumbnails}
-                                                   // $info->{heroImage}{collageHeroImageRenderer}{leftThumbnail}{thumbnails});
+    $mix{playlistThumbnails} = _extract_thumbnails($header->{avatar}{thumbnails} // $info->{heroImage}{collageHeroImageRenderer}{leftThumbnail}{thumbnails});
 
     $mix{description} = _extract_description({title => $info});
 
@@ -222,9 +221,7 @@ sub _extract_description {
 
 sub _extract_video_count {
     my ($info) = @_;
-    _human_number_to_int(   eval { $info->{videoCountShortText}{runs}[0]{text} }
-                         || eval { $info->{videoCountText}{runs}[0]{text} }
-                         || 0);
+    _human_number_to_int(eval { $info->{videoCountShortText}{runs}[0]{text} } || eval { $info->{videoCountText}{runs}[0]{text} } || 0);
 }
 
 sub _extract_subscriber_count {
@@ -284,8 +281,7 @@ sub _extract_itemSection_entry {
     }
 
     # Playlist
-    if ($args{type} ne 'video' and (exists($data->{compactPlaylistRenderer}) or exists($data->{playlistWithContextRenderer})))
-    {
+    if ($args{type} ne 'video' and (exists($data->{compactPlaylistRenderer}) or exists($data->{playlistWithContextRenderer}))) {
 
         my %playlist;
         my $info = $data->{compactPlaylistRenderer} // $data->{playlistWithContextRenderer};
@@ -298,8 +294,7 @@ sub _extract_itemSection_entry {
         $playlist{authorId}   = _extract_channel_id($info);
         $playlist{videoCount} = _extract_video_count($info);
         $playlist{playlistThumbnails} =
-          _extract_thumbnails($info->{thumbnailRenderer}{playlistVideoThumbnailRenderer}{thumbnail}{thumbnails}
-                              // $info->{thumbnail}{thumbnails});
+          _extract_thumbnails($info->{thumbnailRenderer}{playlistVideoThumbnailRenderer}{thumbnail}{thumbnails} // $info->{thumbnail}{thumbnails});
         $playlist{description} = _extract_description($info);
 
         return \%playlist;
@@ -427,8 +422,7 @@ sub _extract_sectionList_results {
             and eval { ref($entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer}{contents}) eq 'ARRAY' }) {
             my $res = $entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer};
             push @results, $self->_parse_itemSection($res, %args);
-            push @results,
-              $self->_parse_itemSection_nextpage($res, %args, (@results ? (author_name => $results[-1]{author}) : ()));
+            push @results, $self->_parse_itemSection_nextpage($res, %args, (@results ? (author_name => $results[-1]{author}) : ()));
             next;
         }
 
@@ -832,15 +826,8 @@ sub yt_video_info {
                                 and $button->{isLike}
                                 and ref(my $like_button = eval { $button->{button}{toggleButtonRenderer} }) eq 'HASH') {
 
-                                $video_info{likeCount} = eval {
-                                    _human_number_to_int($like_button->{defaultText}{accessibility}{accessibilityData}{label});
-                                } // eval {
-                                    (
-                                     _human_number_to_int(
-                                                          $like_button->{toggledText}{accessibility}{accessibilityData}{label}
-                                       ) // 0
-                                    ) - 1;
-                                };
+                                $video_info{likeCount} = eval { _human_number_to_int($like_button->{defaultText}{accessibility}{accessibilityData}{label}); }
+                                  // eval { (_human_number_to_int($like_button->{toggledText}{accessibility}{accessibilityData}{label}) // 0) - 1; };
 
                                 if (not defined($video_info{likeCount}) or $video_info{likeCount} <= 0) {
                                     delete $video_info{likeCount};
@@ -860,12 +847,7 @@ sub yt_video_info {
 
         ref($entry) eq 'HASH' or next;
 
-        if (
-            ref(
-                my $main_info =
-                  eval { $entry->{engagementPanelSectionListRenderer}{content}{structuredDescriptionContentRenderer}{items} }
-            ) eq 'ARRAY'
-          ) {
+        if (ref(my $main_info = eval { $entry->{engagementPanelSectionListRenderer}{content}{structuredDescriptionContentRenderer}{items} }) eq 'ARRAY') {
 
             foreach my $entry (@$main_info) {
 
@@ -878,13 +860,8 @@ sub yt_video_info {
                             ref($factoid) eq 'HASH' or next;
                             if (my $likes_info = $factoid->{sentimentFactoidRenderer}) {
 
-                                $video_info{likeCount} //= eval {
-                                    (
-                                     _human_number_to_int(
-                                                          $likes_info->{factoidIfLiked}{factoidRenderer}{value}{runs}[0]{text}
-                                       ) // 0
-                                    ) - 1;
-                                };
+                                $video_info{likeCount} //=
+                                  eval { (_human_number_to_int($likes_info->{factoidIfLiked}{factoidRenderer}{value}{runs}[0]{text}) // 0) - 1; };
 
                                 if (not defined($video_info{likeCount}) or $video_info{likeCount} <= 0) {
                                     delete $video_info{likeCount};
@@ -1182,11 +1159,10 @@ sub yt_playlist_next_page {
     my $request_url = $self->_append_url_args($url, ctoken => $token);
     my $hash        = $self->_get_initial_data($request_url) // return;
 
-    my @results = $self->_parse_itemSection(
-                                            eval      { $hash->{continuationContents}{playlistVideoListContinuation} }
-                                              // eval { $hash->{continuationContents}{itemSectionContinuation} },
-                                            %args
-                                           );
+    my @results =
+      $self->_parse_itemSection(eval { $hash->{continuationContents}{playlistVideoListContinuation} }
+                                                         // eval { $hash->{continuationContents}{itemSectionContinuation} },
+                                %args);
 
     if (!@results) {
         @results =
@@ -1203,31 +1179,31 @@ sub yt_browse_request {
     my %request = (
                    context => {
                                client => {
-                                    browserName      => "Firefox",
-                                    browserVersion   => "83.0",
-                                    clientFormFactor => "LARGE_FORM_FACTOR",
-                                    clientName       => "MWEB",
-                                    clientVersion    => "2.20221013.07.00",
-                                    deviceMake       => "Mozilla",
-                                    deviceModel      => "Firefox for Android",
-                                    hl               => "en",
-                                    mainAppWebInfo   => {
-                                                       graftUrl => $url,
-                                                      },
-                                    originalUrl        => $url,
-                                    osName             => "Android",
-                                    osVersion          => "11",
-                                    platform           => "TABLET",
-                                    playerType         => "UNIPLAYER",
-                                    screenDensityFloat => 1,
-                                    screenHeightPoints => 500,
-                                    screenPixelDensity => 1,
-                                    screenWidthPoints  => 1800,
-                                    timeZone           => "UTC",
-                                    userAgent => "Mozilla/5.0 (Android 11; Tablet; rv:83.0) Gecko/83.0 Firefox/83.0,gzip(gfe)",
-                                    userInterfaceTheme => "USER_INTERFACE_THEME_LIGHT",
-                                    utcOffsetMinutes   => 0,
-                               },
+                                          browserName      => "Firefox",
+                                          browserVersion   => "83.0",
+                                          clientFormFactor => "LARGE_FORM_FACTOR",
+                                          clientName       => "MWEB",
+                                          clientVersion    => "2.20221013.07.00",
+                                          deviceMake       => "Mozilla",
+                                          deviceModel      => "Firefox for Android",
+                                          hl               => "en",
+                                          mainAppWebInfo   => {
+                                                             graftUrl => $url,
+                                                            },
+                                          originalUrl        => $url,
+                                          osName             => "Android",
+                                          osVersion          => "11",
+                                          platform           => "TABLET",
+                                          playerType         => "UNIPLAYER",
+                                          screenDensityFloat => 1,
+                                          screenHeightPoints => 500,
+                                          screenPixelDensity => 1,
+                                          screenWidthPoints  => 1800,
+                                          timeZone           => "UTC",
+                                          userAgent          => "Mozilla/5.0 (Android 11; Tablet; rv:83.0) Gecko/83.0 Firefox/83.0,gzip(gfe)",
+                                          userInterfaceTheme => "USER_INTERFACE_THEME_LIGHT",
+                                          utcOffsetMinutes   => 0,
+                                         },
                                request => {
                                            consistencyTokenJars    => [],
                                            internalExperimentFlags => [],
@@ -1237,18 +1213,13 @@ sub yt_browse_request {
                    continuation => $token,
                   );
 
-    my $content = $self->post_as_json(
-                                      $self->get_m_youtube_url
-                                        . _unscramble('o/ebbrky?u1wi//evsuyto=e')
-                                        . _unscramble('1HUCiSlOalFEcYQSS8_9q1LW4y8JAwI2zT_qA_G'),
-                                      \%request
-                                     ) // return;
+    my $content =
+      $self->post_as_json($self->get_m_youtube_url . _unscramble('o/ebbrky?u1wi//evsuyto=e') . _unscramble('1HUCiSlOalFEcYQSS8_9q1LW4y8JAwI2zT_qA_G'),
+                          \%request) // return;
 
     my $hash = parse_json_string($content);
 
-    my $res =
-      eval    { $hash->{continuationContents}{playlistVideoListContinuation} }
-      // eval { $hash->{continuationContents}{itemSectionContinuation} } // do {
+    my $res = eval { $hash->{continuationContents}{playlistVideoListContinuation} } // eval { $hash->{continuationContents}{itemSectionContinuation} } // do {
         my $v = eval { $hash->{onResponseReceivedActions}[0]{appendContinuationItemsAction}{continuationItems} };
         defined($v) ? scalar {contents => $v} : undef;
       }
@@ -1284,57 +1255,54 @@ sub yt_search_next_page {
 
     my %request = (
                    "context" => {
-                              "client" => {
-                                  "browserName"      => "Firefox",
-                                  "browserVersion"   => "83.0",
-                                  "clientFormFactor" => "LARGE_FORM_FACTOR",
-                                  "clientName"       => "MWEB",
-                                  "clientVersion"    => "2.20221013.07.00",
-                                  "deviceMake"       => "Mozilla",
-                                  "deviceModel"      => "Firefox for Android",
-                                  "gl"               => "US",
-                                  "hl"               => "en",
-                                  "mainAppWebInfo"   => {
-                                                       "graftUrl" => $url,
-                                                      },
-                                  "osName"             => "Android",
-                                  "osVersion"          => "11",
-                                  "platform"           => "TABLET",
-                                  "playerType"         => "UNIPLAYER",
-                                  "screenDensityFloat" => 1,
-                                  "screenHeightPoints" => 600,
-                                  "screenPixelDensity" => 1,
-                                  "screenWidthPoints"  => 1800,
-                                  "userAgent" => "Mozilla/5.0 (Android 11; Tablet; rv:83.0) Gecko/83.0 Firefox/83.0,gzip(gfe)",
-                                  "userInterfaceTheme" => "USER_INTERFACE_THEME_LIGHT",
-                                  "utcOffsetMinutes"   => 0,
-                              },
-                              "request" => {
-                                            "consistencyTokenJars"    => [],
-                                            "internalExperimentFlags" => [],
-                                           },
-                              "user" => {}
-                   },
+                                 "client" => {
+                                              "browserName"      => "Firefox",
+                                              "browserVersion"   => "83.0",
+                                              "clientFormFactor" => "LARGE_FORM_FACTOR",
+                                              "clientName"       => "MWEB",
+                                              "clientVersion"    => "2.20221013.07.00",
+                                              "deviceMake"       => "Mozilla",
+                                              "deviceModel"      => "Firefox for Android",
+                                              "gl"               => "US",
+                                              "hl"               => "en",
+                                              "mainAppWebInfo"   => {
+                                                                   "graftUrl" => $url,
+                                                                  },
+                                              "osName"             => "Android",
+                                              "osVersion"          => "11",
+                                              "platform"           => "TABLET",
+                                              "playerType"         => "UNIPLAYER",
+                                              "screenDensityFloat" => 1,
+                                              "screenHeightPoints" => 600,
+                                              "screenPixelDensity" => 1,
+                                              "screenWidthPoints"  => 1800,
+                                              "userAgent"          => "Mozilla/5.0 (Android 11; Tablet; rv:83.0) Gecko/83.0 Firefox/83.0,gzip(gfe)",
+                                              "userInterfaceTheme" => "USER_INTERFACE_THEME_LIGHT",
+                                              "utcOffsetMinutes"   => 0,
+                                             },
+                                 "request" => {
+                                               "consistencyTokenJars"    => [],
+                                               "internalExperimentFlags" => [],
+                                              },
+                                 "user" => {}
+                                },
                    "continuation" => $token,
                   );
 
-    my $content = $self->post_as_json(
-                                      $self->get_m_youtube_url
-                                        . _unscramble('o/ebseky?u1ri//hvcuyta=e')
-                                        . _unscramble('1HUCiSlOalFEcYQSS8_9q1LW4y8JAwI2zT_qA_G'),
-                                      \%request
-                                     ) // return;
+    my $content =
+      $self->post_as_json($self->get_m_youtube_url . _unscramble('o/ebseky?u1ri//hvcuyta=e') . _unscramble('1HUCiSlOalFEcYQSS8_9q1LW4y8JAwI2zT_qA_G'),
+                          \%request) // return;
 
     my $hash = parse_json_string($content);
 
     my @results = $self->_extract_sectionList_results(
-                       scalar {
-                           contents =>
-                             eval { $hash->{onResponseReceivedCommands}[0]{appendContinuationItemsAction}{continuationItems}; }
-                             // undef
-                       },
-                       %args
-    );
+                                                      scalar {
+                                                            contents =>
+                                                              eval { $hash->{onResponseReceivedCommands}[0]{appendContinuationItemsAction}{continuationItems}; }
+                                                              // undef
+                                                             },
+                                                      %args
+                                                     );
 
     $self->_prepare_results_for_return(\@results, %args, url => $url);
 }

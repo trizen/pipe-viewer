@@ -162,9 +162,7 @@ sub related_to_videoID {
 
     my $watch_next_response = parse_json_string($self->_get_video_next_info($videoID) // return {results => []});
 
-    my $related =
-      eval { $watch_next_response->{contents}{twoColumnWatchNextResults}{secondaryResults}{secondaryResults}{results} }
-      // return {results => []};
+    my $related = eval { $watch_next_response->{contents}{twoColumnWatchNextResults}{secondaryResults}{secondaryResults}{results} } // return {results => []};
 
     my @results;
 

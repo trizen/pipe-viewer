@@ -330,10 +330,10 @@ sub set_lwp_useragent {
     };
 
     $agent->ssl_opts(Timeout => $self->get_timeout);
-    $agent->default_header('Accept-Encoding' => $accepted_encodings);
-    $agent->default_header('Accept'          => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8');
-    $agent->default_header('Accept-Language' => 'en-US,en;q=0.5');
-    $agent->default_header('Connection'      => 'keep-alive');
+    $agent->default_header('Accept-Encoding'           => $accepted_encodings);
+    $agent->default_header('Accept'                    => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8');
+    $agent->default_header('Accept-Language'           => 'en-US,en;q=0.5');
+    $agent->default_header('Connection'                => 'keep-alive');
     $agent->default_header('Upgrade-Insecure-Requests' => '1');
     $agent->proxy(['http', 'https'], $self->get_http_proxy) if defined($self->get_http_proxy);
 
@@ -371,13 +371,9 @@ sub set_lwp_useragent {
         my $cookies = HTTP::Cookies->new();
 
         # Consent cookies
-        $cookies->set_cookie(0, "CONSENT", "PENDING+233", "/", ".youtube.com", undef, 0, 1,
-                             "17" . join('', map { int(rand(10)) } 1 .. 8),
-                             0, {});
+        $cookies->set_cookie(0, "CONSENT", "PENDING+233", "/", ".youtube.com", undef, 0, 1, "17" . join('', map { int(rand(10)) } 1 .. 8), 0, {});
 
-        $cookies->set_cookie(0, "PREF", "tz=UTC", "/", ".youtube.com", undef, 0, 1,
-                             "17" . join('', map { int(rand(10)) } 1 .. 8),
-                             0, {});
+        $cookies->set_cookie(0, "PREF", "tz=UTC", "/", ".youtube.com", undef, 0, 1, "17" . join('', map { int(rand(10)) } 1 .. 8), 0, {});
 
         # TODO: make the token random
         $cookies->set_cookie(0, "SOCS", "CAESEwgDEgk1NTE1MDQ0NTkaAmVuIAEaBgiA0JamBg",
@@ -1164,12 +1160,12 @@ sub _get_youtubei_content {
                     "videoId" => $videoID,
                     "context" => {
                                   "client" => {
-                                          "hl"            => "en",
-                                          "gl"            => "US",
-                                          "clientName"    => "MWEB",
-                                          "clientVersion" => sprintf("2.%s.03.00", Time::Piece->new(time)->strftime("%Y%m%d")),
-                                          %args,
-                                  }
+                                               "hl"            => "en",
+                                               "gl"            => "US",
+                                               "clientName"    => "MWEB",
+                                               "clientVersion" => sprintf("2.%s.03.00", Time::Piece->new(time)->strftime("%Y%m%d")),
+                                               %args,
+                                              }
                                  },
                    );
     }

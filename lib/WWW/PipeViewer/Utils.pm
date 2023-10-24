@@ -1069,8 +1069,7 @@ sub get_likes {
 
 {
     no strict 'refs';
-    foreach my $pair ([playlist => {'playlist' => 1}], [channel => {'channel' => 1}],
-                      [video => {'video' => 1, 'playlistItem' => 1}],) {
+    foreach my $pair ([playlist => {'playlist' => 1}], [channel => {'channel' => 1}], [video => {'video' => 1, 'playlistItem' => 1}],) {
 
         *{__PACKAGE__ . '::' . 'is_' . $pair->[0]} = sub {
             my ($self, $item) = @_;

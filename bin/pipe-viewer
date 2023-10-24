@@ -172,13 +172,12 @@ my %CONFIG = (
          $constant{android}
          ? (
             vlc => {
-                arg =>
-"start -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -a android.intent.action.VIEW -d *VIDEO*",
-                cmd     => "am",
-                fs      => "",
-                novideo => "",
-                srt     => "",
-            }
+                    arg     => "start -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -a android.intent.action.VIEW -d *VIDEO*",
+                    cmd     => "am",
+                    fs      => "",
+                    novideo => "",
+                    srt     => "",
+                   }
            )
          : (
             vlc => {
@@ -2969,7 +2968,7 @@ sub get_results_from_list {
         @results = grep { defined } @results[($args{page} - 1) * $maxResults .. $args{page} * $maxResults - 1];
 
         if (!@results) {
-            warn_last_page() if ($args{page} == 1 + sprintf('%0.f', 0.5 + $totalResults / $maxResults));
+            warn_last_page()                                           if ($args{page} == 1 + sprintf('%0.f', 0.5 + $totalResults / $maxResults));
             return __SUB__->($results, %args, page => $args{page} - 1) if ($args{page} > 1);
         }
     }
@@ -3190,10 +3189,8 @@ sub print_local_subscription_videos {
     my %subscriptions = ((map { @$_ } @channels), (map { lc($_->[0]) => 1 } @channels));
 
     # Remove videos from unsubscribed channels
-    @$subscriptions_data = grep {
-             exists($subscriptions{$yv_utils->get_channel_id($_)})
-          or exists($subscriptions{lc($yv_utils->get_channel_title($_) // '')})
-    } @$subscriptions_data;
+    @$subscriptions_data =
+      grep { exists($subscriptions{$yv_utils->get_channel_id($_)}) or exists($subscriptions{lc($yv_utils->get_channel_title($_) // '')}) } @$subscriptions_data;
 
     # Order videos by newest first
     @$subscriptions_data =
@@ -3590,11 +3587,8 @@ sub download_from_url {
 
     # Download with yt-dlp / youtube-dl
     if ($opt{ytdl} and $opt{download_with_ytdl} and defined($info->{_youtube_url}) and defined($info->{itag})) {
-        my $cmd = join(' ',
-                       $opt{ytdl_cmd},
-                       ($info->{wkad} ? () : ('-f', $info->{itag})),
-                       quotemeta($info->{_youtube_url}),
-                       '-o', quotemeta("$output_filename.part"));
+        my $cmd =
+          join(' ', $opt{ytdl_cmd}, ($info->{wkad} ? () : ('-f', $info->{itag})), quotemeta($info->{_youtube_url}), '-o', quotemeta("$output_filename.part"));
         $yv_obj->proxy_system($cmd);
         return if $?;
         rename("$output_filename.part", $output_filename) or return undef;
@@ -3603,9 +3597,7 @@ sub download_from_url {
 
     # Download with wget
     if ($opt{download_with_wget}) {
-        my $cmd = join(' ',
-                       $opt{wget_cmd}, '-c', '-t', '10', '--waitretry=3', quotemeta($url), '-O',
-                       quotemeta("$output_filename.part"));
+        my $cmd = join(' ', $opt{wget_cmd}, '-c', '-t', '10', '--waitretry=3', quotemeta($url), '-O', quotemeta("$output_filename.part"));
         $yv_obj->proxy_system($cmd);
         return if $?;
         rename("$output_filename.part", $output_filename) or return undef;
@@ -3631,10 +3623,9 @@ sub download_from_url {
     # Download with LWP::UserAgent
     require LWP::UserAgent;
 
-    my $lwp = LWP::UserAgent->new(
-          show_progress => 1,
-          agent => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
-    );
+    my $lwp = LWP::UserAgent->new(show_progress => 1,
+                                  agent         => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
+                                 );
 
     $lwp->proxy(['http', 'https'], $yv_obj->get_http_proxy)
       if defined($yv_obj->get_http_proxy);
@@ -4142,15 +4133,15 @@ sub print_playlist_info {
           "$hr\n",
           q{ } x $rep => (_bold_color("=>> $title <<=") . "\n\n"),
           (
-           map    { sprintf(q{-> } . "%-*s: %s\n", $opt{_colors} ? 18 : 10, _bold_color($_->[0]), $_->[1]) }
-             grep { defined($_->[1]) } (
-                                        ['Title'      => $yv_utils->get_title($playlist)],
-                                        ['Author'     => $yv_utils->get_channel_title($playlist)],
-                                        ['ChannelID'  => $yv_utils->get_channel_id($playlist)],
-                                        ['PlaylistID' => ($id =~ m{^/} ? undef : $id)],
-                                        ['Videos' => $yv_utils->set_thousands($yv_utils->get_playlist_item_count($playlist))],
-                                        ['Published' => $yv_utils->get_publication_date($playlist)],
-                                       )
+           map  { sprintf(q{-> } . "%-*s: %s\n", $opt{_colors} ? 18 : 10, _bold_color($_->[0]), $_->[1]) }
+           grep { defined($_->[1]) } (
+                                      ['Title'      => $yv_utils->get_title($playlist)],
+                                      ['Author'     => $yv_utils->get_channel_title($playlist)],
+                                      ['ChannelID'  => $yv_utils->get_channel_id($playlist)],
+                                      ['PlaylistID' => ($id =~ m{^/} ? undef : $id)],
+                                      ['Videos'     => $yv_utils->set_thousands($yv_utils->get_playlist_item_count($playlist))],
+                                      ['Published'  => $yv_utils->get_publication_date($playlist)],
+                                     )
           ),
           "$hr\n"
          );
@@ -4188,14 +4179,14 @@ sub print_channel_info {
           "\n$hr\n",
           q{ } x $rep => (_bold_color("=>> $title <<=") . "\n\n"),
           (
-           map    { sprintf(q{-> } . "%-*s: %s\n", $opt{_colors} ? 20 : 12, _bold_color($_->[0]), $_->[1]) }
-             grep { defined($_->[1]) } (
-                                ['Channel'     => $title],
-                                ['ChannelID'   => $yv_utils->get_channel_id($channel)],
-                                ['Videos'      => $yv_utils->set_thousands($yv_utils->get_channel_video_count($channel))],
-                                ['Subscribers' => $yv_utils->set_thousands($yv_utils->get_channel_subscriber_count($channel))],
-                                ['Published'   => $yv_utils->get_publication_date($channel)],
-             )
+           map  { sprintf(q{-> } . "%-*s: %s\n", $opt{_colors} ? 20 : 12, _bold_color($_->[0]), $_->[1]) }
+           grep { defined($_->[1]) } (
+                                      ['Channel'     => $title],
+                                      ['ChannelID'   => $yv_utils->get_channel_id($channel)],
+                                      ['Videos'      => $yv_utils->set_thousands($yv_utils->get_channel_video_count($channel))],
+                                      ['Subscribers' => $yv_utils->set_thousands($yv_utils->get_channel_subscriber_count($channel))],
+                                      ['Published'   => $yv_utils->get_publication_date($channel)],
+                                     )
           ),
           "$hr\n"
          );
@@ -4244,18 +4235,18 @@ sub print_video_info {
           "\n$hr\n",
           q{ } x $rep => (_bold_color("=>> $title <<=") . "\n\n"),
           (
-           map    { sprintf(q{-> } . "%-*s: %s\n", $opt{_colors} ? 18 : 10, _bold_color($_->[0]), $_->[1]) }
-             grep { defined($_->[1]) } (
-                                        ['Channel'   => $yv_utils->get_channel_title($video)],
-                                        ['ChannelID' => $yv_utils->get_channel_id($video)],
-                                        ['VideoID'   => $yv_utils->get_video_id($video)],
-                                        ['Category'  => $yv_utils->get_category_name($video)],
-                                        ['Duration'  => $yv_utils->get_time($video)],
-                                        ['Likes'     => $yv_utils->set_thousands($likes)],
-                                        ['Rating'    => $yv_utils->get_rating($video)],
-                                        ['Views'     => $yv_utils->set_thousands($views)],
-                                        ['Published' => $yv_utils->get_publication_date($video)],
-                                       )
+           map  { sprintf(q{-> } . "%-*s: %s\n", $opt{_colors} ? 18 : 10, _bold_color($_->[0]), $_->[1]) }
+           grep { defined($_->[1]) } (
+                                      ['Channel'   => $yv_utils->get_channel_title($video)],
+                                      ['ChannelID' => $yv_utils->get_channel_id($video)],
+                                      ['VideoID'   => $yv_utils->get_video_id($video)],
+                                      ['Category'  => $yv_utils->get_category_name($video)],
+                                      ['Duration'  => $yv_utils->get_time($video)],
+                                      ['Likes'     => $yv_utils->set_thousands($likes)],
+                                      ['Rating'    => $yv_utils->get_rating($video)],
+                                      ['Views'     => $yv_utils->set_thousands($views)],
+                                      ['Published' => $yv_utils->get_publication_date($video)],
+                                     )
           ),
           "$hr\n"
          );

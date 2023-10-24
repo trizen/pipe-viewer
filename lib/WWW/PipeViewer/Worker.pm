@@ -77,6 +77,7 @@ sub _handle_abort {
     return;
 }
 
+#<<<
 sub _handle_fetch_multiple_thumbnails {
     my ($self, $request) = @_;
     my $id           = $request->{id};
@@ -94,6 +95,7 @@ sub _handle_fetch_multiple_thumbnails {
     unshift @{$self->{_pending_requests}}, @new_requests;
     return;
 }
+#>>>
 
 sub _handle_fetch_one_thumbnail {
     my ($self, $request) = @_;
@@ -118,6 +120,7 @@ sub _handle_fetch_one_thumbnail {
     return;
 }
 
+#<<<
 sub _handle_fetch_subscriptions {
     my ($self, $request) = @_;
     my $id           = $request->{id};
@@ -135,6 +138,7 @@ sub _handle_fetch_subscriptions {
     unshift @{$self->{_pending_requests}}, @new_requests;
     return;
 }
+#>>>
 
 sub _handle_fetch_streaming_urls {
     my ($self, $request) = @_;
@@ -336,11 +340,14 @@ sub new {
         my $inc = $INC{$package};
         $inc =~ s{$package\z}{};
 
+#<<<
         # Spawn another perl interpreter.
         my $script = sprintf('use WWW::PipeViewer::Worker; WWW::PipeViewer::Worker->new(%d, %d, %d)',
                              $debug,
-                             fileno $read_from_parent,
-                             fileno $write_to_parent);
+                             fileno($read_from_parent),
+                             fileno($write_to_parent));
+#>>>
+
         exec {$^X} $0, '-I', $inc, '-e', $script
           or carp "[!] exec failed: $!";
     }

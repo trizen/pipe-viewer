@@ -929,12 +929,10 @@ if (not $CONFIG{video_player_selected}) {
 # Locate a terminal
 if (not defined $CONFIG{terminal}) {
     foreach my $term (
-                      'gnome-terminal', 'lxterminal', 'terminal', 'xfce4-terminal',
-                      'sakura',         'st',         'lilyterm', 'evilvte',
-                      'superterm',      'terminator', 'kterm',    'mlterm',
-                      'mrxvt',          'rxvt',       'urxvt',    'termite',
-                      'termit',         'fbterm',     'stjerm',   'yakuake',
-                      'tilix',          'roxterm',    'xterm',
+                      'gnome-terminal', 'lxterminal', 'terminal',  'xfce4-terminal', 'sakura', 'st',
+                      'lilyterm',       'evilvte',    'superterm', 'terminator',     'kterm',  'mlterm',
+                      'mrxvt',          'rxvt',       'urxvt',     'termite',        'termit', 'fbterm',
+                      'stjerm',         'yakuake',    'tilix',     'roxterm',        'xterm',
       ) {
         if (defined(my $abs_path = which_command($term))) {
             $CONFIG{terminal} = $abs_path;
@@ -2715,9 +2713,7 @@ sub refresh_subscription_video_results {
 
     my $channel_index   = 0;
     my $update_progress = sub {
-        $progressbar->set_text(
-             sprintf("[%u/%u] Retrieving info for “%s”...", $channel_index + 1, scalar @channels, $channels[$channel_index][1])
-        );
+        $progressbar->set_text(sprintf("[%u/%u] Retrieving info for “%s”...", $channel_index + 1, scalar @channels, $channels[$channel_index][1]));
         $progressbar->set_fraction($channel_index / scalar @channels);
     };
 
@@ -2787,10 +2783,8 @@ sub update_subscriptions {
     };
 
     # Remove videos from unsubscribed channels
-    @$subscriptions_data = grep {
-             exists($subscriptions{$yv_utils->get_channel_id($_)})
-          or exists($subscriptions{lc($yv_utils->get_channel_title($_) // '')})
-    } @$subscriptions_data;
+    @$subscriptions_data =
+      grep { exists($subscriptions{$yv_utils->get_channel_id($_)}) or exists($subscriptions{lc($yv_utils->get_channel_title($_) // '')}) } @$subscriptions_data;
 
     # Order videos by newest first
     @$subscriptions_data =
@@ -3023,8 +3017,8 @@ sub add_video_entry {
                                     . join(
                                            "\n",
                                            map { sprintf("%s   %s", $_->[0], $_->[1]) } (
-                                               [$symbols{author}    => encode_entities($yv_utils->get_channel_title($video))],
-                                               [$symbols{published} => ($yv_utils->get_publication_date($video) // 'unknown')],
+                                                                                [$symbols{author}    => encode_entities($yv_utils->get_channel_title($video))],
+                                                                                [$symbols{published} => ($yv_utils->get_publication_date($video) // 'unknown')],
                                            )
                                           )
                                     . "\n\n"
@@ -3032,14 +3026,10 @@ sub add_video_entry {
                                  );
 
     my $info_label = reflow_text(
-                                 join(
-                                      "\n",
-                                      map { sprintf("%s   %s", $_->[0], $_->[1]) } (
-                                                   [$symbols{play}  => $yv_utils->get_time($video)],
-                                                   [$symbols{views} => $yv_utils->set_thousands($yv_utils->get_views($video))],
-                                      )
-                                     )
-                                );
+                         join("\n",
+                              map { sprintf("%s   %s", $_->[0], $_->[1]) }
+                                ([$symbols{play} => $yv_utils->get_time($video)], [$symbols{views} => $yv_utils->set_thousands($yv_utils->get_views($video))],))
+    );
 
     $liststore->set(
                     $iter,
@@ -3346,8 +3336,7 @@ sub play_video {
             if (    not defined($streaming->{streaming}{url})
                 and defined($streaming->{info}{status})
                 and $streaming->{info}{status} =~ /(?:error|fail)/i) {
-                die "[!] Error on: " . sprintf($CONFIG{youtube_video_url}, $video_id) . "\n",
-                  "[*] Reason: " . $streaming->{info}{reason} =~ tr/+/ /r . "\n";
+                die "[!] Error on: " . sprintf($CONFIG{youtube_video_url}, $video_id) . "\n", "[*] Reason: " . $streaming->{info}{reason} =~ tr/+/ /r . "\n";
             }
 
             my $command = get_player_command($streaming, $info);
@@ -3514,16 +3503,9 @@ sub play_with_cli_pipe_viewer {
 sub execute_cli_pipe_viewer {
     my @arguments = @_;
 
-    my $command = join(
-                       q{ },
-                       $CONFIG{terminal},
-                       sprintf(
-                               $CONFIG{terminal_exec},
-                               join(q{ },
-                                    $CONFIG{pipe_viewer}, get_options_as_arguments(),
-                                    @arguments,           @{$CONFIG{pipe_viewer_args}}),
-                              )
-                      );
+    my $command = join(q{ },
+                      $CONFIG{terminal},
+                      sprintf($CONFIG{terminal_exec}, join(q{ }, $CONFIG{pipe_viewer}, get_options_as_arguments(), @arguments, @{$CONFIG{pipe_viewer_args}}),));
     my $code = execute_external_program($command);
 
     say $command if $DEBUG;
@@ -3746,8 +3728,7 @@ sub comments_replies_toggle {
     # Toggle the replies' visibility.
     $iter->forward_to_tag_toggle($comments_buffer->{replies_tag});
     (my $end_iter = $iter->copy())->forward_to_tag_toggle($comments_buffer->{replies_tag});
-    $comments_buffer->can(($mark->{expanded} ? 'remove' : 'apply') . '_tag_by_name')
-      ->($comments_buffer, 'hidden', $iter, $end_iter);
+    $comments_buffer->can(($mark->{expanded} ? 'remove' : 'apply') . '_tag_by_name')->($comments_buffer, 'hidden', $iter, $end_iter);
 
     # Ditto with the spinner if present.
     $end_iter->backward_line();
