@@ -43,26 +43,28 @@ use 5.016;
 use warnings;
 no warnings 'once';
 
-use Cwd qw(abs_path);
-
-# Devel mode
-my $DEVEL;
-use if ($DEVEL = -w __FILE__), lib => abs_path(__FILE__ . '/../../lib');
-
-use WWW::PipeViewer v0.4.8;
-use WWW::PipeViewer::ParseJSON;
-use WWW::PipeViewer::RegularExpressions;
-
-require Storable;
-
 use File::Spec::Functions qw(
   catdir
   catfile
   curdir
   path
   rel2abs
+  splitdir
   file_name_is_absolute
 );
+
+my $DEVEL;
+
+use if ($DEVEL = -w __FILE__), lib => do {
+    my @dirs = splitdir(rel2abs(__FILE__));
+    pop(@dirs);
+    pop(@dirs);
+    catdir(@dirs, 'lib');
+};
+
+use WWW::PipeViewer v0.4.8;
+use WWW::PipeViewer::ParseJSON;
+use WWW::PipeViewer::RegularExpressions;
 
 binmode(STDOUT, ':utf8');
 
@@ -141,6 +143,7 @@ foreach my $dir ($config_dir, $local_playlists_dir) {
 # Create the special playlist files
 foreach my $file ($watch_history_data_file, $liked_videos_data_file, $disliked_videos_data_file, $favorite_videos_data_file,) {
     if (not -s $file) {
+        require Storable;
         Storable::store([], $file);
     }
 }
@@ -3029,6 +3032,7 @@ sub print_local_playlist {
 
 sub print_videos_from_data_file {
     my ($file) = @_;
+    require Storable;
     my $videos = eval { Storable::retrieve($file) } // [];
     print_videos(get_results_from_list($videos));
 }
@@ -3175,6 +3179,7 @@ sub print_local_subscription_videos {
     my $subscriptions_data = [];
 
     if (-f $subscription_videos_data_file) {
+        require Storable;
         $subscriptions_data = eval { Storable::retrieve($subscription_videos_data_file) } // [];
     }
 
@@ -3205,6 +3210,7 @@ sub print_local_subscription_videos {
     }
 
     if (@$subscriptions_data) {
+        require Storable;
         Storable::store([grep { $yv_utils->get_time($_) ne 'LIVE' } @$subscriptions_data], $subscription_videos_data_file);
     }
 
@@ -3848,6 +3854,8 @@ sub download_video {
 sub prepend_video_data_to_file {
     my ($video_data, $file) = @_;
 
+    require Storable;
+
     my $videos = eval { Storable::retrieve($file) } // [];
 
     if (ref($video_data) ne 'HASH') {
@@ -4012,6 +4020,7 @@ sub play_videos {
             local $video->{streaming} = $streaming;
 
             if ($opt{dump} eq 'json') {
+                require JSON;
                 print {$fh} JSON->new->pretty(1)->encode($video);
             }
             elsif ($opt{dump} eq 'perl') {

@@ -4,8 +4,6 @@ use utf8;
 use 5.014;
 use warnings;
 
-use JSON qw(encode_json decode_json from_json);
-
 require Exporter;
 our @ISA    = qw(Exporter);
 our @EXPORT = qw(
@@ -40,7 +38,8 @@ sub parse_utf8_json_string {
         return {};
     }
 
-    my $hash = eval { from_json($json) };
+    require JSON;
+    my $hash = eval { JSON::from_json($json) };
     return $@ ? do { warn "[JSON]: $@\n"; {} } : $hash;
 }
 
@@ -51,7 +50,8 @@ sub parse_json_string {
         return {};
     }
 
-    my $hash = eval { decode_json($json) };
+    require JSON;
+    my $hash = eval { JSON::decode_json($json) };
     return $@ ? do { warn "[JSON]: $@\n"; {} } : $hash;
 }
 
@@ -64,7 +64,8 @@ Create a JSON string from a HASH or ARRAY ref.
 sub make_json_string {
     my ($ref) = @_;
 
-    my $str = eval { encode_json($ref) };
+    require JSON;
+    my $str = eval { JSON::encode_json($ref) };
     return $@ ? do { warn "[JSON]: $@\n"; '' } : $str;
 }
 

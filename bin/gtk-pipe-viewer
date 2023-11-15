@@ -28,11 +28,30 @@ use 5.016;
 use warnings;
 no warnings 'once';
 
-use Cwd qw(abs_path);
+use Gtk3         qw(-init);
+use Storable     qw();
+use Scalar::Util qw(looks_like_number);
+use List::Util   qw(any max min pairs);
 
-# Devel mode
+use File::Spec::Functions qw(
+  rel2abs
+  catdir
+  catfile
+  curdir
+  path
+  splitdir
+  file_name_is_absolute
+);
+
+sub devel_path {
+    my @dirs = splitdir(rel2abs(__FILE__));
+    pop(@dirs);
+    pop(@dirs);
+    return @dirs;
+}
+
 my $DEVEL;
-use if ($DEVEL = -w __FILE__), lib => abs_path(__FILE__ . '/../../lib');
+use if ($DEVEL = -w __FILE__), lib => catdir(devel_path(), 'lib');
 
 use WWW::PipeViewer v0.4.8;
 use WWW::PipeViewer::DiskCache;
@@ -41,23 +60,6 @@ use WWW::PipeViewer::RegularExpressions;
 use WWW::PipeViewer::Utils;
 use WWW::PipeViewer::Worker;
 
-use Gtk3                  qw(-init);
-use File::Spec::Functions qw(
-  rel2abs
-  catdir
-  catfile
-  curdir
-  updir
-  path
-  tmpdir
-  file_name_is_absolute
-);
-
-use Scalar::Util qw(looks_like_number);
-
-use List::Util qw(any max min pairs);
-
-require Storable;
 binmode(STDOUT, ':utf8');
 binmode(STDERR, ':utf8');
 
@@ -70,8 +72,8 @@ my %subscribed_channels;
 
 # Share directory
 my $share_dir =
-  ($DEVEL)
-  ? abs_path(__FILE__ . '/../../share')
+  ($DEVEL and -d catdir(devel_path(), 'share'))
+  ? catdir(devel_path(), 'share')
   : do { require File::ShareDir; File::ShareDir::dist_dir('WWW-PipeViewer') };
 
 # Configuration dir/file
