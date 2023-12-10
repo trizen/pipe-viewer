@@ -1094,7 +1094,24 @@ Unless the author name is valid, this field is ignored.</property>
                                                             <property name="receives-default">False</property>
                                                             <property name="tooltip-text" translatable="yes">Show thumbnails for results.</property>
                                                             <property name="draw-indicator">True</property>
-                                                            <signal name="toggled" handler="thumbs_checkbutton_toggled" swapped="no"/>
+                                                            <signal name="toggled" handler="toggled_thumbs_checkbutton" swapped="no"/>
+                                                          </object>
+                                                        </child>
+                                                      </object>
+                                                    </child>
+                                                    <child>
+                                                      <object class="GtkFlowBoxChild">
+                                                        <property name="visible">True</property>
+                                                        <property name="can-focus">True</property>
+                                                        <child>
+                                                          <object class="GtkCheckButton" id="split_videos_checkbutton">
+                                                            <property name="label" translatable="yes">Split A/V videos</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can-focus">True</property>
+                                                            <property name="receives-default">False</property>
+                                                            <property name="tooltip-text" translatable="yes">Include or exclude streams that have audio and video in separate URLs.</property>
+                                                            <property name="draw-indicator">True</property>
+                                                            <signal name="toggled" handler="toggled_split_videos" swapped="no"/>
                                                           </object>
                                                         </child>
                                                       </object>
