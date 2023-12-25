@@ -679,7 +679,7 @@ sub _get_initial_data {
 
         $json =~ s{\\x([[:xdigit:]]{2})}{chr(hex($1))}ge;
         $json =~ s{\\u([[:xdigit:]]{4})}{chr(hex($1))}ge;
-        $json =~ s{\\(["&])}{$1}g;
+        $json =~ s{\\(["&<>])}{$1}g;
 
         my $hash = parse_utf8_json_string($json);
         return $hash;
