@@ -1962,8 +1962,8 @@ sub stop_details_spinner {
 
 # Details window
 sub show_details_window {
-    my ($code, $iter) = get_selected_entry_code();
-    $code // return;
+    my ($id, $iter) = get_selected_entry_code();
+    $id // return;
 
     my $type = $liststore->get($iter, 7);
 
@@ -1974,7 +1974,7 @@ sub show_details_window {
     reset_details_spinner();
     $worker->abort_requests($details_request, $details_thumbs_request);
     $details_request = $details_thumbs_request = undef;
-    set_entry_details($code, $iter);
+    set_entry_details($id, $iter);
     $details_window->show;
 
     return 1;
@@ -3530,8 +3530,11 @@ sub execute_cli_pipe_viewer {
 }
 
 sub download_video {
-    my $code = get_selected_entry_code(type => 'video') // return;
-    execute_cli_pipe_viewer("--video-id=$code", '--download');
+    my ($id, $iter) = get_selected_entry_code(type => 'video');
+    $id // return;
+    execute_cli_pipe_viewer("--video-id=$id", '--download');
+    my $info = parse_json_string($liststore->get($iter, 8));
+    save_watched_video($info, $iter);
     return 1;
 }
 
