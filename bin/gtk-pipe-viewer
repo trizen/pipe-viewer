@@ -53,7 +53,7 @@ sub devel_path {
 my $DEVEL;
 use if ($DEVEL = -w __FILE__), lib => catdir(devel_path(), 'lib');
 
-use WWW::PipeViewer v0.4.8;
+use WWW::PipeViewer v0.4.9;
 use WWW::PipeViewer::DiskCache;
 use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::RegularExpressions;
