@@ -33,7 +33,7 @@ To test without installing, do `guix environment --pure --ad-hoc pipe-viewer mpv
 ### REVIEWS
 
 * [EN] How-to install pipe-viewer in Debian
-    * https://hund.tty1.se/2021/11/14/how-to-install-pipe-viewer-in-debian.html
+    * https://hunden.linuxkompis.se/2021/11/14/how-to-install-pipe-viewer-in-debian.html
 
 * [EN] pipe-viewer – lightweight YouTube client
     * https://www.linuxlinks.com/pipe-viewer-lightweight-youtube-client/
