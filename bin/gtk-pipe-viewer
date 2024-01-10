@@ -28,11 +28,6 @@ use 5.016;
 use warnings;
 no warnings 'once';
 
-use Gtk3         qw(-init);
-use Storable     qw();
-use Scalar::Util qw(looks_like_number);
-use List::Util   qw(any max min pairs);
-
 use File::Spec::Functions qw(
   rel2abs
   catdir
@@ -43,6 +38,8 @@ use File::Spec::Functions qw(
   file_name_is_absolute
 );
 
+my $DEVEL;
+
 sub devel_path {
     my @dirs = splitdir(rel2abs(__FILE__));
     pop(@dirs);
@@ -50,7 +47,6 @@ sub devel_path {
     return @dirs;
 }
 
-my $DEVEL;
 use if ($DEVEL = -w __FILE__), lib => catdir(devel_path(), 'lib');
 
 use WWW::PipeViewer v0.4.9;
@@ -59,6 +55,11 @@ use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::RegularExpressions;
 use WWW::PipeViewer::Utils;
 use WWW::PipeViewer::Worker;
+
+use Gtk3         qw(-init);
+use Storable     qw();
+use Scalar::Util qw(looks_like_number);
+use List::Util   qw(any max min pairs);
 
 binmode(STDOUT, ':utf8');
 binmode(STDERR, ':utf8');
