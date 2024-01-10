@@ -40,9 +40,9 @@ use File::Spec::Functions qw(
 
 my $DEVEL;
 
+use FindBin;
 sub devel_path {
-    my @dirs = splitdir(rel2abs(__FILE__));
-    pop(@dirs);
+    my @dirs = splitdir(rel2abs($FindBin::RealBin));
     pop(@dirs);
     return @dirs;
 }
