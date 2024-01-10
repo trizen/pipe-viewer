@@ -57,7 +57,7 @@ my $DEVEL;
 
 use FindBin;
 use if ($DEVEL = -w __FILE__), lib => do {
-    my @dirs = splitdir(rel2abs($FindBin::RealBin));
+    my @dirs = splitdir($FindBin::RealBin);
     pop(@dirs);
     catdir(@dirs, 'lib');
 };
