@@ -42,7 +42,7 @@ my $DEVEL;
 
 use FindBin;
 sub devel_path {
-    my @dirs = splitdir(rel2abs($FindBin::RealBin));
+    my @dirs = splitdir($FindBin::RealBin);
     pop(@dirs);
     return @dirs;
 }
