@@ -130,16 +130,16 @@ or set in the configuration file (`~/.config/pipe-viewer/pipe-viewer.conf`):
     prefer_invidious => 1,
 ```
 
-To use a specific invidious instance, like [invidious.snopyta.org](https://invidious.snopyta.org/), pass the `--api=HOST` option:
+To use a specific invidious instance, like [invidious.fdn.fr](https://invidious.fdn.fr/), pass the `--api=HOST` option:
 
 ```console
-    pipe-viewer --invidious --api=invidious.snopyta.org
+    pipe-viewer --invidious --api=invidious.fdn.fr
 ```
 
 To make the change permanent, set in the configuration file:
 
 ```perl
-    api_host => "invidious.snopyta.org",
+    api_host => "invidious.fdn.fr",
 ```
 
 When `api_host` is set to `"auto"`, `pipe-viewer` picks a random invidious instance from [api.invidious.io](https://api.invidious.io/).

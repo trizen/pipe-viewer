@@ -591,7 +591,7 @@ sub select_good_invidious_instances {
         'invidious.ggc-project.de' => 1,    # broken API
         'invidious.toot.koeln'     => 1,    # broken API
         'invidious.kavin.rocks'    => 1,    # 403 Forbidden (API)
-        'invidious.snopyta.org'    => 0,
+        'invidious.snopyta.org'    => 1,    # dead (15 January 2024)
         'invidious.silkky.cloud'   => 0,
         'invidious.moomoo.me'      => 1,    # uses Cloudflare
         'y.com.cm'                 => 1,    # uses Cloudflare
@@ -735,7 +735,7 @@ sub get_api_url {
             print STDERR ":: Changed the instance to: $host\n" if $self->get_debug;
         }
         else {
-            $host = "https://invidious.snopyta.org";
+            $host = "https://invidious.fdn.fr";
             $self->set_api_host($host);
             print STDERR ":: Failed to change the instance. Using: $host\n" if $self->get_debug;
         }
@@ -796,13 +796,13 @@ sub _extract_from_invidious {
 #>>>
 
     if (@instances) {
-        push @instances, 'invidious.snopyta.org';
+        push @instances, 'invidious.fdn.fr';
     }
     else {
         @instances = qw(
-          invidious.snopyta.org
           invidious.fdn.fr
           vid.puffyan.us
+          invidious.privacydev.net
           invidious.flokinet.to
         );
     }
