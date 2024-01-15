@@ -39,15 +39,16 @@ use File::Spec::Functions qw(
 );
 
 my $DEVEL;
+BEGIN { $DEVEL = -w __FILE__ }
 
-use FindBin;
 sub devel_path {
+    require FindBin;
     my @dirs = splitdir($FindBin::RealBin);
     pop(@dirs);
     return @dirs;
 }
 
-use if ($DEVEL = -w __FILE__), lib => catdir(devel_path(), 'lib');
+use if $DEVEL, lib => $DEVEL && catdir(devel_path(), 'lib');
 
 use WWW::PipeViewer v0.4.9;
 use WWW::PipeViewer::DiskCache;
