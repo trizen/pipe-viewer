@@ -1161,7 +1161,7 @@ sub yt_playlist_next_page {
 
     my @results =
       $self->_parse_itemSection(eval { $hash->{continuationContents}{playlistVideoListContinuation} }
-                                                         // eval { $hash->{continuationContents}{itemSectionContinuation} },
+                                             // eval { $hash->{continuationContents}{itemSectionContinuation} },
                                 %args);
 
     if (!@results) {
@@ -1180,10 +1180,10 @@ sub yt_browse_request {
                    context => {
                                client => {
                                           browserName      => "Firefox",
-                                          browserVersion   => "83.0",
+                                          browserVersion   => "122.0",
                                           clientFormFactor => "LARGE_FORM_FACTOR",
                                           clientName       => "MWEB",
-                                          clientVersion    => "2.20221013.07.00",
+                                          clientVersion    => "2.20240201.00.00",
                                           deviceMake       => "Mozilla",
                                           deviceModel      => "Firefox for Android",
                                           hl               => "en",
@@ -1192,7 +1192,7 @@ sub yt_browse_request {
                                                             },
                                           originalUrl        => $url,
                                           osName             => "Android",
-                                          osVersion          => "11",
+                                          osVersion          => "14",
                                           platform           => "TABLET",
                                           playerType         => "UNIPLAYER",
                                           screenDensityFloat => 1,
@@ -1200,7 +1200,7 @@ sub yt_browse_request {
                                           screenPixelDensity => 1,
                                           screenWidthPoints  => 1800,
                                           timeZone           => "UTC",
-                                          userAgent          => "Mozilla/5.0 (Android 11; Tablet; rv:83.0) Gecko/83.0 Firefox/83.0,gzip(gfe)",
+                                          userAgent          => "Mozilla/5.0 (Android 14; Tablet; rv:109.0) Gecko/122.0 Firefox/122.0,gzip(gfe)",
                                           userInterfaceTheme => "USER_INTERFACE_THEME_LIGHT",
                                           utcOffsetMinutes   => 0,
                                          },
@@ -1257,10 +1257,10 @@ sub yt_search_next_page {
                    "context" => {
                                  "client" => {
                                               "browserName"      => "Firefox",
-                                              "browserVersion"   => "83.0",
+                                              "browserVersion"   => "122.0",
                                               "clientFormFactor" => "LARGE_FORM_FACTOR",
                                               "clientName"       => "MWEB",
-                                              "clientVersion"    => "2.20221013.07.00",
+                                              "clientVersion"    => "2.20240201.00.00",
                                               "deviceMake"       => "Mozilla",
                                               "deviceModel"      => "Firefox for Android",
                                               "gl"               => "US",
@@ -1269,14 +1269,14 @@ sub yt_search_next_page {
                                                                    "graftUrl" => $url,
                                                                   },
                                               "osName"             => "Android",
-                                              "osVersion"          => "11",
+                                              "osVersion"          => "14",
                                               "platform"           => "TABLET",
                                               "playerType"         => "UNIPLAYER",
                                               "screenDensityFloat" => 1,
                                               "screenHeightPoints" => 600,
                                               "screenPixelDensity" => 1,
                                               "screenWidthPoints"  => 1800,
-                                              "userAgent"          => "Mozilla/5.0 (Android 11; Tablet; rv:83.0) Gecko/83.0 Firefox/83.0,gzip(gfe)",
+                                              "userAgent"          => "Mozilla/5.0 (Android 14; Tablet; rv:109.0) Gecko/122.0 Firefox/122.0,gzip(gfe)",
                                               "userInterfaceTheme" => "USER_INTERFACE_THEME_LIGHT",
                                               "utcOffsetMinutes"   => 0,
                                              },

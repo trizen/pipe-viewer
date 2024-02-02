@@ -1145,6 +1145,8 @@ sub _get_youtubei_content {
         $self->{lwp}->agent($android_useragent);
     }
 
+    my $client_version = sprintf("2.%s.00.00", Time::Piece->new(time)->strftime("%Y%m%d"));
+
     my %web = (
                "videoId" => $videoID,
                "context" => {
@@ -1152,28 +1154,30 @@ sub _get_youtubei_content {
                                           "hl"            => "en",
                                           "gl"            => "US",
                                           "clientName"    => "WEB",
-                                          "clientVersion" => sprintf("2.%s.03.00", Time::Piece->new(time)->strftime("%Y%m%d")),
+                                          "clientVersion" => $client_version,
                                           %args,
                                          }
                             },
               );
 
+    my %mweb = (
+                "videoId" => $videoID,
+                "context" => {
+                              "client" => {
+                                           "hl"            => "en",
+                                           "gl"            => "US",
+                                           "clientName"    => "MWEB",
+                                           "clientVersion" => $client_version,
+                                           %args,
+                                          },
+                             },
+               );
+
     if (0) {
-        %android = (
-                    "videoId" => $videoID,
-                    "context" => {
-                                  "client" => {
-                                               "hl"            => "en",
-                                               "gl"            => "US",
-                                               "clientName"    => "MWEB",
-                                               "clientVersion" => sprintf("2.%s.03.00", Time::Piece->new(time)->strftime("%Y%m%d")),
-                                               %args,
-                                              }
-                                 },
-                   );
+        %android = %mweb;
     }
 
-    my $content = $self->post_as_json($url, $endpoint eq 'next' ? \%web : \%android);
+    my $content = $self->post_as_json($url, $endpoint eq 'next' ? \%mweb : \%android);
     $self->{lwp}->agent($agent);
     return $content;
 }

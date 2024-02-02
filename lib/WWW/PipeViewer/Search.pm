@@ -161,39 +161,33 @@ sub related_to_videoID {
     my ($self, $videoID) = @_;
 
     my $watch_next_response = parse_json_string($self->_get_video_next_info($videoID) // return {results => []});
-
-    my $related = eval { $watch_next_response->{contents}{twoColumnWatchNextResults}{secondaryResults}{secondaryResults}{results} } // return {results => []};
+    my $related             = eval { $watch_next_response->{contents}{singleColumnWatchNextResults}{results}{results}{contents} } // return {results => []};
 
     my @results;
 
-    foreach my $entry (@$related) {
+    foreach my $entry (map { @{$_->{itemSectionRenderer}{contents} // []} } @$related) {
 
-        my $info  = $entry->{compactVideoRenderer} // next;
-        my $title = $info->{title}{simpleText}     // next;
+        my $info  = $entry->{videoWithContextRenderer} // next;
+        my $title = $info->{headline}{runs}[0]{text}   // next;
 
         my $viewCount = 0;
 
-        if (($info->{viewCountText}{simpleText} // '') =~ /^([\d,]+) views/) {
-            $viewCount = ($1 =~ tr/,//dr);
+        if (($info->{shortViewCountText}{runs}[0]{text} // '') =~ /^(\S+) views/) {
+            $viewCount = WWW::PipeViewer::InitialData::_human_number_to_int($1);
         }
-        elsif (($info->{viewCountText}{simpleText} // '') =~ /Recommended for you/i) {
+        elsif (($info->{shortViewCountText}{runs}[0]{text} // '') =~ /Recommended for you/i) {
             next;    # filter out recommended videos from related videos
         }
 
         my $lengthSeconds = 0;
 
-        if (($info->{lengthText}{simpleText} // '') =~ /([\d:]+)/) {
-            my $time   = $1;
-            my @fields = split(/:/, $time);
-
-            my $seconds = pop(@fields) // 0;
-            my $minutes = pop(@fields) // 0;
-            my $hours   = pop(@fields) // 0;
-
-            $lengthSeconds = 3600 * $hours + 60 * $minutes + $seconds;
+        if (($info->{lengthText}{runs}[0]{text} // '') =~ /([\d:]+)/) {
+            $lengthSeconds = WWW::PipeViewer::InitialData::_time_to_seconds($1);
         }
 
         my $published = 0;
+
+        # FIXME: this code no longer works
         if (exists $info->{publishedTimeText} and $info->{publishedTimeText}{simpleText} =~ /(\d+)\s+(\w+)\s+ago/) {
 
             my $quantity = $1;
@@ -223,10 +217,8 @@ sub related_to_videoID {
             type     => "video",
             title    => $title,
             videoId  => $info->{videoId},
-            author   => $info->{longBylineText}{runs}[0]{text},
-            authorId => $info->{longBylineText}{runs}[0]{navigationEndpoint}{browseEndpoint}{browseId},
-
-            #authorUrl => $info->{longBylineText}{runs}[0]{navigationEndpoint}{browseEndpoint}{browseId},
+            author   => $info->{shortBylineText}{runs}[0]{text},
+            authorId => $info->{shortBylineText}{runs}[0]{navigationEndpoint}{browseEndpoint}{browseId},
 
             description     => $info->{accessibility}{accessibilityData}{label},
             descriptionHtml => undef,
