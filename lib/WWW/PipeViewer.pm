@@ -9,11 +9,13 @@ use Memoize::Expire;
 
 use WWW::PipeViewer::ParseJSON;
 
-tie my %youtubei_cache => 'Memoize::Expire',
-  LIFETIME             => 600,                 # in seconds
-  NUM_USES             => 3;
+#<<<
+#~ tie my %youtubei_cache => 'Memoize::Expire',
+  #~ LIFETIME             => 600,                 # in seconds
+  #~ NUM_USES             => 3;
 
-memoize '_get_youtubei_content', SCALAR_CACHE => [HASH => \%youtubei_cache];
+#~ memoize '_get_youtubei_content', SCALAR_CACHE => [HASH => \%youtubei_cache];
+#>>>
 
 #memoize('_get_video_info');
 memoize('_ytdl_is_available');

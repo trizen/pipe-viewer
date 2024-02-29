@@ -4064,6 +4064,16 @@ sub play_videos {
                 say "-> Command: $command";
             }
 
+#<<<
+            # Concept for playing videos with ffmpeg + ffplay
+            # if (exists $streaming->{streaming}{__AUDIO__}) {
+            #     system("ffmpeg -i \Q$streaming->{streaming}{url}\E -i \Q$streaming->{streaming}{__AUDIO__}{url}\E -c:a copy -c:v copy -f matroska - | ffplay -");
+            # }
+            # else {
+            #     system("ffplay", $streaming->{streaming}{url});
+            # }
+#>>>
+
             $yv_obj->proxy_system($command);    # execute the video player
 
             if ($? and $? != 512) {
