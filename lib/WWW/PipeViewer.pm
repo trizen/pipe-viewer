@@ -8,12 +8,12 @@ use Memoize qw(memoize);
 use WWW::PipeViewer::ParseJSON;
 
 #<<<
-#~ use Memoize::Expire;
-#~ tie my %youtubei_cache => 'Memoize::Expire',
-  #~ LIFETIME             => 600,                 # in seconds
-  #~ NUM_USES             => 3;
+use Memoize::Expire;
+tie my %youtubei_cache => 'Memoize::Expire',
+  LIFETIME             => 600,                 # in seconds
+  NUM_USES             => 2;
 
-#~ memoize '_get_youtubei_content', SCALAR_CACHE => [HASH => \%youtubei_cache];
+memoize '_get_youtubei_content', SCALAR_CACHE => [HASH => \%youtubei_cache];
 #>>>
 
 #memoize('_get_video_info');
@@ -43,7 +43,7 @@ WWW::PipeViewer - A simple interface to YouTube.
 
 =cut
 
-our $VERSION = '0.4.9';
+our $VERSION = '0.5.0';
 
 =head1 SYNOPSIS
 

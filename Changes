@@ -5,6 +5,13 @@
 
 [CHANGELOG]
 
+Version 0.5.0
+
+- Fixed the "400 Bad Request" error when playing a video.
+- Fixed the support for related videos.
+- Fixed the launch of the Gtk3 version on older versions of Perl.
+- When there are no non-split URLs available, return split URLs.
+
 Version 0.4.9
 
 - gui: highlight downloaded videos as watched.
