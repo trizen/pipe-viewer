@@ -43,6 +43,7 @@ use 5.016;
 use warnings;
 no warnings 'once';
 
+use Term::ReadLine        qw();
 use File::Spec::Functions qw(
   catdir
   catfile
@@ -76,7 +77,6 @@ my $version  = $WWW::PipeViewer::VERSION;
 my $execname = 'pipe-viewer';
 
 # A better <STDIN> support:
-require Term::ReadLine;
 my $term = Term::ReadLine->new("$appname $version");
 
 # Options (key=>value) goes here

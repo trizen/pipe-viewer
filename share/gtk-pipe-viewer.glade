@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.40.0
+<!-- Generated with glade 3.40.0 
 
 Copyright (C) Copyright © 2010-2024 Trizen
 
@@ -143,6 +143,11 @@ Author: Trizen https://github.com/trizen
     <property name="can-focus">False</property>
     <property name="stock">gtk-index</property>
   </object>
+  <object class="GtkImage" id="left_button_image">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <property name="stock">gtk-missing-image</property>
+  </object>
   <object class="GtkListStore" id="liststore1">
     <columns>
       <!-- column-name name -->
@@ -204,6 +209,11 @@ Author: Trizen https://github.com/trizen
       <!-- column-name top_type -->
       <column type="gchararray"/>
     </columns>
+  </object>
+  <object class="GtkImage" id="right_button_image">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <property name="stock">gtk-missing-image</property>
   </object>
   <object class="GtkImage" id="terminal_icon2">
     <property name="visible">True</property>
@@ -433,6 +443,36 @@ Author: Trizen https://github.com/trizen
             <property name="can-focus">False</property>
             <property name="border-width">4</property>
             <child>
+              <object class="GtkButton" id="show_prev_results_button">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="receives-default">True</property>
+                <property name="image">left_button_image</property>
+                <signal name="clicked" handler="display_previous_results" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="padding">3</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="show_next_results_button">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="receives-default">True</property>
+                <property name="image">right_button_image</property>
+                <signal name="clicked" handler="display_next_results" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="padding">3</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
               <object class="GtkSearchEntry" id="search_entry">
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
@@ -446,7 +486,7 @@ Author: Trizen https://github.com/trizen
                 <property name="expand">True</property>
                 <property name="fill">True</property>
                 <property name="padding">4</property>
-                <property name="position">0</property>
+                <property name="position">2</property>
               </packing>
             </child>
             <child>
@@ -474,7 +514,7 @@ Author: Trizen https://github.com/trizen
                 <property name="expand">False</property>
                 <property name="fill">False</property>
                 <property name="padding">4</property>
-                <property name="position">1</property>
+                <property name="position">3</property>
               </packing>
             </child>
           </object>
