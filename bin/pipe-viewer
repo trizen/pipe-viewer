@@ -66,7 +66,7 @@ sub devel_path {
 
 use if $DEVEL, lib => $DEVEL && catdir(devel_path(), 'lib');
 
-use WWW::PipeViewer v0.5.0;
+use WWW::PipeViewer v0.5.1;
 use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::RegularExpressions;
 

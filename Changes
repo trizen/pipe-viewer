@@ -5,6 +5,10 @@
 
 [CHANGELOG]
 
+Version 0.5.1
+
+- gui: added "Backward" and "Forward" buttons for navigating the history.
+
 Version 0.5.0
 
 - Fixed the "400 Bad Request" error when playing a video.

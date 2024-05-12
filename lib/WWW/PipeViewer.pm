@@ -43,7 +43,7 @@ WWW::PipeViewer - A simple interface to YouTube.
 
 =cut
 
-our $VERSION = '0.5.0';
+our $VERSION = '0.5.1';
 
 =head1 SYNOPSIS
 
