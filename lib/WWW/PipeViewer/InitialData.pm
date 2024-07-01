@@ -128,7 +128,10 @@ sub _extract_youtube_mix {
 
 sub _extract_video_id {
     my ($info) = @_;
-    eval { $info->{videoId} } || eval { $info->{navigationEndpoint}{watchEndpoint}{videoId} } || undef;
+         eval { $info->{videoId} }
+      || eval { $info->{navigationEndpoint}{watchEndpoint}{videoId} }
+      || eval { $info->{onTap}{innertubeCommand}{reelWatchEndpoint}{videoId} }
+      || undef;
 }
 
 sub _extract_length_seconds {
@@ -175,7 +178,7 @@ sub _extract_channel_id {
 
 sub _extract_view_count_text {
     my ($info) = @_;
-    eval { $info->{shortViewCountText}{runs}[0]{text} };
+    eval { $info->{shortViewCountText}{runs}[0]{text} } // eval { $info->{overlayMetadata}{secondaryText}{content} }
 }
 
 sub _extract_view_count {
@@ -183,7 +186,8 @@ sub _extract_view_count {
 #<<<
          _human_number_to_int(eval { $info->{viewCountText}{runs}[0]{text} } || 0)
       || _human_number_to_int(eval { ($info->{headline}{accessibility}{accessibilityData}{label} // '') =~ m{.* (\S+) views\b} ? $1 : undef } || 0)
-      || _human_number_to_int(eval { $info->{shortViewCountText}{runs}[0]{text} } || 0);
+      || _human_number_to_int(eval { $info->{shortViewCountText}{runs}[0]{text} } || 0)
+      || _human_number_to_int(eval { ($info->{overlayMetadata}{secondaryText}{content} // '') =~ m{^(\S+) views\b} ? $1 : undef } || 0);
 #>>>
 }
 
@@ -205,7 +209,8 @@ sub _extract_title {
 #<<<
          eval { $info->{title}{runs}[0]{text} }
       // eval { $info->{title}{accessibility}{accessibilityData}{label} }
-      // eval { $info->{headline}{runs}[0]{text} };
+      // eval { $info->{headline}{runs}[0]{text} }
+      // eval { $info->{overlayMetadata}{primaryText}{content} };
 #>>>
 }
 
@@ -215,7 +220,8 @@ sub _extract_description {
     # This is not the video description...
 #<<<
          eval { $info->{title}{accessibility}{accessibilityData}{label} }
-      // eval { $info->{headline}{accessibility}{accessibilityData}{label} };
+      // eval { $info->{headline}{accessibility}{accessibilityData}{label} }
+      // eval { $info->{accessibilityText} };
 #>>>
 }
 
@@ -276,6 +282,29 @@ sub _extract_itemSection_entry {
             $video{author}   // return;
             $video{authorId} // return;
         }
+
+        return \%video;
+    }
+
+    # Shorts
+    if (exists($data->{shortsLockupViewModel})) {
+
+        my %video;
+        my $info = $data->{shortsLockupViewModel};
+
+        $video{type} = 'video';
+
+        $video{videoId}         = _extract_video_id($info) // return;
+        $video{title}           = _extract_title($info)    // return;
+        $video{lengthSeconds}   = _extract_length_seconds($info) || 0;                # FIXME
+        $video{liveNow}         = ($video{lengthSeconds} == 0);                       # FIXME
+        $video{author}          = _extract_author_name($info);
+        $video{authorId}        = _extract_channel_id($info);
+        $video{publishedText}   = _extract_published_text($info);                     # FIXME
+        $video{viewCountText}   = _extract_view_count_text($info);
+        $video{videoThumbnails} = _extract_thumbnails($info->{thumbnail}{sources});
+        $video{description}     = _extract_description($info);
+        $video{viewCount}       = _extract_view_count($info);
 
         return \%video;
     }

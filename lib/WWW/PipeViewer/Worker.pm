@@ -381,7 +381,7 @@ sub abort_requests {
     my @aborted = grep { defined($_) and delete($self->{_requests}{$_}) } @requests;
     if (@aborted) {
         $self->_send_message(
-                             id       => 0,
+                             id       =>  0,
                              priority => -1,
                              method   => 'abort',
                              args     => \@aborted,
@@ -438,7 +438,7 @@ sub process_next_reply {
 sub stop {
     my ($self) = @_;
     $self->_send_message(
-                         id       => 0,
+                         id       =>  0,
                          priority => -2,
                          method   => 'stop',
                         );

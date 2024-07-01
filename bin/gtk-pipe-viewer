@@ -310,7 +310,7 @@ my %CONFIG = (
 
     entry_completion_limit => 10,
     local_playlist_limit   => -1,
-    cache_thumbnails       => 1,
+    cache_thumbnails       =>  1,
 
     # Save titles
     save_titles_to_history  => 0,
