@@ -207,8 +207,8 @@ my %CONFIG = (
                },
 
         mpvraw => {
-                   arg     => q{--ytdl-raw-options-append="format-sort=ext,res:*RESOLUTION*" *URL*},
                    cmd     => q{mpv},
+                   arg     => q{--ytdl-raw-options-append="format-sort=ext,res:*RESOLUTION*" *URL*},
                    fs      => q{--fullscreen},
                    novideo => q{--no-video},
                    srt     => q{--sub-file=*SUB*},

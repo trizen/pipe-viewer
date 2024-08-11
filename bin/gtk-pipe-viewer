@@ -196,8 +196,8 @@ my %CONFIG = (
                               arg   => q{--really-quiet --force-media-title=*TITLE* --no-ytdl --no-terminal *VIDEO*},
                              },
                       mpvraw => {
-                                 arg => q{--ytdl-raw-options-append="format-sort=ext,res:*RESOLUTION*" *URL*},
                                  cmd => q{mpv},
+                                 arg => q{--ytdl-raw-options-append="format-sort=ext,res:*RESOLUTION*" --no-terminal *URL*},
                                  fs  => q{--fullscreen},
                                  srt => q{--sub-file=*SUB*},
                                 },
@@ -1413,7 +1413,7 @@ sub get_treeview_popup_menu {
         # Playlists created by this author
         {
             my $item = 'Gtk3::ImageMenuItem'->new("Playlists");
-            $item->signal_connect(activate => \&show_playlists_from_selected_author);
+            $item->signal_connect(activate => sub { list_channel_playlists($channel_id) });
             $item->set_property(tooltip_text => "Show playlists created by this author");
             $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-documents-symbolic", q{menu}));
             $item->show;
@@ -1592,12 +1592,66 @@ sub get_users_list_popup_menu {
         $menu->append($item);
     }
 
-    # Playlists from channel
+    # Recent shorts from this author
+    {
+        my $item = 'Gtk3::ImageMenuItem'->new("Shorts");
+        $item->signal_connect(activate => sub { list_channel_shorts($channel_id) });
+        $item->set_property(tooltip_text => "Show the most recent shorts from this author");
+        $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-shared-symbolic", q{menu}));
+        $item->show;
+        $menu->append($item);
+    }
+
+    # Recent streams from this author
+    {
+        my $item = 'Gtk3::ImageMenuItem'->new("Streams");
+        $item->signal_connect(activate => sub { list_channel_streams($channel_id) });
+        $item->set_property(tooltip_text => "Show the most recent streams from this author");
+        $item->set_image('Gtk3::Image'->new_from_icon_name("media-record-symbolic", q{menu}));
+        $item->show;
+        $menu->append($item);
+    }
+
+    # Playlists created by this author
     {
         my $item = 'Gtk3::ImageMenuItem'->new("Playlists");
-        $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-documents", q{menu}));
-        $item->set_property(tooltip_text => "List the playlists created by this channel");
-        $item->signal_connect(activate => \&playlists_from_selected_username);
+        $item->signal_connect(activate => sub { list_channel_playlists($channel_id) });
+        $item->set_property(tooltip_text => "Show playlists created by this author");
+        $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-documents-symbolic", q{menu}));
+        $item->show;
+        $menu->append($item);
+    }
+
+    # Separator
+    {
+        my $item = 'Gtk3::SeparatorMenuItem'->new;
+        $item->show;
+        $menu->append($item);
+    }
+
+    # Most popular videos from this author
+    {
+        my $item = 'Gtk3::ImageMenuItem'->new("Popular videos");
+        $item->signal_connect(activate => sub { popular_uploads($channel_id) });
+        $item->set_property(tooltip_text => "Show the most popular videos from this author");
+        $item->set_image('Gtk3::Image'->new_from_icon_name("emblem-favorite", q{menu}));
+        $item->show;
+        $menu->append($item);
+    }
+
+    # Most popular streams from this author
+    {
+        my $item = 'Gtk3::ImageMenuItem'->new("Popular streams");
+        $item->signal_connect(activate => sub { popular_streams($channel_id) });
+        $item->set_property(tooltip_text => "Show the most popular livestreams from this author");
+        $item->set_image('Gtk3::Image'->new_from_icon_name("media-record", q{menu}));
+        $item->show;
+        $menu->append($item);
+    }
+
+    # Separator
+    {
+        my $item = 'Gtk3::SeparatorMenuItem'->new;
         $item->show;
         $menu->append($item);
     }
