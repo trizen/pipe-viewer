@@ -2981,7 +2981,10 @@ sub get_thumbnail_info {
     ($thumb{width}, $thumb{height}) = fit_to_dimensions($thumb{width}, $thumb{height}, $xsize, $ysize);
 
     # Clean URL of trackers and other junk (breaks some thumbnails)
-    # $thumb{url} =~ s/\.(?:jpg|png|webp)\K\?.*//;
+    $thumb{url} =~ s/\.(?:jpg|png|webp)\K\?.*//;
+
+    # Replace `mqdefault_custom_X.jpg` with `mqdefault.jpg`
+    $thumb{url} =~ s{default\K_custom_\d+(\.\w+)\z}{$1};
 
     # Prefer JPEG format over WebP if the later is not supported.
     if (not $webp_supported) {
