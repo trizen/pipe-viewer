@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  pipe-viewer
 #  Fork: 30 October 2020
-#  Edit: 04 March 2024
+#  Edit: 11 August 2024
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -298,6 +298,7 @@ my %CONFIG = (
     watch_history_file => $watched_file,
 
     # Subscribed channels
+    subscription_results     => 'uploads',                   # valid values: uploads, streams, shorts (comma-separated)
     subscriptions_limit      => 10_000,
     subscriptions_lifetime   => 600,
     saved_channels_file      => $saved_channels_file,
@@ -1611,6 +1612,7 @@ sub parse_arguments {
         'lp|local-playlists:s'                  => \$opt{local_playlist},
         'wv|watched-videos'                     => \$opt{watched_videos},
         'ls|local-subs|sub-videos|SV'           => \$opt{local_subscriptions},
+        'subscription-results=s'                => \$opt{subscription_results},
 
         #'save-video|save=s' => \$opt{save_video},
         'save|save-channel=s' => \$opt{save_channel},
@@ -3060,6 +3062,33 @@ sub print_subscription_videos {
     print_videos_from_data_file($subscription_videos_data_file);
 }
 
+sub fetch_channel_latest_videos {
+    my ($channel_id) = @_;
+
+    my @results;
+    foreach my $method (grep { /^\w+\z/ } map { split(/,/, $_) } split(' ', $opt{subscription_results})) {
+
+        my $uploads = $yv_obj->$method($channel_id) // next;
+        my $videos  = $uploads->{results}           // [];
+
+        if (ref($videos) eq 'HASH' and exists $videos->{videos}) {
+            $videos = $videos->{videos};
+        }
+
+        if (ref($videos) eq 'HASH' and exists $videos->{entries}) {
+            $videos = $videos->{entries};
+        }
+
+        if (ref($videos) ne 'ARRAY') {
+            next;
+        }
+
+        push @results, @$videos;
+    }
+
+    @results ? \@results : undef;
+}
+
 sub print_local_subscription_videos {
 
     state $t0 = time;
@@ -3118,24 +3147,10 @@ sub print_local_subscription_videos {
             my $pid = $pm->start($id)  // next;
             next if ($pid != 0);
 
-            my $uploads = $yv_obj->uploads($id) // do {
+            my $videos = fetch_channel_latest_videos($id) // do {
                 $pm->finish(1, []);
                 next;
             };
-            my $videos = $uploads->{results} // [];
-
-            if (ref($videos) eq 'HASH' and exists $videos->{videos}) {
-                $videos = $videos->{videos};
-            }
-
-            if (ref($videos) eq 'HASH' and exists $videos->{entries}) {
-                $videos = $videos->{entries};
-            }
-
-            if (ref($videos) ne 'ARRAY') {
-                $pm->finish(1, []);
-                next;
-            }
 
             foreach my $video (@$videos) {
                 $video->{timestamp} = [@$time];
@@ -3152,22 +3167,8 @@ sub print_local_subscription_videos {
             local $| = 1;
             printf("[%d/%d] Retrieving info for $channels[$i][1]...\r", $i + 1, $#channels + 1);
 
-            my $id      = $channels[$i][0]      // next;
-            my $uploads = $yv_obj->uploads($id) // next;
-
-            my $videos = $uploads->{results} // [];
-
-            if (ref($videos) eq 'HASH' and exists $videos->{videos}) {
-                $videos = $videos->{videos};
-            }
-
-            if (ref($videos) eq 'HASH' and exists $videos->{entries}) {
-                $videos = $videos->{entries};
-            }
-
-            if (ref($videos) ne 'ARRAY') {
-                next;
-            }
+            my $id     = $channels[$i][0]                 // next;
+            my $videos = fetch_channel_latest_videos($id) // next;
 
             foreach my $video (@$videos) {
                 $video->{timestamp} = [@$time];
@@ -5156,6 +5157,14 @@ Absolute path to the file where to store saved channels (C<:save=i>).
 =head2 subscribed_channels_file
 
 Absolute path to the file where to store subscribed channels (C<:sub=i>).
+
+=head2 subscription_results
+
+Comma-separated list of methods used to retrieve videos from subscribed channels.
+
+    subscription_results => "uploads,streams",   # include streams in feed
+
+Valid values: uploads, streams, shorts.
 
 =head2 subscriptions_lifetime
 

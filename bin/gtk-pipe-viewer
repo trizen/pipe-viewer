@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  GTK Pipe Viewer
 #  Fork: 30 October 2020
-#  Edit: 04 March 2024
+#  Edit: 11 August 2024
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -295,6 +295,7 @@ my %CONFIG = (
     watch_history_file  => $watched_file,
 
     # Subscribed channels
+    subscription_results     => 'uploads',                   # valid values: uploads, streams, shorts (comma-separated)
     subscriptions_limit      => 10_000,
     subscriptions_lifetime   => 600,
     saved_channels_file      => $saved_channels_file,
@@ -2716,6 +2717,7 @@ sub videos_from_data_file {
 }
 
 sub refresh_subscription_video_results {
+    my ($method) = @_;
 
     my @channels = $yv_utils->read_channels_from_file($CONFIG{subscribed_channels_file});
 
@@ -2758,7 +2760,7 @@ sub refresh_subscription_video_results {
                 );
             }
         },
-        'fetch_subscriptions',
+        'fetch_' . $method,
         \@request_args,
         priority => REQUEST_PRIORITY_SEARCH,
     );
@@ -2853,7 +2855,12 @@ sub display_subscription_videos {
 
     $t0 = time + 1;
 
-    refresh_subscription_video_results() if $refresh;
+    if ($refresh) {
+        foreach my $method (grep { /^\w+\z/ } map { split(/,/, $_) } split(' ', $CONFIG{subscription_results})) {
+            say STDERR ":: Fetching: $method" if $DEBUG;
+            refresh_subscription_video_results($method);
+        }
+    }
 
     return;
 }
@@ -2973,11 +2980,14 @@ sub get_thumbnail_info {
 
     ($thumb{width}, $thumb{height}) = fit_to_dimensions($thumb{width}, $thumb{height}, $xsize, $ysize);
 
-    # Clean URL of trackers and other junk
-    $thumb{url} =~ s/\.(?:jpg|png|webp)\K\?.*//;
+    # Clean URL of trackers and other junk (breaks some thumbnails)
+    # $thumb{url} =~ s/\.(?:jpg|png|webp)\K\?.*//;
 
     # Prefer JPEG format over WebP if the later is not supported.
-    $thumb{url} =~ s/\.webp\z/.jpg/ && $thumb{url} =~ s{/vi_webp/}{/vi/} unless $webp_supported;
+    if (not $webp_supported) {
+        $thumb{url} =~ s/\.webp\z/.jpg/
+          and $thumb{url} =~ s{/vi_webp/}{/vi/};
+    }
 
     return \%thumb;
 }

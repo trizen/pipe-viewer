@@ -120,23 +120,27 @@ sub _handle_fetch_one_thumbnail {
     return;
 }
 
+# Create the `_handle_fetch_uploads`, `_handle_fetch_streams` and `_handle_fetch_shorts` methods.
 #<<<
-sub _handle_fetch_subscriptions {
-    my ($self, $request) = @_;
-    my $id           = $request->{id};
-    my $channels     = $request->{args};
-    my $keep_alive   = @$channels;
-    my @new_requests = map {
-        scalar {
-                id         => $id,
-                priority   => $request->{priority},
-                method     => 'uploads',
-                args       => [@$channels[$_]],
-                keep_alive => --$keep_alive,
-               }
-    } 0 .. $keep_alive - 1;
-    unshift @{$self->{_pending_requests}}, @new_requests;
-    return;
+foreach my $method ('uploads', 'streams', 'shorts') {
+    no strict 'refs';
+    *{__PACKAGE__ . '::' . '_handle_fetch_' . $method} = sub {
+        my ($self, $request) = @_;
+        my $id           = $request->{id};
+        my $channels     = $request->{args};
+        my $keep_alive   = @$channels;
+        my @new_requests = map {
+            scalar {
+                    id         => $id,
+                    priority   => $request->{priority},
+                    method     => $method,
+                    args       => [@$channels[$_]],
+                    keep_alive => --$keep_alive,
+                }
+        } 0 .. $keep_alive - 1;
+        unshift @{$self->{_pending_requests}}, @new_requests;
+        return;
+    };
 }
 #>>>
 
