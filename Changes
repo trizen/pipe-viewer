@@ -5,6 +5,15 @@
 
 [CHANGELOG]
 
+Version 0.5.2
+
+- GUI: added key bind for "play as audio" as CTRL+N.
+- GUI: extended the right-click menu in the Saved Channels window.
+- Added support for including streams in subscription videos.
+- Recognize several more itag values.
+- Fixed the parsing of shorts.
+- Fixed the downloading of videos that have multiple audio tracks, with yt-dlp.
+
 Version 0.5.1
 
 - gui: added "Backward" and "Forward" buttons for navigating the history.
