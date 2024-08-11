@@ -1725,6 +1725,7 @@ set_text(
     CTRL+R : show related videos for a selected video
     CTRL+M : show videos from the author of a selected video
     CTRL+K : show playlists from the author of a selected video
+    CTRL+N : play the selected entry as audio-only
     CTRL+S : add the author of a selected video to the user-list
     CTRL+Q : close the application
 
@@ -1755,6 +1756,7 @@ HELP_TEXT
     $accel->connect(ord('r'), ['control-mask'], ['visible'], \&show_related_videos);
     $accel->connect(ord('m'), ['control-mask'], ['visible'], \&show_videos_from_selected_author);
     $accel->connect(ord('k'), ['control-mask'], ['visible'], \&show_playlists_from_selected_author);
+    $accel->connect(ord('n'), ['control-mask'], ['visible'], sub { play_with_cli_pipe_viewer(audio_only => 1) });
 
     # 'DEL' key
     $accel->connect(0xffff, ['lock-mask'], ['visible'], \&remove_selected_row);
