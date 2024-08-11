@@ -185,7 +185,7 @@ sub related_to_videoID {
             $lengthSeconds = WWW::PipeViewer::InitialData::_time_to_seconds($1);
         }
 
-        my $published = 0;
+        my $published = undef;
 
         # FIXME: this code no longer works
         if (exists $info->{publishedTimeText} and $info->{publishedTimeText}{simpleText} =~ /(\d+)\s+(\w+)\s+ago/) {

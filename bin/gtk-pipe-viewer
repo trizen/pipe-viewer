@@ -3043,8 +3043,8 @@ sub add_video_entry {
                                     . join(
                                            "\n",
                                            map { sprintf("%s   %s", $_->[0], $_->[1]) } (
-                                                                                [$symbols{author}    => encode_entities($yv_utils->get_channel_title($video))],
-                                                                                [$symbols{published} => ($yv_utils->get_publication_date($video) // 'unknown')],
+                                                                                    [$symbols{author} => encode_entities($yv_utils->get_channel_title($video))],
+                                                                                    [$symbols{published} => ($yv_utils->get_publication_date($video) // 'N/A')],
                                            )
                                           )
                                     . "\n\n"
@@ -3807,7 +3807,7 @@ sub display_comments {
                 $comment_age = "$comment_age ago" if $comment_age !~ / ago\b/;
             }
             else {
-                $comment_age = $yv_utils->get_publication_date($comment) // 'unknown';
+                $comment_age = $yv_utils->get_publication_date($comment) // 'N/A';
             }
             my $mark = $insert_hotspot->($comment_age, qw(date));
             $mark->{code} = sub { open_external_url($comment_url) };
