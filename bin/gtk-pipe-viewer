@@ -1704,6 +1704,23 @@ sub get_users_list_popup_menu {
         $menu->append($item);
     }
 
+    # Separator
+    {
+        my $item = 'Gtk3::SeparatorMenuItem'->new;
+        $item->show;
+        $menu->append($item);
+    }
+
+    # Open the YouTube channel page
+    {
+        my $item = 'Gtk3::ImageMenuItem'->new("YouTube page");
+        $item->signal_connect(activate => sub { open_external_url(make_youtube_url('channel', $channel_id)) });
+        $item->set_property(tooltip_text => "Open the YouTube page of this channel");
+        $item->set_image('Gtk3::Image'->new_from_icon_name("web-browser-symbolic", q{menu}));
+        $item->show;
+        $menu->append($item);
+    }
+
     return $menu;
 }
 
