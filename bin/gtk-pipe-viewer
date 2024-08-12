@@ -1552,7 +1552,7 @@ sub get_treeview_popup_menu {
         # Play as audio
         {
             my $item = 'Gtk3::ImageMenuItem'->new("Play as audio");
-            $item->signal_connect(activate => sub { play_with_cli_pipe_viewer(audio_only => 1) });
+            $item->signal_connect(activate => sub { play_selected_with_cli(audio_only => 1) });
             $item->set_property(tooltip_text => "Play as audio in a new terminal");
             $item->set_image('Gtk3::Image'->new_from_icon_name("audio-headphones", q{menu}));
             $item->show;
@@ -1562,7 +1562,7 @@ sub get_treeview_popup_menu {
         # Play with CLI pipe-viewer
         {
             my $item = 'Gtk3::ImageMenuItem'->new("Play in terminal");
-            $item->signal_connect(activate => sub { play_with_cli_pipe_viewer() });
+            $item->signal_connect(activate => sub { play_selected_with_cli() });
             $item->set_property(tooltip_text => "Play with pipe-viewer in a new terminal");
             $item->set_image('Gtk3::Image'->new_from_icon_name("computer", q{menu}));
             $item->show;
@@ -1766,14 +1766,14 @@ HELP_TEXT
     # 'CTRL+...' keybinds
     $accel->connect(ord('e'), ['control-mask'], ['visible'], \&enqueue_video);
     $accel->connect(ord('q'), ['control-mask'], ['visible'], \&on_mainw_destroy);
-    $accel->connect(ord('y'), ['control-mask'], ['visible'], \&run_cli_pipe_viewer);
+    $accel->connect(ord('y'), ['control-mask'], ['visible'], \&run_cli);
     $accel->connect(ord('d'), ['control-mask'], ['visible'], \&show_details_window);
     ##$accel->connect(ord('c'), ['control-mask'], ['visible'], \&show_comments_window);
     $accel->connect(ord('s'), ['control-mask'], ['visible'], \&add_user_to_favorites);
     $accel->connect(ord('r'), ['control-mask'], ['visible'], \&show_related_videos);
     $accel->connect(ord('m'), ['control-mask'], ['visible'], \&show_videos_from_selected_author);
     $accel->connect(ord('k'), ['control-mask'], ['visible'], \&show_playlists_from_selected_author);
-    $accel->connect(ord('b'), ['control-mask'], ['visible'], sub { play_with_cli_pipe_viewer(audio_only => 1) });
+    $accel->connect(ord('b'), ['control-mask'], ['visible'], sub { play_selected_with_cli(audio_only => 1) });
 
     # 'DEL' key
     $accel->connect(0xffff, ['lock-mask'], ['visible'], \&remove_selected_row);
@@ -2623,7 +2623,7 @@ sub get_code {
 
     if ($type eq 'video') {
         if ($CONFIG{audio_only}) {
-            execute_cli_pipe_viewer("--id=$code")
+            execute_cli("--id=$code")
               && highlight_watched_video($liststore, $iter);
         }
         else {
@@ -3487,8 +3487,8 @@ sub list_local_playlist {
     display_results($results);
 }
 
-sub run_cli_pipe_viewer {
-    execute_cli_pipe_viewer('--interactive');
+sub run_cli {
+    execute_cli('--interactive');
 }
 
 sub get_options_as_arguments {
@@ -3574,12 +3574,12 @@ sub enqueue_video {
 
 sub play_enqueued_videos {
     if (@VIDEO_QUEUE) {
-        execute_cli_pipe_viewer('--video-ids=' . join(q{,}, splice @VIDEO_QUEUE));
+        execute_cli('--video-ids=' . join(q{,}, splice @VIDEO_QUEUE));
     }
     return 1;
 }
 
-sub play_with_cli_pipe_viewer {
+sub play_selected_with_cli {
     my %args = @_;
 
     my ($id, $iter) = get_selected_entry_code();
@@ -3589,13 +3589,13 @@ sub play_with_cli_pipe_viewer {
     my $options = $args{audio_only} ? '--no-video' : '';
 
     if ($type eq 'video') {
-        if (execute_cli_pipe_viewer("$options --video-id=$id")) {
+        if (execute_cli("$options --video-id=$id")) {
             my $info = parse_json_string($liststore->get($iter, 8));
             save_watched_video($info, $iter);
         }
     }
     elsif ($type eq 'playlist') {
-        execute_cli_pipe_viewer("$options --pp=$id");
+        execute_cli("$options --pp=$id");
     }
     else {
         warn "Can't play $type: $id\n";
@@ -3605,7 +3605,7 @@ sub play_with_cli_pipe_viewer {
     return 1;
 }
 
-sub execute_cli_pipe_viewer {
+sub execute_cli {
     my @arguments = @_;
 
     my $command = join(q{ },
@@ -3626,7 +3626,7 @@ sub execute_cli_pipe_viewer {
 sub download_video {
     my ($id, $iter) = get_selected_entry_code(type => 'video');
     $id // return;
-    execute_cli_pipe_viewer("--video-id=$id", '--download');
+    execute_cli("--video-id=$id", '--download');
     my $info = parse_json_string($liststore->get($iter, 8));
     save_watched_video($info, $iter);
     return 1;
