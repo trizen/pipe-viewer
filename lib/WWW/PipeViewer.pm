@@ -389,9 +389,7 @@ sub set_lwp_useragent {
                              0, {});
 
         my $rand_value = '17' . join('', map { int(rand(10)) } 1 .. 8);
-
-        $cookies->set_cookie(0, "SOCS", "CAISNQgCEitib3FfaWRlbnRpdHlmcm9udGVuZHVpc2VydmVyXzIwMjMxMDEwLjAyX3AxGgJ1cyABEgUIYKOy0wU=",
-                             "/", ".youtube.com", undef, 0, 1, $rand_value, 0, {});
+        $cookies->set_cookie(0, "SOCS", "CAI", "/", ".youtube.com", undef, 0, 1, $rand_value, 0, {});
 
         $agent->cookie_jar($cookies);
     }
