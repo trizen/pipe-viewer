@@ -355,6 +355,7 @@ my %CONFIG = (
     merge_into_mkv      => undef,                                                                    # auto-defined later
     merge_into_mkv_args => '-loglevel warning -c:s srt -c:v copy -c:a copy -disposition:s forced',
     merge_with_captions => 1,
+    set_mtime           => $constant{win32} ^ 1,
 
     video_filename_format => '*FTITLE* - *ID*.*FORMAT*',
 );
@@ -913,6 +914,7 @@ usage: $execname [options] ([url] | [keywords])
        --fat32safe!      : makes filenames FAT32 safe
        --mkv-merge!      : merge audio and video into an MKV container
        --merge-captions! : include closed-captions in the MKV container
+       --set-mtime!      : set the original file modification time
 
  * Convert
    --convert-cmd=s      : command for converting videos after download
@@ -1736,6 +1738,7 @@ sub parse_arguments {
 
         'merge-into-mkv|mkv-merge!'           => \$opt{merge_into_mkv},
         'merge-with-captions|merge-captions!' => \$opt{merge_with_captions},
+        'set-mtime|mtime!'                    => \$opt{set_mtime},
 
         'api-host|instance=s' => \$opt{api_host},
 
@@ -3853,7 +3856,7 @@ sub download_video {
         # Remove it afterwards
         if ($? == 0 and $opt{remove_played_file}) {
             unlink $video_filename
-              or warn colored("\n[!] Can't unlink file '$video_filename': $!", 'bold red') . "\n\n";
+              or warn colored("\n[!] Can't unlink file <<$video_filename>>: $!", 'bold red') . "\n\n";
         }
     }
 
@@ -3868,6 +3871,18 @@ sub download_video {
 
         require File::Copy;
         File::Copy::cp($from, $to);
+    }
+
+    # Set original modification timestamp
+    if ($opt{set_mtime} and defined($info->{publishedText}) and -f $video_filename) {
+
+        require Time::Piece;
+        my $published_time = eval { Time::Piece->strptime($info->{publishedText}, "%b %d, %Y") };
+
+        if (defined($published_time)) {
+            eval { utime(time, $published_time->epoch, $video_filename) }
+              || warn colored("\n[!] Failed to set modification time of <<$video_filename>>: $!", 'bold red') . "\n\n";
+        }
     }
 
     return 1;
@@ -5161,6 +5176,10 @@ List of SRT languages in the order of preference.
 =head2 saved_channels_file
 
 Absolute path to the file where to store saved channels (C<:save=i>).
+
+=head2 set_mtime
+
+When enabled, it will set the original modification date of a downloaded video, using the published date of the video.
 
 =head2 subscribed_channels_file
 
