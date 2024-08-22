@@ -5,6 +5,10 @@
 
 [CHANGELOG]
 
+Version 0.5.3
+
+- Fixed the "CONSENT" cookie (which no longer worked due to YouTube changes).
+
 Version 0.5.2
 
 - GUI: added key bind for "play as audio" as CTRL+N.
