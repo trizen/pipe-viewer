@@ -276,7 +276,7 @@ my %CONFIG = (
     ytdl_cmd => undef,    # auto-detect
 
     # yt-dlp comment options
-    ytdlp_comments     => 0,
+    ytdlp_comments     => 1,
     ytdlp_max_comments => 20,
     ytdlp_max_replies  => 3,
 
