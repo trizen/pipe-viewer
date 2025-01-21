@@ -685,7 +685,7 @@ sub pick_random_instance {
     my @candidates       = $self->select_good_invidious_instances();
     my @extra_candidates = $self->select_good_invidious_instances(lax => 1);
 
-    if (1 or $self->get_prefer_invidious) {
+    if ($self->get_prefer_invidious) {
         if (defined(my $instance = $self->_find_working_instance(\@candidates, \@extra_candidates))) {
             return $instance;
         }
@@ -937,7 +937,7 @@ sub _fallback_extract_urls {
         say STDERR ":: Using invidious to extract the streaming URLs...";
     }
 
-    push @formats, $self->_extract_from_invidious($videoID);
+    # push @formats, $self->_extract_from_invidious($videoID);
 
     if ($self->get_debug) {
         my $count = scalar(@formats);
