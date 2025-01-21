@@ -5,6 +5,13 @@
 
 [CHANGELOG]
 
+Version 0.5.4
+
+- CLI: added the config-options `download_in_subdir` and `download_in_subdir_format`.
+- CLI: added the --set-mtime option and the `set_mtime` config-option.
+- CLI: normalize the filename after applying the formatting.
+- GUI: fixed a looping issue when `prefer_invidious` is set to `1` and there is no working instance available.
+
 Version 0.5.3
 
 - Fixed the "CONSENT" cookie (which no longer worked due to YouTube changes).

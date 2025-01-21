@@ -19,9 +19,9 @@ memoize '_get_youtubei_content', SCALAR_CACHE => [HASH => \%youtubei_cache];
 #memoize('_get_video_info');
 memoize('_ytdl_is_available');
 
-memoize('_info_from_ytdl');
-memoize('_extract_from_ytdl');
-memoize('_extract_from_invidious');
+#memoize('_info_from_ytdl');
+#memoize('_extract_from_ytdl');
+#memoize('_extract_from_invidious');
 
 use parent qw(
   WWW::PipeViewer::InitialData
@@ -43,7 +43,7 @@ WWW::PipeViewer - A simple interface to YouTube.
 
 =cut
 
-our $VERSION = '0.5.3';
+our $VERSION = '0.5.4';
 
 =head1 SYNOPSIS
 
@@ -475,7 +475,7 @@ sub lwp_get {
 
     # Too many errors. Pick another invidious instance.
     if ($url !~ m{(?:\byoutube\.com/|\bi\.ytimg\.com/)}) {
-        #$self->pick_and_set_random_instance();
+        ## $self->pick_and_set_random_instance();   # see #209
     }
 
     _warn_reponse_error($response, $url);
