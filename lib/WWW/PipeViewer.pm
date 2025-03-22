@@ -9,11 +9,12 @@ use WWW::PipeViewer::ParseJSON;
 
 #<<<
 use Memoize::Expire;
-tie my %youtubei_cache => 'Memoize::Expire',
+tie my %_INTERNAL_CACHE => 'Memoize::Expire',
   LIFETIME             => 600,                 # in seconds
-  NUM_USES             => 2;
+  NUM_USES             => 3;
 
-memoize '_get_youtubei_content', SCALAR_CACHE => [HASH => \%youtubei_cache];
+memoize '_get_youtubei_content', SCALAR_CACHE => [HASH => \%_INTERNAL_CACHE];
+memoize '_info_from_ytdl',       SCALAR_CACHE => [HASH => \%_INTERNAL_CACHE];
 #>>>
 
 #memoize('_get_video_info');
@@ -126,7 +127,8 @@ my %valid_options = (
 #<<<
     # LWP user agent
     #user_agent => {valid => qr/^.{5}/, default => 'Mozilla/5.0 (iPad; CPU OS 7_1_1 like Mac OS X) AppleWebKit/537.51.2 (KHTML, like Gecko) Version/7.0 Mobile/11D201 Safari/9537.53'},
-    user_agent => {valid => qr/^.{5}/, default => 'Mozilla/5.0 (Android 11; Tablet; rv:83.0) Gecko/83.0 Firefox/83.0,gzip(gfe)'},
+    #user_agent => {valid => qr/^.{5}/, default => 'Mozilla/5.0 (Android 11; Tablet; rv:83.0) Gecko/83.0 Firefox/83.0,gzip(gfe)'},
+    user_agent => {valid => qr/^.{5}/, default => 'Mozilla/5.0 (Android 16 Beta 2; Mobile; rv:136.0) Gecko/136.0 Firefox/136.0,gzip(gfe)'},
 #>>>
 );
 
@@ -862,7 +864,7 @@ sub _ytdl_is_available {
 sub _info_from_ytdl {
     my ($self, $videoID) = @_;
 
-    $self->_ytdl_is_available() || return;
+    $self->_ytdl_is_available() || return undef;
 
     my @ytdl_cmd = ($self->get_ytdl_cmd(), '--all-formats', '--dump-single-json');
 
@@ -873,7 +875,7 @@ sub _info_from_ytdl {
     }
 
     my $json = $self->proxy_stdout(@ytdl_cmd, quotemeta("https://www.youtube.com/watch?v=" . $videoID));
-    my $ref  = parse_json_string($json // return);
+    my $ref  = parse_json_string($json // return undef);
 
     if ($self->get_debug >= 3) {
         require Data::Dump;
@@ -1126,7 +1128,7 @@ sub _get_youtubei_content {
 
     require Time::Piece;
 
-    my $android_useragent = 'com.google.android.youtube/18.11.34 (Linux; U; Android 11) gzip';
+    my $android_useragent = 'com.google.android.youtube/20.10.38 (Linux; U; Android 11) gzip';
 
     my %android = (
                    "videoId" => $videoID,
@@ -1135,7 +1137,7 @@ sub _get_youtubei_content {
                                               'hl'                => 'en',
                                               'gl'                => 'US',
                                               'clientName'        => 'ANDROID',
-                                              'clientVersion'     => '18.11.34',
+                                              'clientVersion'     => '20.10.38',
                                               'androidSdkVersion' => 30,
                                               'userAgent'         => $android_useragent,
                                               %args,
