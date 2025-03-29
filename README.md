@@ -85,6 +85,7 @@ To install `gtk-pipe-viewer` along with `pipe-viewer`, run:
 * [LWP::Protocol::https](https://metacpan.org/release/LWP-Protocol-https)
 * [Data::Dump](https://metacpan.org/release/Data-Dump)
 * [JSON](https://metacpan.org/release/JSON)
+* [yt-dlp](https://github.com/yt-dlp/yt-dlp) or [youtube-dl](https://github.com/ytdl-org/youtube-dl).
 
 #### For gtk-pipe-viewer:
 
@@ -103,7 +104,6 @@ To install `gtk-pipe-viewer` along with `pipe-viewer`, run:
 * Faster JSON deserialization: [JSON::XS](https://metacpan.org/release/JSON-XS)
 * Fixed-width formatting: [Unicode::LineBreak](https://metacpan.org/release/Unicode-LineBreak) or [Text::CharWidth](https://metacpan.org/release/Text-CharWidth)
 * For the `*_parallel` config-options: [Parallel::ForkManager](https://metacpan.org/release/Parallel-ForkManager)
-* [yt-dlp](https://github.com/yt-dlp/yt-dlp) or [youtube-dl](https://github.com/ytdl-org/youtube-dl).
 
 
 ### PACKAGING
