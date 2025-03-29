@@ -5,6 +5,11 @@
 
 [CHANGELOG]
 
+Version 0.5.5
+
+- Fixed the `400 Bad Request` issue (caused by YouTube changes).
+- Workaround for the `403 Forbidden` issue. (requires yt-dlp)
+
 Version 0.5.4
 
 - CLI: added the config-options `download_in_subdir` and `download_in_subdir_format`.

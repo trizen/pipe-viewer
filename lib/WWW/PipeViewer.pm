@@ -44,7 +44,7 @@ WWW::PipeViewer - A simple interface to YouTube.
 
 =cut
 
-our $VERSION = '0.5.4';
+our $VERSION = '0.5.5';
 
 =head1 SYNOPSIS
 
@@ -1387,7 +1387,8 @@ sub get_streaming_urls {
     }
 
     # Try again with youtube-dl / invidious
-    if (   !@streaming_urls
+    if (   1
+        or !@streaming_urls
         or (($json->{playabilityStatus}{status} // '') =~ /fail|error|unavailable|not available/i)
         or $self->get_force_fallback
         or (($json->{videoDetails}{videoId} // '') ne $videoID)) {
