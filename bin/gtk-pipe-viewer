@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  GTK Pipe Viewer
 #  Fork: 30 October 2020
-#  Edit: 29 March 2025
+#  Edit: 22 April 2025
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -50,7 +50,7 @@ sub devel_path {
 
 use if $DEVEL, lib => $DEVEL && catdir(devel_path(), 'lib');
 
-use WWW::PipeViewer v0.5.5;
+use WWW::PipeViewer v0.5.6;
 use WWW::PipeViewer::DiskCache;
 use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::RegularExpressions;

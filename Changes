@@ -5,6 +5,10 @@
 
 [CHANGELOG]
 
+Version 0.5.6
+
+- Bug-fix: when there are multiple audio tracks, select the default one.
+
 Version 0.5.5
 
 - Fixed the `400 Bad Request` issue (caused by YouTube changes).
