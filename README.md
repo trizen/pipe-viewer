@@ -26,6 +26,7 @@ This fork parses the YouTube website directly and relies on the invidious instan
 * Void Linux: `sudo xbps-install pipe-viewer`
 * Parabola GNU/Linux-libre: `pacman -S pipe-viewer`
 * Gentoo Linux (kske overlay): `eselect repository enable kske && emerge -av net-misc/pipe-viewer`
+* Slackware Linux (SBo): https://slackbuilds.org/repository/15.0/multimedia/pipe-viewer/
 * [Guix](https://guix.gnu.org):
 Pipe-Viewer can be deployed on any GNU/Linux distribution using Guix.
 To install in the user's default profile, do `guix install pipe-viewer`.
