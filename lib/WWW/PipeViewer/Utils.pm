@@ -259,6 +259,34 @@ sub date_to_age {
     return $age;
 }
 
+=head2 get_start_time_from_url($url)
+
+Returns the start timestamp in seconds for a given URL.
+
+=cut
+
+sub get_start_time_from_url {
+    my ($self, $url) = @_;
+
+    $url =~ /[?&]t=(?<t>[0-9a-z]+)/ || return undef;
+    my $t = $+{t};
+
+    if ($t =~ m{
+        (?:(?<hour>\d+)h)?
+        (?:(?<minute>\d+)m)?
+        (?<second>\d+)s
+    }x) {
+        my $hour = int($+{hour} // 0);
+        my $minute = int($+{minute} // 0);
+        my $second = int($+{second});
+        return $hour * 60 * 60 + $minute * 60 + $second;
+    } elsif ($t =~ m/\d+/) {
+        return int($t);
+    }
+
+    return undef;
+}
+
 =head2 get_entries($result)
 
 Returns the entries for a given result.
@@ -390,6 +418,7 @@ sub format_text {
 
         DURATION    => sub { $self->get_duration($info) },
         TIME        => sub { $self->get_time($info) },
+        START       => sub { $self->get_start_time($info) },
         TITLE       => sub { $self->get_title($info) },
         FTITLE      => sub { $self->normalize_filename($self->get_title($info), $fat32safe) },
         PUBLISHED   => sub { $self->get_publication_date($info) },
@@ -1013,6 +1042,11 @@ sub get_time {
     }
 
     $self->format_time($self->get_duration($info));
+}
+
+sub get_start_time {
+    my ($self, $info) = @_;
+    $info->{startTime};
 }
 
 sub get_views {
