@@ -1046,7 +1046,7 @@ sub get_time {
 
 sub get_start_time {
     my ($self, $info) = @_;
-    $info->{startTime};
+    $info->{startTime} // 0;
 }
 
 sub get_views {
