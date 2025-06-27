@@ -1081,7 +1081,8 @@ sub tricks {
   *ITEMS*        : the number of playlist items
   *ITEMS_SHORT*  : the number of playlist items in abbreviated notation
   *LIKES*        : the number of likes
-  *RATING*       : the rating of the video (as a percentage, extrapolated from likes & views)
+  *DISLIKES*     : the number of dislikes (from Return YouTube Dislike)
+  *RATING*       : the rating of the video (5-star scale from Return YouTube Dislike)
   *DURATION*     : the duration of the video in seconds
   *PUBLISHED*    : the publication date as "DD MMM YYYY"
   *AGE*          : the age of a video (N days, N months, N years)
@@ -4310,7 +4311,9 @@ sub print_video_info {
     $rep = 0 if $rep < 0;
 
     my $likes = $yv_utils->get_likes($video);
+    my $dislikes = $yv_utils->get_dislikes($video);
     my $views = $yv_utils->get_views($video);
+    my $rating = $yv_utils->get_rating($video);
 
     print(
           "\n$hr\n",
@@ -4324,6 +4327,7 @@ sub print_video_info {
                                       ['Category'  => $yv_utils->get_category_name($video)],
                                       ['Duration'  => $yv_utils->get_time($video)],
                                       ['Likes'     => $yv_utils->set_thousands($likes)],
+                                      ['Dislikes'  => $yv_utils->set_thousands($dislikes)],
                                       ['Rating'    => $yv_utils->get_rating($video)],
                                       ['Views'     => $yv_utils->set_thousands($views)],
                                       ['Published' => $yv_utils->get_publication_date($video)],
@@ -4331,6 +4335,9 @@ sub print_video_info {
           ),
           "$hr\n"
          );
+
+    # Add attribution for Return YouTube Dislike API
+    print("\n" . _bold_color("Note: ") . "Dislike data provided by Return YouTube Dislike (https://returnyoutubedislike.com/)\n");
 
     return 1;
 }

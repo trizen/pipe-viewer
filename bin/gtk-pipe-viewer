@@ -162,6 +162,7 @@ sub which_command {
 
 my %symbols = (
                thumbs_up => '👍',
+               dislikes  => '👎',
                type      => '💡',
                author    => '😃',
                author_id => '🤖',
@@ -4145,6 +4146,7 @@ sub set_entry_details {
                      published => $yv_utils->get_publication_date($info),
                      play      => $yv_utils->get_time($info),
                      thumbs_up => $yv_utils->get_likes($info),
+                     dislikes  => $yv_utils->get_dislikes($info),
                      views     => $yv_utils->get_views($info),
                      average   => $yv_utils->get_rating($info),
                     );
@@ -4199,6 +4201,14 @@ sub set_entry_details {
             $flowbox->add($label);
         }
     }
+
+    # Add attribution for Return YouTube Dislike API
+    my $attribution_label = Gtk3::Label->new();
+    $attribution_label->set_markup(reflow_text("<small><i>Dislike data provided by <a href=\"https://returnyoutubedislike.com/\">Return YouTube Dislike</a></i></small>"));
+    $attribution_label->set_selectable(1);
+    $attribution_label->set_xalign(0.0);
+    $attribution_label->show();
+    $details_flowbox2->add($attribution_label);
 
     # Setting the link button
     my $url        = make_youtube_url($type, $code);

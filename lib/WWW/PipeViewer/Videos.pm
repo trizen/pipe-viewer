@@ -216,6 +216,27 @@ sub video_details {
         }
     }
 
+    # Fetch dislikes and rating from returnyoutubedislikeapi.com
+    my ($dislike_count, $rating) = ("N/A", "N/A");
+    eval {
+        my $api_url = "https://returnyoutubedislikeapi.com/votes?videoId=$id";
+        my $json = $self->lwp_get($api_url);
+        if ($json) {
+            require JSON;
+            my $data = eval { JSON::decode_json($json) };
+            if (ref $data eq 'HASH') {
+                $dislike_count = $data->{dislikes} if defined $data->{dislikes};
+                $rating = $data->{rating} if defined $data->{rating};
+            }
+        }
+    };
+    $details{dislikeCount} = (defined $dislike_count ? $dislike_count : "N/A");
+    if (defined $rating && $rating =~ /^-?\d+(?:\.\d+)?$/) {
+        $details{rating} = sprintf('%.3f', $rating);
+    } else {
+        $details{rating} = (defined $rating ? $rating : "N/A");
+    }
+
     return \%details;
 }
 
