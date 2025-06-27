@@ -191,7 +191,7 @@ my %CONFIG = (
                     srt     => q{--sub-file=*SUB*},
                     audio   => q{--input-slave=*AUDIO*},
                     fs      => q{--fullscreen},
-                    arg     => q{--quiet --play-and-exit --no-video-title-show --input-title-format=*TITLE* *VIDEO*},
+                    arg     => q{--quiet --play-and-exit --no-video-title-show --input-title-format=*TITLE* --start-time=*START* *VIDEO*},
                     novideo => q{--intf=dummy --novideo},
                    }
            )
@@ -202,13 +202,13 @@ my %CONFIG = (
                 srt     => q{--sub-file=*SUB*},
                 audio   => q{--audio-file=*AUDIO*},
                 fs      => q{--fullscreen},
-                arg     => q{--really-quiet --force-media-title=*TITLE* --no-ytdl *VIDEO*},
+                arg     => q{--really-quiet --force-media-title=*TITLE* --start=*START* --no-ytdl *VIDEO*},
                 novideo => q{--no-video},
                },
 
         mpvraw => {
                    cmd     => q{mpv},
-                   arg     => q{--ytdl-raw-options-append="format-sort=ext,res:*RESOLUTION*" *URL*},
+                   arg     => q{--ytdl-raw-options-append="format-sort=ext,res:*RESOLUTION*" --start=*START* *URL*},
                    fs      => q{--fullscreen},
                    novideo => q{--no-video},
                    srt     => q{--sub-file=*SUB*},
@@ -2107,8 +2107,11 @@ sub rate_videos {
 
 sub get_and_play_video_ids {
     (my @ids = grep { defined($_) } map { get_valid_video_id($_) } @_) || return;
+    my @starts = map { $yv_utils->get_start_time_from_url($_) } @_;
 
-    foreach my $id (@ids) {
+    require List::Util;
+    foreach (List::Util::zip \@ids, \@starts) {
+        my ($id, $start) = @$_;
         my $info = $yv_obj->video_details($id);
 
         if (ref($info) eq 'HASH' and keys %$info) {
@@ -2120,6 +2123,7 @@ sub get_and_play_video_ids {
             $info->{videoId}       = $id;
             warn_cant_do('get info for', $id);
         }
+        $info->{startTime} = $start // 0;
 
         play_videos([$info]) || return;
     }
@@ -2207,7 +2211,7 @@ sub youtube_urls {
         get_and_print_videos_from_playlist($arg);
     }
     elsif ($arg =~ /$get_video_id_re/) {
-        get_and_play_video_ids($+{video_id});
+        get_and_play_video_ids($arg);
     }
     elsif ($arg =~ /$get_playlist_id_re/) {
         get_and_print_videos_from_playlist($+{playlist_id});
@@ -4283,6 +4287,7 @@ sub print_video_info {
     my $extra_info = $yv_obj->video_details($yv_utils->get_video_id($video) // return 1);
 
     foreach my $key (keys %$extra_info) {
+        next if $key eq "startTime";
         $video->{$key} = $extra_info->{$key};
     }
 

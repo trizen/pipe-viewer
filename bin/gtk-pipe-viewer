@@ -186,18 +186,18 @@ my %CONFIG = (
                               srt   => q{--sub-file=*SUB*},
                               audio => q{--input-slave=*AUDIO*},
                               fs    => q{--fullscreen},
-                              arg   => q{--quiet --play-and-exit --no-video-title-show --input-title-format=*TITLE* *VIDEO*},
+                              arg   => q{--quiet --play-and-exit --no-video-title-show --input-title-format=*TITLE* --start-time=*START* *VIDEO*},
                              },
                       mpv => {
                               cmd   => q{mpv},
                               srt   => q{--sub-file=*SUB*},
                               audio => q{--audio-file=*AUDIO*},
                               fs    => q{--fullscreen},
-                              arg   => q{--really-quiet --force-media-title=*TITLE* --no-ytdl --no-terminal *VIDEO*},
+                              arg   => q{--really-quiet --force-media-title=*TITLE* --start=*START* --no-ytdl --no-terminal *VIDEO*},
                              },
                       mpvraw => {
                                  cmd => q{mpv},
-                                 arg => q{--ytdl-raw-options-append="format-sort=ext,res:*RESOLUTION*" --no-terminal *URL*},
+                                 arg => q{--ytdl-raw-options-append="format-sort=ext,res:*RESOLUTION*" --no-terminal --start=*START* *URL*},
                                  fs  => q{--fullscreen},
                                  srt => q{--sub-file=*SUB*},
                                 },
@@ -2494,11 +2494,13 @@ sub check_keywords {
     my ($key) = @_;
 
     if ($key =~ /$get_video_id_re/o) {
+        my $start = $yv_utils->get_start_time_from_url($key);
         toggle_progress('pulse', 1);
         $worker->send_request(
             sub {
                 my ($info) = @_;
                 if (ref($info) eq 'HASH' and keys %$info) {
+                    $info->{startTime} = $start // 0;
                     play_video($info);
                 }
 

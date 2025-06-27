@@ -171,6 +171,7 @@ sub video_details {
     my %details = (
         title   => eval { $microformat->{title}{simpleText} } // $videoDetails->{title},
         videoId => $videoDetails->{videoId},
+        startTime => 0,
 
 #<<<
         videoThumbnails => [
