@@ -272,15 +272,17 @@ sub get_start_time_from_url {
     my $t = $+{t};
 
     if ($t =~ m{
+        ^
         (?:(?<hour>\d+)h)?
         (?:(?<minute>\d+)m)?
-        (?<second>\d+)s
+        (?:(?<second>\d+)s)?
+        $
     }x) {
         my $hour = int($+{hour} // 0);
         my $minute = int($+{minute} // 0);
-        my $second = int($+{second});
+        my $second = int($+{second} // 0);
         return $hour * 60 * 60 + $minute * 60 + $second;
-    } elsif ($t =~ m/\d+/) {
+    } elsif ($t =~ /^\d+$/) {
         return int($t);
     }
 
