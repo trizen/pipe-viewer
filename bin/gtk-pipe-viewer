@@ -296,6 +296,9 @@ my %CONFIG = (
     bypass_age_gate_with_proxy => 0,
     ignored_projections        => [],
 
+    # Dislike API options
+    dislikes_api => 0,                      # enable Return YouTube Dislike API
+
     # Watch history
     watch_history       => 1,
     watch_history_color => 'blue',
@@ -1087,6 +1090,7 @@ sub apply_configuration {
                              prefer_invidious prefer_mp4 region timeout user_agent ytdl ytdl_cmd
                              ytdlp_comments ytdlp_max_comments ytdlp_max_replies
                              bypass_age_gate_native bypass_age_gate_with_proxy
+                             dislikes_api
                              )
       ) {
         $config{$option_name} = $CONFIG{$option_name};
@@ -4145,11 +4149,17 @@ sub set_entry_details {
         @details2 = (
                      published => $yv_utils->get_publication_date($info),
                      play      => $yv_utils->get_time($info),
-                     thumbs_up => $yv_utils->get_likes($info),
-                     dislikes  => $yv_utils->get_dislikes($info),
                      views     => $yv_utils->get_views($info),
-                     average   => $yv_utils->get_rating($info),
+                     thumbs_up => $yv_utils->get_likes($info),
                     );
+        
+        # Only show dislikes and rating if the dislike API is enabled
+        if ($CONFIG{dislikes_api}) {
+            push @details2, (
+                dislikes  => $yv_utils->get_dislikes($info),
+                average   => $yv_utils->get_rating($info),
+            );
+        }
     }
     elsif ($type eq 'playlist') {
         @details1 = (
@@ -4202,13 +4212,15 @@ sub set_entry_details {
         }
     }
 
-    # Add attribution for Return YouTube Dislike API
-    my $attribution_label = Gtk3::Label->new();
-    $attribution_label->set_markup(reflow_text("<small><i>Dislike data provided by <a href=\"https://returnyoutubedislike.com/\">Return YouTube Dislike</a></i></small>"));
-    $attribution_label->set_selectable(1);
-    $attribution_label->set_xalign(0.0);
-    $attribution_label->show();
-    $details_flowbox2->add($attribution_label);
+    # Add attribution for Return YouTube Dislike API (only when enabled)
+    if ($CONFIG{dislikes_api}) {
+        my $attribution_label = Gtk3::Label->new();
+        $attribution_label->set_markup(reflow_text("<small><i>Dislike data provided by <a href=\"https://returnyoutubedislike.com/\">Return YouTube Dislike</a></i></small>"));
+        $attribution_label->set_selectable(1);
+        $attribution_label->set_xalign(0.0);
+        $attribution_label->show();
+        $details_flowbox2->add($attribution_label);
+    }
 
     # Setting the link button
     my $url        = make_youtube_url($type, $code);

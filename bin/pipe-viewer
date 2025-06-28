@@ -361,6 +361,9 @@ my %CONFIG = (
     set_mtime           => $constant{win32} ^ 1,
 
     video_filename_format => '*TITLE* - *ID*.*FORMAT*',
+
+    # Dislike API options
+    dislikes_api => 0,                      # enable Return YouTube Dislike API
 );
 
 local $SIG{__WARN__} = sub { warn @_; ++$opt{_error} };
@@ -979,6 +982,7 @@ usage: $execname [options] ([url] | [keywords])
    --invidious!         : prefer invidious instances over parsing YouTube
    --api=s              : set an API host from https://api.invidious.io/
    --api=auto           : use a random instance of invidious
+   --dislikes-api!      : Enable dislikes from https://returnyoutubedislike.com
    --cookies=s          : file to read cookies from and dump cookie
    --user-agent=s       : specify a custom user agent
    --proxy=s            : set HTTP(S)/SOCKS proxy: 'proto://domain.tld:port/'
@@ -1261,6 +1265,7 @@ sub apply_configuration {
                              ytdlp_comments ytdlp_max_comments
                              ytdlp_max_replies
                              bypass_age_gate_native bypass_age_gate_with_proxy
+                             dislikes_api
                              )
       ) {
 
@@ -1782,6 +1787,8 @@ sub parse_arguments {
         'skip-if-exists|skip_if_exists!' => \$opt{skip_if_exists},
         'downloads-dir|download-dir=s'   => \$opt{downloads_dir},
         'fat32safe!'                     => \$opt{fat32safe},
+
+        'dislikes-api!' => \$opt{dislikes_api},
       )
       or warn "[!] Error in command-line arguments!\n";
 
@@ -4327,8 +4334,8 @@ sub print_video_info {
                                       ['Category'  => $yv_utils->get_category_name($video)],
                                       ['Duration'  => $yv_utils->get_time($video)],
                                       ['Likes'     => $yv_utils->set_thousands($likes)],
-                                      ['Dislikes'  => $yv_utils->set_thousands($dislikes)],
-                                      ['Rating'    => $yv_utils->get_rating($video)],
+                                      $opt{dislikes_api} ? (['Dislikes'  => $yv_utils->set_thousands($dislikes)]) : (),
+                                      $opt{dislikes_api} ? (['Rating'    => $yv_utils->get_rating($video)]) : (),
                                       ['Views'     => $yv_utils->set_thousands($views)],
                                       ['Published' => $yv_utils->get_publication_date($video)],
                                      )
@@ -4336,8 +4343,10 @@ sub print_video_info {
           "$hr\n"
          );
 
-    # Add attribution for Return YouTube Dislike API
-    print("\n" . _bold_color("Note: ") . "Dislike data provided by Return YouTube Dislike (https://returnyoutubedislike.com/)\n");
+    # Add attribution for Return YouTube Dislike API (only when enabled)
+    if ($opt{dislikes_api}) {
+        print("\n" . _bold_color("Note: ") . "Dislike data provided by Return YouTube Dislike (https://returnyoutubedislike.com/)\n");
+    }
 
     return 1;
 }
@@ -4861,6 +4870,12 @@ List of public invidious instances:
     https://api.invidious.io/
 
 Tor instances are also supported if the C<socks5://127.0.0.1:9050> Tor proxy is available and the Perl module L<LWP::Protocol::socks> is installed.
+
+=head2 dislikes_api
+
+Enable the Return YouTube Dislike API to fetch dislike counts and ratings.
+
+When set to C<1>, dislike counts and 5-star ratings will be fetched from https://returnyoutubedislike.com.
 
 =head2 auto_captions
 

@@ -113,6 +113,7 @@ my %valid_options = (
     force_fallback             => {valid => [1, 0], default => 0},
     bypass_age_gate_native     => {valid => [1, 0], default => 0},
     bypass_age_gate_with_proxy => {valid => [1, 0], default => 0},
+    dislikes_api               => {valid => [1, 0], default => 0},
 
     api_host => {valid => qr/\w/, default => "auto"},
 
