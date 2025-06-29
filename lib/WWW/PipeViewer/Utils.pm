@@ -417,6 +417,7 @@ sub format_text {
         ITEMS_SHORT => sub { $self->short_human_number($self->get_playlist_item_count($info)) },
 
         LIKES => sub { $self->get_likes($info) },
+        DISLIKES => sub { $self->get_dislikes($info) },
 
         DURATION    => sub { $self->get_duration($info) },
         TIME        => sub { $self->get_time($info) },
@@ -887,16 +888,7 @@ sub get_comment_content {
 
 sub get_rating {
     my ($self, $info) = @_;
-
-    my $likes = $self->get_likes($info);
-    my $views = $self->get_views($info);
-    my $rating;
-
-    if ($likes and $views and $views >= 1 and $views >= $likes) {
-        $rating = sprintf("%.2g%%", log($likes + 1) / log($views + 1) * 100);
-    }
-
-    return $rating;
+    $info->{rating};
 }
 
 sub get_channel_id {
@@ -1101,6 +1093,11 @@ sub get_views_approx {
 sub get_likes {
     my ($self, $info) = @_;
     $info->{likeCount};
+}
+
+sub get_dislikes {
+    my ($self, $info) = @_;
+    $info->{dislikeCount};
 }
 
 {
