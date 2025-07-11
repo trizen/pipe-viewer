@@ -161,12 +161,12 @@ sub which_command {
 }
 
 my %symbols = (
-               thumbs_up => '👍',
+               likes => '👍',
                dislikes  => '👎',
                type      => '💡',
                author    => '😃',
                author_id => '🤖',
-               average   => '📊',
+               rating    => '⭐',
                category  => '🗃️',
                play      => '▶️',
                views     => '👀',
@@ -284,7 +284,6 @@ my %CONFIG = (
     tooltips        => 1,
     tooltip_max_len => 512,    # max length of description in tooltips
 
-    thousand_separator => q{,},
     downloads_dir      => curdir(),
     web_browser        => undef,        # defaults to $ENV{WEBBROWSER} or xdg-open
     terminal           => undef,        # autodetect it later
@@ -989,7 +988,6 @@ my $yv_utils = WWW::PipeViewer::Utils->new(
                                            youtube_video_url_format    => $CONFIG{youtube_video_url},
                                            youtube_channel_url_format  => $CONFIG{youtube_channel_url},
                                            youtube_playlist_url_format => $CONFIG{youtube_playlist_url},
-                                           thousand_separator          => $CONFIG{thousand_separator},
                                           );
 
 # Spin button start with page
@@ -4152,14 +4150,14 @@ sub set_entry_details {
                      published => $yv_utils->get_publication_date($info),
                      play      => $yv_utils->get_time($info),
                      views     => $yv_utils->get_views($info),
-                     thumbs_up => $yv_utils->get_likes($info),
+                     likes => $yv_utils->get_likes($info),
                     );
         
         # Only show dislikes and rating if the dislike API is enabled
         if ($CONFIG{dislikes_api}) {
             push @details2, (
                 dislikes  => $yv_utils->get_dislikes($info),
-                average   => $yv_utils->get_rating($info),
+                rating    => $yv_utils->get_rating($info),
             );
         }
     }
@@ -4185,7 +4183,7 @@ sub set_entry_details {
     my %humanize_number_fields = (
                                   likes     => 1,
                                   subs      => 1,
-                                  thumbs_up => 1,
+                                  likes => 1,
                                   views     => 1,
                                  );
 

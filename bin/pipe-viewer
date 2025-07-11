@@ -279,7 +279,6 @@ my %CONFIG = (
     get_term_width     => $constant{win32} ^ 1,
     download_with_wget => undef,                  # auto-defined
     download_with_ytdl => undef,                  # auto-defined
-    thousand_separator => q{,},
     downloads_dir      => curdir(),
     download_and_play  => 0,
     remove_played_file => 0,
@@ -782,7 +781,6 @@ my $yv_utils = WWW::PipeViewer::Utils->new(
                                            youtube_video_url_format    => $opt{youtube_video_url},
                                            youtube_channel_url_format  => $opt{youtube_channel_url},
                                            youtube_playlist_url_format => $opt{youtube_playlist_url},
-                                           thousand_separator          => $opt{thousand_separator},
                                           );
 
 {    # Apply the configuration file
@@ -1779,7 +1777,6 @@ sub parse_arguments {
         'dp|downl-play|download-and-play|dl-play!' => \$opt{download_and_play},
         'download-in-subdir|dl-in-subdir!'         => \$opt{download_in_subdir},
 
-        'thousand-separator=s'           => \$opt{thousand_separator},
         'get-captions|get_captions!'     => \$opt{get_captions},
         'auto-captions|auto_captions!'   => \$opt{auto_captions},
         'srt-languages=s'                => \$opt{srt_languages},
@@ -5266,10 +5263,6 @@ Amount of time, in seconds, before rescanning the subscribed channels for new vi
 =head2 subscriptions_limit
 
 Maximum number of subscription videos to store in the local database. Set to C<0> for no limit.
-
-=head2 thousand_separator
-
-Thousands separator character for numbers >= 1000.
 
 =head2 timeout
 
