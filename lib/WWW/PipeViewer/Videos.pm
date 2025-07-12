@@ -3,6 +3,7 @@ package WWW::PipeViewer::Videos;
 use utf8;
 use 5.014;
 use warnings;
+use POSIX qw(localeconv);
 
 use WWW::PipeViewer::ParseJSON;
 
@@ -238,7 +239,12 @@ sub video_details {
     }
     $details{dislikeCount} = (defined $dislike_count ? $dislike_count : "N/A");
     if (defined $rating && $rating =~ /^-?\d+(?:\.\d+)?$/) {
-        $details{rating} = sprintf('%.3f', $rating);
+        my $formatted = sprintf('%.3f', $rating);
+        my $decimal_point = localeconv()->{decimal_point} // '.';
+        if ($decimal_point ne '.') {
+            $formatted =~ s/\./$decimal_point/;
+        }
+        $details{rating} = $formatted;
     } else {
         $details{rating} = (defined $rating ? $rating : "N/A");
     }

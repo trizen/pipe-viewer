@@ -5,6 +5,7 @@ use 5.014;
 use warnings;
 
 use List::Util qw(first);
+use POSIX qw(locale_h);
 
 =head1 NAME
 
@@ -54,7 +55,6 @@ sub new {
     my ($class, %opts) = @_;
 
     my $self = bless {
-                      thousand_separator          => q{,},
                       youtube_video_url_format    => 'https://www.youtube.com/watch?v=%s',
                       youtube_channel_url_format  => 'https://www.youtube.com/channel/%s',
                       youtube_playlist_url_format => 'https://www.youtube.com/playlist?list=%s',
@@ -504,27 +504,30 @@ Return the number with thousand separators.
 
 =cut
 
-sub set_thousands {    # ugly, but fast
+sub set_thousands {
     my ($self, $n) = @_;
 
-    return 0 unless $n;
+    # Return 0 for undefined or empty input
+    return 0 unless defined $n && $n ne '';
+    
+    # Return as-is if already formatted or not a plain number
+    return $n if $n =~ /[KMB,.]/;  # Skip if already has formatting
+    return $n unless $n =~ /^\d+$/;  # Only format plain integers
 
-    if ($n =~ /[KMB]/) {    # human-readable number
-        return $n;
-    }
-
-    length($n) > 3 or return $n;
-
-    my $l = length($n) - 3;
-    my $i = ($l - 1) % 3 + 1;
-    my $x = substr($n, 0, $i) . $self->{thousand_separator};
-
-    while ($i < $l) {
-        $x .= substr($n, $i, 3) . $self->{thousand_separator};
-        $i += 3;
-    }
-
-    return $x . substr($n, $i);
+    # Get locale information
+    my $thousands_sep = ',';  # Default fallback
+    my $locale = POSIX::localeconv();
+    $thousands_sep = $locale->{thousands_sep} if defined $locale->{thousands_sep} && $locale->{thousands_sep} ne '';
+    
+    # Format the number with the thousands separator
+    my $formatted = reverse $n;
+    $formatted =~ s/(\d{3})(?=\d)(?!\d*\.)/$1$thousands_sep/g;
+    $formatted = reverse $formatted;
+    
+    # Remove any leading separator that might have been added
+    $formatted =~ s/^$thousands_sep//;
+    
+    return $formatted;
 }
 
 =head2 get_video_id($info)
