@@ -196,12 +196,6 @@ my %CONFIG = (
                               fs    => q{--fullscreen},
                               arg   => q{--really-quiet --force-media-title=*TITLE* --start=*START* --no-ytdl --no-terminal *VIDEO*},
                              },
-                      mpvraw => {
-                                 cmd => q{mpv},
-                                 arg => q{--ytdl-raw-options-append="format-sort=ext,res:*RESOLUTION*" --no-terminal --start=*START* *URL*},
-                                 fs  => q{--fullscreen},
-                                 srt => q{--sub-file=*SUB*},
-                                },
                      },
     video_player_selected => undef,    # autodetect it later
 
@@ -296,7 +290,7 @@ my %CONFIG = (
     ignored_projections        => [],
 
     # Dislike API options
-    dislikes_api => 0,                      # enable Return YouTube Dislike API
+    dislikes_api => 0,
 
     # Watch history
     watch_history       => 1,
@@ -325,6 +319,8 @@ my %CONFIG = (
     # Save titles
     save_titles_to_history  => 0,
     save_watched_to_history => 0,
+
+    skip_youtube_extraction => 0,
 );
 
 {
@@ -3411,6 +3407,17 @@ sub play_video {
     my ($info, $iter) = @_;
 
     my $video_id = $yv_utils->get_video_id($info);
+    if ($CONFIG{skip_youtube_extraction}) {
+        toggle_progress('pulse', 1);
+        my $url = sprintf($CONFIG{youtube_video_url}, $video_id);
+        my $streaming = { streaming => { url => $url }, srt_file => undef, info => { videoId => $video_id } };
+        my $command = get_player_command($streaming, $info);
+        say "-> Command: $command" if $DEBUG;
+        $yv_obj->proxy_system($command . ' &');
+        Glib::Timeout->add(3000, sub { toggle_progress('pulse', 0); 0 });
+        save_watched_video($info, $iter);
+        return;
+    }
 
     my %options = (
         get_captions  => $CONFIG{get_captions},

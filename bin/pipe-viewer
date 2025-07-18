@@ -205,14 +205,6 @@ my %CONFIG = (
                 arg     => q{--really-quiet --force-media-title=*TITLE* --start=*START* --no-ytdl *VIDEO*},
                 novideo => q{--no-video},
                },
-
-        mpvraw => {
-                   cmd     => q{mpv},
-                   arg     => q{--ytdl-raw-options-append="format-sort=ext,res:*RESOLUTION*" --start=*START* *URL*},
-                   fs      => q{--fullscreen},
-                   novideo => q{--no-video},
-                   srt     => q{--sub-file=*SUB*},
-                  },
     },
 
     video_player_selected => (
@@ -361,8 +353,8 @@ my %CONFIG = (
 
     video_filename_format => '*TITLE* - *ID*.*FORMAT*',
 
-    # Dislike API options
-    dislikes_api => 0,                      # enable Return YouTube Dislike API
+    dislikes_api => 0,
+    skip_youtube_extraction => 0,
 );
 
 local $SIG{__WARN__} = sub { warn @_; ++$opt{_error} };
@@ -774,6 +766,7 @@ my $yv_obj = WWW::PipeViewer->new(
                                   http_proxy  => $opt{http_proxy},
                                   user_agent  => $opt{user_agent},
                                   timeout     => $opt{timeout},
+                                  skip_youtube_extraction => $opt{skip_youtube_extraction},
                                  );
 
 require WWW::PipeViewer::Utils;
@@ -980,6 +973,7 @@ usage: $execname [options] ([url] | [keywords])
    --invidious!         : prefer invidious instances over parsing YouTube
    --api=s              : set an API host from https://api.invidious.io/
    --api=auto           : use a random instance of invidious
+   --skip-youtube-extraction! : Skip video/audio URL extraction, pass YouTube URL directly to player
    --dislikes-api!      : Enable dislikes from https://returnyoutubedislike.com
    --cookies=s          : file to read cookies from and dump cookie
    --user-agent=s       : specify a custom user agent
@@ -1264,6 +1258,7 @@ sub apply_configuration {
                              ytdlp_max_replies
                              bypass_age_gate_native bypass_age_gate_with_proxy
                              dislikes_api
+                             skip_youtube_extraction
                              )
       ) {
 
@@ -1785,6 +1780,7 @@ sub parse_arguments {
         'downloads-dir|download-dir=s'   => \$opt{downloads_dir},
         'fat32safe!'                     => \$opt{fat32safe},
 
+        "skip-youtube-extraction!" => \$opt{skip_youtube_extraction},
         'dislikes-api!' => \$opt{dislikes_api},
       )
       or warn "[!] Error in command-line arguments!\n";
@@ -4046,6 +4042,18 @@ sub play_videos {
     foreach my $video (@{$videos}) {
 
         my $video_id = $yv_utils->get_video_id($video);
+        if ($yv_obj->get_skip_youtube_extraction) {
+            my $url = sprintf($opt{youtube_video_url}, $video_id);
+            my $command = get_player_command({ streaming => { url => $url }, srt_file => undef, info => { videoId => $video_id } }, $video);
+            print_video_info($video);
+            if ($yv_obj->get_debug) {
+                say "-> Command: $command";
+            }
+            $yv_obj->proxy_system($command);
+            save_watched_video($video_id, $video);
+            press_enter_to_continue() if $opt{confirm};
+            next;
+        }
 
         if ($opt{autoplay_mode}) {
             local $opt{autoplay_mode} = 0;
@@ -4873,12 +4881,6 @@ List of public invidious instances:
 
 Tor instances are also supported if the C<socks5://127.0.0.1:9050> Tor proxy is available and the Perl module L<LWP::Protocol::socks> is installed.
 
-=head2 dislikes_api
-
-Enable the Return YouTube Dislike API to fetch dislike counts and ratings.
-
-When set to C<1>, dislike counts and 5-star ratings will be fetched from https://returnyoutubedislike.com.
-
 =head2 auto_captions
 
 When set to C<1>, auto-generated captions will be retrieved. By default, auto-generated captions are ignored.
@@ -4997,6 +4999,10 @@ Valid values: "anytime", "hour", "today", "week", "month", "year".
 Enable debug/verbose mode, which will print some extra information.
 
 Valid values: 0, 1, 2, 3.
+
+=head2 dislikes_api
+
+Enable the Return YouTube Dislike API to fetch dislike counts and 5-star ratings. These will be fetched from https://returnyoutubedislike.com.
 
 =head2 downloads_dir
 
@@ -5225,6 +5231,10 @@ When downloading, skip if the file already exists locally.
 =head2 skip_watched
 
 Skip already watched/downloaded videos.
+
+=head2 skip_youtube_extraction
+
+If enabled, the application will not extract direct video/audio URLs from YouTube. Instead, it will pass the original YouTube page URL to the media player (e.g., mpv, VLC), letting the player handle extraction. This can be usefull for avoiding slow double extraction.
 
 =head2 split_videos
 
