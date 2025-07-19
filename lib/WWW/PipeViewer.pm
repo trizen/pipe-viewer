@@ -131,6 +131,7 @@ my %valid_options = (
     #user_agent => {valid => qr/^.{5}/, default => 'Mozilla/5.0 (Android 11; Tablet; rv:83.0) Gecko/83.0 Firefox/83.0,gzip(gfe)'},
     user_agent => {valid => qr/^.{5}/, default => 'Mozilla/5.0 (Android 16 Beta 2; Mobile; rv:136.0) Gecko/136.0 Firefox/136.0,gzip(gfe)'},
 #>>>
+    skip_youtube_extraction => {valid => [1, 0], default => 0},
 );
 
 sub _our_smartmatch {
