@@ -525,7 +525,7 @@ sub set_thousands {
     $formatted = reverse $formatted;
     
     # Remove any leading separator that might have been added
-    $formatted =~ s/^$thousands_sep//;
+    $formatted =~ s/^\Q$thousands_sep\E//;
     
     return $formatted;
 }
