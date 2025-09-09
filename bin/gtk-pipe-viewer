@@ -4190,9 +4190,12 @@ sub set_entry_details {
     my %humanize_number_fields = (
                                   likes     => 1,
                                   subs      => 1,
-                                  likes => 1,
                                   views     => 1,
                                  );
+
+    if ($CONFIG{dislikes_api}) {
+        $humanize_number_fields{dislikes} = 1;
+    }
 
     for my $pair (pairs($details_flowbox1, \@details1, $details_flowbox2, \@details2)) {
         my ($flowbox, $fields) = @$pair;
