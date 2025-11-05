@@ -268,7 +268,7 @@ Returns the start timestamp in seconds for a given URL.
 sub get_start_time_from_url {
     my ($self, $url) = @_;
 
-    $url =~ /[?&]t=(?<t>[0-9a-z]+)/ || return undef;
+    $url =~ /[?&]t=(?<t>[0-9a-z:]+)/ || return undef;
     my $t = $+{t};
 
     if ($t =~ m{
@@ -282,8 +282,19 @@ sub get_start_time_from_url {
         my $minute = int($+{minute} // 0);
         my $second = int($+{second} // 0);
         return $hour * 60 * 60 + $minute * 60 + $second;
-    } elsif ($t =~ /^\d+$/) {
-        return int($t);
+    } elsif ($t =~ m{
+        ^
+        (?:
+            (?:(?<hour>\d+):)?
+            (?<minute>\d+):
+        )?
+        (?<second>\d+)
+        $
+    }x) {
+        my $hour = int($+{hour} // 0);
+        my $minute = int($+{minute} // 0);
+        my $second = int($+{second});
+        return $hour * 60 * 60 + $minute * 60 + $second;
     }
 
     return undef;
