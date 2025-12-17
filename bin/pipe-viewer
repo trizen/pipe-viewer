@@ -353,7 +353,7 @@ my %CONFIG = (
 
     video_filename_format => '*TITLE* - *ID*.*FORMAT*',
 
-    dislikes_api => 0,
+    dislikes_api            => 0,
     skip_youtube_extraction => 0,
 );
 
@@ -756,16 +756,16 @@ if ($opt{history}) {
 }
 
 my $yv_obj = WWW::PipeViewer->new(
-                                  escape_utf8 => 1,
-                                  config_dir  => $config_dir,
-                                  ytdl        => $opt{ytdl},
-                                  ytdl_cmd    => $opt{ytdl_cmd},
-                                  cache_dir   => $opt{cache_dir},
-                                  env_proxy   => $opt{env_proxy},
-                                  cookie_file => $opt{cookie_file},
-                                  http_proxy  => $opt{http_proxy},
-                                  user_agent  => $opt{user_agent},
-                                  timeout     => $opt{timeout},
+                                  escape_utf8             => 1,
+                                  config_dir              => $config_dir,
+                                  ytdl                    => $opt{ytdl},
+                                  ytdl_cmd                => $opt{ytdl_cmd},
+                                  cache_dir               => $opt{cache_dir},
+                                  env_proxy               => $opt{env_proxy},
+                                  cookie_file             => $opt{cookie_file},
+                                  http_proxy              => $opt{http_proxy},
+                                  user_agent              => $opt{user_agent},
+                                  timeout                 => $opt{timeout},
                                   skip_youtube_extraction => $opt{skip_youtube_extraction},
                                  );
 
@@ -1781,7 +1781,7 @@ sub parse_arguments {
         'fat32safe!'                     => \$opt{fat32safe},
 
         "skip-youtube-extraction!" => \$opt{skip_youtube_extraction},
-        'dislikes-api!' => \$opt{dislikes_api},
+        'dislikes-api!'            => \$opt{dislikes_api},
       )
       or warn "[!] Error in command-line arguments!\n";
 
@@ -2110,9 +2110,8 @@ sub get_and_play_video_ids {
     (my @ids = grep { defined($_) } map { get_valid_video_id($_) } @_) || return;
     my @starts = map { $yv_utils->get_start_time_from_url($_) } @_;
 
-    require List::Util;
-    foreach (List::Util::zip \@ids, \@starts) {
-        my ($id, $start) = @$_;
+    foreach my $i (0 .. $#ids) {
+        my ($id, $start) = ($ids[$i], $starts[$i]);
         my $info = $yv_obj->video_details($id);
 
         if (ref($info) eq 'HASH' and keys %$info) {
@@ -4043,8 +4042,8 @@ sub play_videos {
 
         my $video_id = $yv_utils->get_video_id($video);
         if ($yv_obj->get_skip_youtube_extraction) {
-            my $url = sprintf($opt{youtube_video_url}, $video_id);
-            my $command = get_player_command({ streaming => { url => $url }, srt_file => undef, info => { videoId => $video_id } }, $video);
+            my $url     = sprintf($opt{youtube_video_url}, $video_id);
+            my $command = get_player_command({streaming => {url => $url}, srt_file => undef, info => {videoId => $video_id}}, $video);
             print_video_info($video);
             if ($yv_obj->get_debug) {
                 say "-> Command: $command";
@@ -4327,10 +4326,10 @@ sub print_video_info {
 
     $rep = 0 if $rep < 0;
 
-    my $likes = $yv_utils->get_likes($video);
+    my $likes    = $yv_utils->get_likes($video);
     my $dislikes = $yv_utils->get_dislikes($video);
-    my $views = $yv_utils->get_views($video);
-    my $rating = $yv_utils->get_rating($video);
+    my $views    = $yv_utils->get_views($video);
+    my $rating   = $yv_utils->get_rating($video);
 
     print(
           "\n$hr\n",
@@ -4344,8 +4343,8 @@ sub print_video_info {
                                       ['Category'  => $yv_utils->get_category_name($video)],
                                       ['Duration'  => $yv_utils->get_time($video)],
                                       ['Likes'     => $yv_utils->set_thousands($likes)],
-                                      $opt{dislikes_api} ? (['Dislikes'  => $yv_utils->set_thousands($dislikes)]) : (),
-                                      $opt{dislikes_api} ? (['Rating'    => $yv_utils->get_rating($video)]) : (),
+                                      $opt{dislikes_api} ? (['Dislikes' => $yv_utils->set_thousands($dislikes)]) : (),
+                                      $opt{dislikes_api} ? (['Rating'   => $yv_utils->get_rating($video)])       : (),
                                       ['Views'     => $yv_utils->set_thousands($views)],
                                       ['Published' => $yv_utils->get_publication_date($video)],
                                      )
