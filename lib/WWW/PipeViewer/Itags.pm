@@ -396,7 +396,9 @@ sub find_streaming_url {
         }
 
         if (exists $entry->{itag} and exists $entry->{url}) {
-            $stream{$entry->{itag}} = $entry;
+            my $itag = $entry->{itag};
+            $itag =~ s{\-sr\z}{};    # support AI-upscaled super-resolution (sr)
+            $stream{$itag} //= $entry;
         }
     }
 
