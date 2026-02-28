@@ -252,6 +252,8 @@ my %CONFIG = (
     cookie_file        => undef,
     user_agent         => undef,
     timeout            => undef,
+    max_retries        => 3,
+    retry_delay        => 1,
     env_proxy          => 1,
     confirm            => 0,
     debug              => 0,
@@ -5276,6 +5278,16 @@ Maximum number of subscription videos to store in the local database. Set to C<0
 =head2 timeout
 
 HTTPS timeout value in seconds. The default value is 10 seconds.
+
+=head2 max_retries
+
+Maximum number of retry attempts for failed network requests (default: 3).
+Applies to both GET and POST requests, including thumbnails, API calls, and video data fetching.
+
+=head2 retry_delay
+
+Initial delay in seconds between retry attempts (default: 1).
+Uses exponential backoff: 1s → 2s → 4s → 8s (capped at 30s) with jitter.
 
 =head2 user_agent
 

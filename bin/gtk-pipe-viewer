@@ -161,7 +161,7 @@ sub which_command {
 }
 
 my %symbols = (
-               likes => '👍',
+               likes     => '👍',
                dislikes  => '👎',
                type      => '💡',
                author    => '😃',
@@ -256,6 +256,8 @@ my %CONFIG = (
     env_proxy   => 1,
     http_proxy  => undef,
     timeout     => undef,
+    max_retries => 3,
+    retry_delay => 1,
     user_agent  => undef,
     cookie_file => undef,
     prefer_fork => (($^O eq 'linux') ? 0 : 1),
@@ -278,12 +280,12 @@ my %CONFIG = (
     tooltips        => 1,
     tooltip_max_len => 512,    # max length of description in tooltips
 
-    downloads_dir      => curdir(),
-    web_browser        => undef,        # defaults to $ENV{WEBBROWSER} or xdg-open
-    terminal           => undef,        # autodetect it later
-    terminal_exec      => q{-e '%s'},
-    pipe_viewer        => undef,
-    pipe_viewer_args   => [],
+    downloads_dir    => curdir(),
+    web_browser      => undef,        # defaults to $ENV{WEBBROWSER} or xdg-open
+    terminal         => undef,        # autodetect it later
+    terminal_exec    => q{-e '%s'},
+    pipe_viewer      => undef,
+    pipe_viewer_args => [],
 
     bypass_age_gate_native     => 0,
     bypass_age_gate_with_proxy => 0,
@@ -3409,9 +3411,9 @@ sub play_video {
     my $video_id = $yv_utils->get_video_id($info);
     if ($CONFIG{skip_youtube_extraction}) {
         toggle_progress('pulse', 1);
-        my $url = sprintf($CONFIG{youtube_video_url}, $video_id);
-        my $streaming = { streaming => { url => $url }, srt_file => undef, info => { videoId => $video_id } };
-        my $command = get_player_command($streaming, $info);
+        my $url       = sprintf($CONFIG{youtube_video_url}, $video_id);
+        my $streaming = {streaming => {url => $url}, srt_file => undef, info => {videoId => $video_id}};
+        my $command   = get_player_command($streaming, $info);
         say "-> Command: $command" if $DEBUG;
         $yv_obj->proxy_system($command . ' &');
         Glib::Timeout->add(3000, sub { toggle_progress('pulse', 0); 0 });
@@ -4157,15 +4159,16 @@ sub set_entry_details {
                      published => $yv_utils->get_publication_date($info),
                      play      => $yv_utils->get_time($info),
                      views     => $yv_utils->get_views($info),
-                     likes => $yv_utils->get_likes($info),
+                     likes     => $yv_utils->get_likes($info),
                     );
-        
+
         # Only show dislikes and rating if the dislike API is enabled
         if ($CONFIG{dislikes_api}) {
-            push @details2, (
-                dislikes  => $yv_utils->get_dislikes($info),
-                rating    => $yv_utils->get_rating($info),
-            );
+            push @details2,
+              (
+                dislikes => $yv_utils->get_dislikes($info),
+                rating   => $yv_utils->get_rating($info),
+              );
         }
     }
     elsif ($type eq 'playlist') {
@@ -4188,9 +4191,9 @@ sub set_entry_details {
     }
 
     my %humanize_number_fields = (
-                                  likes     => 1,
-                                  subs      => 1,
-                                  views     => 1,
+                                  likes => 1,
+                                  subs  => 1,
+                                  views => 1,
                                  );
 
     if ($CONFIG{dislikes_api}) {
@@ -4225,7 +4228,8 @@ sub set_entry_details {
     # Add attribution for Return YouTube Dislike API (only when enabled)
     if ($CONFIG{dislikes_api}) {
         my $attribution_label = Gtk3::Label->new();
-        $attribution_label->set_markup(reflow_text("<small><i>Dislike data provided by <a href=\"https://returnyoutubedislike.com/\">Return YouTube Dislike</a></i></small>"));
+        $attribution_label->set_markup(
+                        reflow_text("<small><i>Dislike data provided by <a href=\"https://returnyoutubedislike.com/\">Return YouTube Dislike</a></i></small>"));
         $attribution_label->set_selectable(1);
         $attribution_label->set_xalign(0.0);
         $attribution_label->show();

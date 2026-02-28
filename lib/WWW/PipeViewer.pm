@@ -15,8 +15,8 @@ our $VERSION = '0.5.6';
 
 use Memoize::Expire;
 tie my %_INTERNAL_CACHE => 'Memoize::Expire',
-    LIFETIME => 600,
-    NUM_USES => 3;
+  LIFETIME              => 600,
+  NUM_USES              => 3;
 
 memoize '_get_youtubei_content', SCALAR_CACHE => [HASH => \%_INTERNAL_CACHE];
 memoize '_info_from_ytdl',       SCALAR_CACHE => [HASH => \%_INTERNAL_CACHE];
@@ -27,15 +27,15 @@ memoize '_ytdl_is_available';
 # ============================================================================
 
 use parent qw(
-    WWW::PipeViewer::InitialData
-    WWW::PipeViewer::Search
-    WWW::PipeViewer::Videos
-    WWW::PipeViewer::Channels
-    WWW::PipeViewer::Playlists
-    WWW::PipeViewer::ParseJSON
-    WWW::PipeViewer::PlaylistItems
-    WWW::PipeViewer::CommentThreads
-    WWW::PipeViewer::VideoCategories
+  WWW::PipeViewer::InitialData
+  WWW::PipeViewer::Search
+  WWW::PipeViewer::Videos
+  WWW::PipeViewer::Channels
+  WWW::PipeViewer::Playlists
+  WWW::PipeViewer::ParseJSON
+  WWW::PipeViewer::PlaylistItems
+  WWW::PipeViewer::CommentThreads
+  WWW::PipeViewer::VideoCategories
 );
 
 use WWW::PipeViewer::Utils;
@@ -45,6 +45,7 @@ use WWW::PipeViewer::Utils;
 # ============================================================================
 
 my %valid_options = (
+
     # Main options
     v          => {valid => q[],                                           default => 3},
     page       => {valid => qr/^(?!0+\z)\d+\z/,                            default => 1},
@@ -76,13 +77,15 @@ my %valid_options = (
     # Misc
     debug       => {valid => [0 .. 3],   default => 0},
     timeout     => {valid => qr/^\d+\z/, default => 10},
+    max_retries => {valid => qr/^\d+\z/, default => 3},
+    retry_delay => {valid => qr/^\d+\z/, default => 1},
     config_dir  => {valid => qr/^./,     default => q{.}},
     cache_dir   => {valid => qr/^./,     default => q{.}},
     cookie_file => {valid => qr/^./,     default => undef},
 
     # Support for yt-dlp / youtube-dl
     ytdl     => {valid => [1, 0], default => 1},
-    ytdl_cmd => {valid => qr/\w/,  default => "yt-dlp"},
+    ytdl_cmd => {valid => qr/\w/, default => "yt-dlp"},
 
     # yt-dlp comment options
     ytdlp_comments     => {valid => [1, 0],             default => 0},
@@ -141,9 +144,10 @@ sub new {
         if (ref($valid_options{$key}{valid})) {
             *{__PACKAGE__ . '::set_' . $key} = sub {
                 my ($self, $value) = @_;
-                $self->{$key} = _our_smartmatch($value, $valid_options{$key}{valid})
-                    ? $value
-                    : $valid_options{$key}{default};
+                $self->{$key} =
+                  _our_smartmatch($value, $valid_options{$key}{valid})
+                  ? $value
+                  : $valid_options{$key}{default};
             };
         }
 
@@ -188,17 +192,21 @@ sub _our_smartmatch {
 }
 
 sub basic_video_info_fields {
-    join(',', qw(
-        title videoId description descriptionHtml published publishedText
-        viewCount likeCount genre author authorId lengthSeconds rating liveNow
-    ));
+    join(
+        ',', qw(
+          title videoId description descriptionHtml published publishedText
+          viewCount likeCount genre author authorId lengthSeconds rating liveNow
+          )
+        );
 }
 
 sub extra_video_info_fields {
     my ($self) = @_;
-    join(',', $self->basic_video_info_fields, qw(
-        subCountText captions isFamilyFriendly
-    ));
+    join(
+        ',', $self->basic_video_info_fields, qw(
+          subCountText captions isFamilyFriendly
+          )
+        );
 }
 
 sub page_token {
@@ -212,8 +220,8 @@ sub escape_string {
     my ($self, $string) = @_;
     require URI::Escape;
     $self->get_escape_utf8
-        ? URI::Escape::uri_escape_utf8($string)
-        : URI::Escape::uri_escape($string);
+      ? URI::Escape::uri_escape_utf8($string)
+      : URI::Escape::uri_escape($string);
 }
 
 sub list_to_url_arguments {
@@ -241,18 +249,18 @@ sub set_lwp_useragent {
 
     my $lwp = (
         eval { require LWP::UserAgent::Cached; 'LWP::UserAgent::Cached' }
-        // do { require LWP::UserAgent; 'LWP::UserAgent' }
+          // do { require LWP::UserAgent; 'LWP::UserAgent' }
     );
 
     my $agent = $lwp->new(
-        cookie_jar    => {},
-        timeout       => $self->get_timeout,
-        show_progress => $self->get_debug,
-        agent         => $self->get_user_agent,
-        ssl_opts      => {verify_hostname => 1},
-        $self->_get_cache_options($lwp),
-        env_proxy     => (defined($self->get_http_proxy) ? 0 : $self->get_env_proxy),
-    );
+                          cookie_jar    => {},
+                          timeout       => $self->get_timeout,
+                          show_progress => $self->get_debug,
+                          agent         => $self->get_user_agent,
+                          ssl_opts      => {verify_hostname => 1},
+                          $self->_get_cache_options($lwp),
+                          env_proxy => (defined($self->get_http_proxy) ? 0 : $self->get_env_proxy),
+                         );
 
     $self->_configure_agent($agent);
     $self->_setup_cookies($agent);
@@ -272,10 +280,10 @@ sub _get_cache_options {
         nocache_if => sub {
             my ($response) = @_;
             my $code = $response->code;
-            $code >= 300
-                or $response->request->method ne 'GET'
-                or (($response->header('cache-control') // '') =~ /\b(?:max-age=0|no-store|no-cache)\b/)
-                or (($response->header('content-type') // '') =~ /\b(?:audio|image|video)\b/);
+                 $code >= 300
+              or $response->request->method ne 'GET'
+              or (($response->header('cache-control') // '') =~ /\b(?:max-age=0|no-store|no-cache)\b/)
+              or (($response->header('content-type')  // '') =~ /\b(?:audio|image|video)\b/);
         },
         recache_if => sub {
             my ($response, $path) = @_;
@@ -299,12 +307,12 @@ sub _configure_agent {
 
     $agent->ssl_opts(Timeout => $self->get_timeout);
     $agent->default_header(
-        'Accept-Encoding'           => $accepted_encodings,
-        'Accept'                    => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language'           => 'en-US,en;q=0.5',
-        'Connection'                => 'keep-alive',
-        'Upgrade-Insecure-Requests' => '1'
-    );
+                           'Accept-Encoding'           => $accepted_encodings,
+                           'Accept'                    => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                           'Accept-Language'           => 'en-US,en;q=0.5',
+                           'Connection'                => 'keep-alive',
+                           'Upgrade-Insecure-Requests' => '1'
+                          );
 
     $agent->proxy(['http', 'https'], $self->get_http_proxy) if defined($self->get_http_proxy);
 }
@@ -321,10 +329,10 @@ sub _setup_cookies {
 
         require HTTP::Cookies::Netscape;
         my $cookies = HTTP::Cookies::Netscape->new(
-            hide_cookie2 => 1,
-            autosave     => 1,
-            file         => $cookie_file,
-        );
+                                                   hide_cookie2 => 1,
+                                                   autosave     => 1,
+                                                   file         => $cookie_file,
+                                                  );
         $cookies->load;
         $agent->cookie_jar($cookies);
     }
@@ -341,11 +349,11 @@ sub _set_default_cookies {
 
     my $rand_value = '17' . join('', map { int(rand(10)) } 1 .. 8);
 
-    $cookies->set_cookie(0, "CONSENT", "PENDING+233", "/", ".youtube.com", undef, 0, 1, $rand_value, 0, {});
-    $cookies->set_cookie(0, "PREF", "tz=UTC", "/", ".youtube.com", undef, 0, 1, $rand_value, 0, {});
-    $cookies->set_cookie(0, "SOCS", "CAESEwgDEgk1NTE1MDQ0NTkaAmVuIAEaBgiA0JamBg", "/", ".youtube.com", undef, 0, 1, $rand_value, 0, {});
-    $cookies->set_cookie(0, "__Secure-YEC", "CgtCWUtqdVpZQXJUNCiL3pmmBg%3D%3D", "/", ".youtube.com", undef, 0, 1, $rand_value, 0, {});
-    $cookies->set_cookie(0, "SOCS", "CAI", "/", ".youtube.com", undef, 0, 1, $rand_value, 0, {});
+    $cookies->set_cookie(0, "CONSENT",      "PENDING+233",                                "/", ".youtube.com", undef, 0, 1, $rand_value, 0, {});
+    $cookies->set_cookie(0, "PREF",         "tz=UTC",                                     "/", ".youtube.com", undef, 0, 1, $rand_value, 0, {});
+    $cookies->set_cookie(0, "SOCS",         "CAESEwgDEgk1NTE1MDQ0NTkaAmVuIAEaBgiA0JamBg", "/", ".youtube.com", undef, 0, 1, $rand_value, 0, {});
+    $cookies->set_cookie(0, "__Secure-YEC", "CgtCWUtqdVpZQXJUNCiL3pmmBg%3D%3D",           "/", ".youtube.com", undef, 0, 1, $rand_value, 0, {});
+    $cookies->set_cookie(0, "SOCS",         "CAI",                                        "/", ".youtube.com", undef, 0, 1, $rand_value, 0, {});
 }
 
 # ============================================================================
@@ -372,23 +380,63 @@ sub lwp_get {
         return $cached;
     }
 
-    my $response = $self->_execute_get_request($url);
+    my $request_sub = sub {
+        $self->_execute_get_request($url);
+    };
 
-    if ($response->is_success) {
-        my $content = $response->decoded_content;
-        $self->_add_to_cache(\@LWP_CACHE, $url, $content);
-        return $content;
+    return $self->_retry_with_backoff($request_sub, $url, %opt);
+}
+
+sub _retry_with_backoff {
+    my ($self, $request_sub, $url, %opt) = @_;
+
+    my $max_retries    = $self->get_max_retries;
+    my $retry_delay    = $self->get_retry_delay;
+    my $backoff_factor = 2.0;
+    my $max_delay      = 30;
+    my $jitter_factor  = 0.1;
+
+    for my $attempt (0 .. $max_retries) {
+        my $response = $request_sub->();
+
+        if ($response->is_success) {
+            my $content = $response->decoded_content;
+
+            # Handle caching for GET requests only
+            if (!$opt{no_cache}) {
+                state @LWP_CACHE;
+                $self->_add_to_cache(\@LWP_CACHE, $url, $content);
+            }
+            return $content;
+        }
+
+        # Don't retry on client errors (4xx) except 429 (Too Many Requests)
+        my $code = $response->code;
+        if ($code >= 400 && $code < 500 && $code != 429) {
+            _warn_response_error($response, $url);
+            return;
+        }
+
+        # Don't retry on the last attempt
+        if ($attempt == $max_retries) {
+            _warn_response_error($response, $url);
+            return;
+        }
+
+        # Calculate delay with exponential backoff and jitter
+        my $delay = $retry_delay * ($backoff_factor**$attempt);
+        $delay = $delay > $max_delay ? $max_delay : $delay;
+
+        # Add jitter to prevent thundering herd
+        my $jitter = $delay * $jitter_factor * (rand() * 2 - 1);
+        $delay += $jitter;
+        $delay = $delay < 0 ? 0 : $delay;
+
+        warn sprintf("[Retry %d/%d] Waiting %.2fs before retrying: %s\n", $attempt + 1, $max_retries, $delay, $url) if $self->get_debug;
+
+        sleep($delay);
     }
 
-    $opt{depth} ||= 0;
-
-    # Retry on 500+ errors
-    if ($opt{depth} < 1 && $response->code() >= 500 &&
-        $response->status_line() =~ /(?:Temporary|Server) Error|Timeout|Service Unavailable/i) {
-        return $self->lwp_get($url, %opt, depth => $opt{depth} + 1);
-    }
-
-    _warn_response_error($response, $url);
     return;
 }
 
@@ -435,6 +483,7 @@ sub _execute_get_request {
     if ($url =~ m{^https?://[^/]+\.onion/}) {
         if (not defined($self->get_http_proxy)) {
             if ($self->get_env_proxy && (defined($ENV{HTTP_PROXY}) || defined($ENV{HTTPS_PROXY}))) {
+
                 # LWP::UserAgent will use proxy from ENV
             }
             else {
@@ -454,16 +503,11 @@ sub lwp_post {
 
     $self->{lwp} // $self->set_lwp_useragent();
 
-    my $response = $self->{lwp}->post($url, @args);
+    my $request_sub = sub {
+        $self->{lwp}->post($url, @args);
+    };
 
-    if ($response->is_success) {
-        return $response->decoded_content;
-    }
-    else {
-        _warn_response_error($response, $url);
-    }
-
-    return;
+    return $self->_retry_with_backoff($request_sub, $url, no_cache => 1);
 }
 
 sub lwp_mirror {
@@ -474,10 +518,11 @@ sub lwp_mirror {
 
 sub _get_results {
     my ($self, $url, %opt) = @_;
-    return scalar {
-        url     => $url,
-        results => parse_json_string($self->lwp_get($url, %opt)),
-    };
+    return
+      scalar {
+              url     => $url,
+              results => parse_json_string($self->lwp_get($url, %opt)),
+             };
 }
 
 sub post_as_json {
@@ -489,18 +534,12 @@ sub post_as_json {
 sub _request {
     my ($self, $req) = @_;
 
-    $self->{lwp} // $self->set_lwp_useragent();
+    my $request_sub = sub {
+        $self->{lwp} // $self->set_lwp_useragent();
+        $self->{lwp}->request($req);
+    };
 
-    my $res = $self->{lwp}->request($req);
-
-    if ($res->is_success) {
-        return $res->decoded_content;
-    }
-    else {
-        warn 'Request error: ' . $res->status_line();
-    }
-
-    return;
+    return $self->_retry_with_backoff($request_sub, $req->uri, no_cache => 1);
 }
 
 sub _prepare_request {
@@ -546,13 +585,19 @@ sub _update_instances_file {
     require LWP::UserAgent;
     my $lwp = LWP::UserAgent->new(timeout => $self->get_timeout);
     $lwp->show_progress(1) if $self->get_debug;
-    my $resp = $lwp->get("https://api.invidious.io/instances.json");
 
-    $resp->is_success() or return;
+    my $request_sub = sub {
+        $lwp->get("https://api.invidious.io/instances.json");
+    };
 
-    my $json = $resp->decoded_content() || return;
+    my $json_content = $self->_retry_with_backoff($request_sub, "https://api.invidious.io/instances.json", no_cache => 1);
+    return unless defined $json_content;
+
+    my $json_ref = eval { parse_json_string($json_content) };
+    return unless defined $json_ref && ref($json_ref) eq 'ARRAY';
+
     open(my $fh, '>', $instances_file) or return;
-    print $fh $json;
+    print $fh $json_content;
     close $fh;
 }
 
@@ -563,28 +608,32 @@ sub select_good_invidious_instances {
     ref($instances) eq 'ARRAY' or return;
 
     my %ignored = (
-        'yewtu.be'                 => 1,
-        'invidious.tube'           => 1,
-        'invidious.site'           => 1,
-        'invidious.zee.li'         => 1,
-        'invidious.048596.xyz'     => 1,
-        'invidious.xyz'            => 1,
-        'invidious.ggc-project.de' => 1,
-        'invidious.toot.koeln'     => 1,
-        'invidious.kavin.rocks'    => 1,
-        'invidious.snopyta.org'    => 1,
-        'invidious.moomoo.me'      => 1,
-        'y.com.cm'                 => 1,
-        'invidious.exonip.de'      => 1,
-        'invidious-us.kavin.rocks' => 1,
-        'invidious-jp.kavin.rocks' => 1,
-    );
+                   'yewtu.be'                 => 1,
+                   'invidious.tube'           => 1,
+                   'invidious.site'           => 1,
+                   'invidious.zee.li'         => 1,
+                   'invidious.048596.xyz'     => 1,
+                   'invidious.xyz'            => 1,
+                   'invidious.ggc-project.de' => 1,
+                   'invidious.toot.koeln'     => 1,
+                   'invidious.kavin.rocks'    => 1,
+                   'invidious.snopyta.org'    => 1,
+                   'invidious.moomoo.me'      => 1,
+                   'y.com.cm'                 => 1,
+                   'invidious.exonip.de'      => 1,
+                   'invidious-us.kavin.rocks' => 1,
+                   'invidious-jp.kavin.rocks' => 1,
+                  );
 
     my @candidates =
-        grep { not $ignored{$_->[0]} }
-        grep { $args{lax} ? 1 : eval { lc($_->[1]{monitor}{dailyRatios}[0]{label} // '') eq 'success' } }
-        grep { $args{lax} ? 1 : eval { lc($_->[1]{monitor}{statusClass} // '') eq 'success' } }
-        grep { lc($_->[1]{type} // '') eq 'https' } @$instances;
+      grep { not $ignored{$_->[0]} }
+      grep {
+        $args{lax} ? 1 : eval { lc($_->[1]{monitor}{dailyRatios}[0]{label} // '') eq 'success' }
+      }
+      grep {
+        $args{lax} ? 1 : eval { lc($_->[1]{monitor}{statusClass} // '') eq 'success' }
+      }
+      grep { lc($_->[1]{type} // '') eq 'https' } @$instances;
 
     if ($self->get_debug) {
         my @hosts = map { $_->[0] } @candidates;
@@ -617,7 +666,7 @@ sub _find_working_instance {
         local $self->{api_host}         = $uri;
         local $self->{prefer_invidious} = 1;
 
-        my $t0 = time;
+        my $t0      = time;
         my $results = $self->search_videos('test');
 
         if ($yv_utils->has_entries($results)) {
@@ -742,19 +791,19 @@ sub _get_youtubei_content {
     my $android_useragent = 'com.google.android.youtube/20.10.38 (Linux; U; Android 11) gzip';
 
     my %android = (
-        "videoId" => $videoID,
-        "context" => {
-            "client" => {
-                'hl'                => 'en',
-                'gl'                => 'US',
-                'clientName'        => 'ANDROID',
-                'clientVersion'     => '20.10.38',
-                'androidSdkVersion' => 30,
-                'userAgent'         => $android_useragent,
-                %args,
-            }
-        },
-    );
+                   "videoId" => $videoID,
+                   "context" => {
+                                 "client" => {
+                                              'hl'                => 'en',
+                                              'gl'                => 'US',
+                                              'clientName'        => 'ANDROID',
+                                              'clientVersion'     => '20.10.38',
+                                              'androidSdkVersion' => 30,
+                                              'userAgent'         => $android_useragent,
+                                              %args,
+                                             }
+                                },
+                  );
 
     $self->{lwp} // $self->set_lwp_useragent();
 
@@ -764,17 +813,17 @@ sub _get_youtubei_content {
     my $client_version = sprintf("2.%s.00.00", Time::Piece->new(time)->strftime("%Y%m%d"));
 
     my %mweb = (
-        "videoId" => $videoID,
-        "context" => {
-            "client" => {
-                "hl"            => "en",
-                "gl"            => "US",
-                "clientName"    => "MWEB",
-                "clientVersion" => $client_version,
-                %args,
-            },
-        },
-    );
+                "videoId" => $videoID,
+                "context" => {
+                              "client" => {
+                                           "hl"            => "en",
+                                           "gl"            => "US",
+                                           "clientName"    => "MWEB",
+                                           "clientVersion" => $client_version,
+                                           %args,
+                                          },
+                             },
+               );
 
     my $content;
     for (1 .. 3) {
@@ -789,7 +838,7 @@ sub _get_youtubei_content {
 sub _get_video_info {
     my ($self, $videoID, %args) = @_;
     my $content = $self->_get_youtubei_content('player', $videoID, %args);
-    my %info = (player_response => $content);
+    my %info    = (player_response => $content);
     return %info;
 }
 
@@ -849,10 +898,10 @@ sub _extract_from_ytdl {
                 }
 
                 my $entry = {
-                    itag => $id,
-                    url  => $format->{url},
-                    type => ((($format->{format} // '') =~ /audio only/i) ? 'audio/' : 'video/') . $format->{ext},
-                };
+                             itag => $id,
+                             url  => $format->{url},
+                             type => ((($format->{format} // '') =~ /audio only/i) ? 'audio/' : 'video/') . $format->{ext},
+                            };
 
                 push @formats, $entry;
             }
@@ -871,20 +920,17 @@ sub _extract_from_invidious {
     require List::Util;
 
     my %seen;
-    my @instances = grep { !$seen{$_}++ } (
-        List::Util::shuffle(map { $_->[0] } @candidates),
-        List::Util::shuffle(map { $_->[0] } @extra_candidates),
-    );
+    my @instances = grep { !$seen{$_}++ } (List::Util::shuffle(map { $_->[0] } @candidates), List::Util::shuffle(map { $_->[0] } @extra_candidates),);
 
     if (@instances) {
         push @instances, 'invidious.fdn.fr';
     }
     else {
         @instances = qw(
-            invidious.fdn.fr
-            vid.puffyan.us
-            invidious.privacydev.net
-            invidious.flokinet.to
+          invidious.fdn.fr
+          vid.puffyan.us
+          invidious.privacydev.net
+          invidious.flokinet.to
         );
     }
 
@@ -971,11 +1017,11 @@ sub _make_translated_captions {
     my ($self, $caption_urls) = @_;
 
     my @languages = qw(
-        af am ar az be bg bn bs ca ceb co cs cy da de el en eo es et eu fa fi fil
-        fr fy ga gd gl gu ha haw hi hmn hr ht hu hy id ig is it iw ja jv ka kk km
-        kn ko ku ky la lb lo lt lv mg mi mk ml mn mr ms mt my ne nl no ny or pa pl
-        ps pt ro ru rw sd si sk sl sm sn so sq sr st su sv sw ta te tg th tk tr tt
-        ug uk ur uz vi xh yi yo zh-Hans zh-Hant zu
+      af am ar az be bg bn bs ca ceb co cs cy da de el en eo es et eu fa fi fil
+      fr fy ga gd gl gu ha haw hi hmn hr ht hu hy id ig is it iw ja jv ka kk km
+      kn ko ku ky la lb lo lt lv mg mi mk ml mn mr ms mt my ne nl no ny or pa pl
+      ps pt ro ru rw sd si sk sl sm sn so sq sr st su sv sw ta te tg th tk tr tt
+      ug uk ur uz vi xh yi yo zh-Hans zh-Hant zu
     );
 
     my %trans_languages = map { $_->{languageCode} => 1 } @$caption_urls;
@@ -1017,11 +1063,12 @@ sub _fallback_extract_captions {
                 my ($caption_info) = grep { $_->{ext} eq 'srv1' } @{$ccaps->{$lang_code}};
 
                 if (defined($caption_info) && ref($caption_info) eq 'HASH' && defined($caption_info->{url})) {
-                    push @caption_urls, scalar {
-                        kind         => ($key eq 'automatic_captions' ? 'asr' : ''),
-                        languageCode => $lang_code,
-                        baseUrl      => $caption_info->{url},
-                    };
+                    push @caption_urls,
+                      scalar {
+                              kind         => ($key eq 'automatic_captions' ? 'asr' : ''),
+                              languageCode => $lang_code,
+                              baseUrl      => $caption_info->{url},
+                             };
 
                     if ($key eq 'subtitles') {
                         $has_subtitles = 1;
@@ -1127,12 +1174,13 @@ sub _extract_streaming_urls {
         @results = $self->_fallback_extract_urls($videoID);
 
         if (!@results) {
-            push @results, {
+            push @results,
+              {
                 itag => 38,
                 type => "video/mp4",
                 wkad => 1,
                 url  => $json->{streamingData}{hlsManifestUrl},
-            };
+              };
         }
     }
 
@@ -1193,10 +1241,11 @@ sub get_streaming_urls {
     }
 
     # Fallback if no streaming URLs found
-    if (1 || !@streaming_urls ||
-        (($json->{playabilityStatus}{status} // '') =~ /fail|error|unavailable|not available/i) ||
-        $self->get_force_fallback ||
-        (($json->{videoDetails}{videoId} // '') ne $videoID)) {
+    if (   1
+        || !@streaming_urls
+        || (($json->{playabilityStatus}{status} // '') =~ /fail|error|unavailable|not available/i)
+        || $self->get_force_fallback
+        || (($json->{videoDetails}{videoId} // '') ne $videoID)) {
 
         @streaming_urls = $self->_fallback_extract_urls($videoID);
 
@@ -1220,12 +1269,13 @@ sub get_streaming_urls {
 
     # Default fallback
     if (!@streaming_urls) {
-        push @streaming_urls, {
+        push @streaming_urls,
+          {
             itag => 38,
             type => "video/mp4",
             wkad => 1,
             url  => "https://www.youtube.com/watch?v=$videoID",
-        };
+          };
     }
 
     if ($self->get_debug >= 2) {
@@ -1246,10 +1296,10 @@ sub _get_age_gate_bypass_methods {
     if ($self->get_bypass_age_gate_native) {
         push @methods, sub {
             my %info = $self->_get_video_info(
-                $videoID,
-                "clientName"    => "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
-                "clientVersion" => "2.0"
-            );
+                                              $videoID,
+                                              "clientName"    => "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
+                                              "clientVersion" => "2.0"
+                                             );
         };
     }
 
@@ -1257,12 +1307,12 @@ sub _get_age_gate_bypass_methods {
         push @methods, sub {
             my $proxy_url = "https://youtube-proxy.zerody.one/getPlayer?";
             $proxy_url .= $self->list_to_url_arguments(
-                videoId       => $videoID,
-                reason        => "LOGIN_REQUIRED",
-                clientName    => "ANDROID",
-                clientVersion => "16.20",
-                hl            => "en",
-            );
+                                                       videoId       => $videoID,
+                                                       reason        => "LOGIN_REQUIRED",
+                                                       clientName    => "ANDROID",
+                                                       clientVersion => "16.20",
+                                                       hl            => "en",
+                                                      );
             my %info = (player_response => $self->lwp_get($proxy_url) // undef);
         };
     }
@@ -1397,7 +1447,7 @@ sub next_page_with_token {
     }
 
     if ($url =~ m{^https://m\.youtube\.com}) {
-        return scalar { url => $url, results => [] };
+        return scalar {url => $url, results => []};
     }
 
     if (not $url =~ s{[?&]continuation=\K([^&]+)}{$token}) {
@@ -1417,7 +1467,7 @@ sub next_page {
     }
 
     if ($url =~ m{^https://m\.youtube\.com}) {
-        return scalar { url => $url, results => [] };
+        return scalar {url => $url, results => []};
     }
 
     if (not $url =~ s{[?&]page=\K(\d+)}{$1+1}e) {
@@ -1449,10 +1499,10 @@ sub next_page {
 
             local $" = " ";
 
-            $name eq 'exec'   ? exec(@args)
-          : $name eq 'system' ? system(@args)
-          : $name eq 'stdout' ? qx(@args)
-          :                     ();
+                $name eq 'exec'   ? exec(@args)
+              : $name eq 'system' ? system(@args)
+              : $name eq 'stdout' ? qx(@args)
+              :                     ();
         };
     }
 }
