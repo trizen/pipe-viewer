@@ -5,7 +5,7 @@ use 5.014;
 use warnings;
 
 use MIME::Base64 qw(encode_base64url);
-use List::Util qw(pairs);
+use List::Util   qw(pairs);
 
 use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::Proto;
@@ -34,47 +34,47 @@ initial page data and API responses.
 #==============================================================================
 
 my %DATE_FILTERS = (
-    anytime => 0,
-    hour    => 1,
-    today   => 2,
-    week    => 3,
-    month   => 4,
-    year    => 5,
-);
+                    anytime => 0,
+                    hour    => 1,
+                    today   => 2,
+                    week    => 3,
+                    month   => 4,
+                    year    => 5,
+                   );
 
 my %DURATION_FILTERS = (
-    any     => 0,
-    short   => 1,
-    long    => 2,
-    average => 3,
-);
+                        any     => 0,
+                        short   => 1,
+                        long    => 2,
+                        average => 3,
+                       );
 
 my %FEATURE_FILTERS = (
-    hd               => 4,
-    subtitles        => 5,
-    creative_commons => 6,
-    '3d'             => 7,
-    live             => 8,
-    '4k'             => 14,
-    '360'            => 15,
-    hdr              => 25,
-    vr180            => 26,
-);
+                       hd               => 4,
+                       subtitles        => 5,
+                       creative_commons => 6,
+                       '3d'             => 7,
+                       live             => 8,
+                       '4k'             => 14,
+                       '360'            => 15,
+                       hdr              => 25,
+                       vr180            => 26,
+                      );
 
 my %ORDER_FILTERS = (
-    relevance   => 0,
-    rating      => 1,
-    upload_date => 2,
-    view_count  => 3,
-);
+                     relevance   => 0,
+                     rating      => 1,
+                     upload_date => 2,
+                     view_count  => 3,
+                    );
 
 my %TYPE_FILTERS = (
-    all      => 0,
-    video    => 1,
-    channel  => 2,
-    playlist => 3,
-    movie    => 4,
-);
+                    all      => 0,
+                    video    => 1,
+                    channel  => 2,
+                    playlist => 3,
+                    movie    => 4,
+                   );
 
 #==============================================================================
 # UTILITY FUNCTIONS
@@ -105,8 +105,8 @@ sub _human_number_to_int {
 
     # Handle formats like: 7.6K -> 7600, 7.6M -> 7600000
     if ($text =~ /([\d,.]+)\s*([KMB])/i) {
-        my $value = $1;
-        my $unit = $2;
+        my $value      = $1;
+        my $unit       = $2;
         my $multiplier = $unit eq 'K' ? 1e3 : $unit eq 'M' ? 1e6 : $unit eq 'B' ? 1e9 : 1;
 
         $value =~ tr/,/./;
@@ -156,17 +156,19 @@ sub _unscramble {
 
 sub _extract_video_id {
     my ($info) = @_;
-    return eval { $info->{videoId} }
-        || eval { $info->{navigationEndpoint}{watchEndpoint}{videoId} }
-        || eval { $info->{onTap}{innertubeCommand}{reelWatchEndpoint}{videoId} }
-        || undef;
+    return
+         eval { $info->{videoId} }
+      || eval { $info->{navigationEndpoint}{watchEndpoint}{videoId} }
+      || eval { $info->{onTap}{innertubeCommand}{reelWatchEndpoint}{videoId} }
+      || undef;
 }
 
 sub _extract_length_seconds {
     my ($info) = @_;
-    return eval { $info->{lengthSeconds} }
-        || _time_to_seconds(eval { $info->{thumbnailOverlays}[0]{thumbnailOverlayTimeStatusRenderer}{text}{runs}[0]{text} } // 0)
-        || _time_to_seconds(eval { $info->{lengthText}{runs}[0]{text} // 0 });
+    return
+         eval { $info->{lengthSeconds} }
+      || _time_to_seconds(eval { $info->{thumbnailOverlays}[0]{thumbnailOverlayTimeStatusRenderer}{text}{runs}[0]{text} } // 0)
+      || _time_to_seconds(eval { $info->{lengthText}{runs}[0]{text} // 0 });
 }
 
 sub _extract_published_text {
@@ -181,68 +183,66 @@ sub _extract_published_text {
 
 sub _extract_author_name {
     my ($info) = @_;
-    return eval { $info->{longBylineText}{runs}[0]{text} }
-        // eval { $info->{shortBylineText}{runs}[0]{text} }
-        // eval { ($info->{channelThumbnail}{channelThumbnailWithLinkRenderer}{navigationEndpoint}{commandMetadata}{webCommandMetadata}{url} // '') =~ s{.*/([^/]+)\z}{$1}r };
+    return eval { $info->{longBylineText}{runs}[0]{text} } // eval { $info->{shortBylineText}{runs}[0]{text} } // eval {
+        ($info->{channelThumbnail}{channelThumbnailWithLinkRenderer}{navigationEndpoint}{commandMetadata}{webCommandMetadata}{url} // '') =~
+          s{.*/([^/]+)\z}{$1}r;
+    };
 }
 
 sub _extract_channel_id {
     my ($info) = @_;
-    return eval { $info->{channelId} }
-        // eval { $info->{shortBylineText}{runs}[0]{navigationEndpoint}{browseEndpoint}{browseId} }
-        // eval { $info->{navigationEndpoint}{browseEndpoint}{browseId} }
-        // eval { $info->{channelThumbnail}{channelThumbnailWithLinkRenderer}{navigationEndpoint}{browseEndpoint}{browseId} };
+    return
+      eval    { $info->{channelId} }
+      // eval { $info->{shortBylineText}{runs}[0]{navigationEndpoint}{browseEndpoint}{browseId} }
+      // eval { $info->{navigationEndpoint}{browseEndpoint}{browseId} }
+      // eval { $info->{channelThumbnail}{channelThumbnailWithLinkRenderer}{navigationEndpoint}{browseEndpoint}{browseId} };
 }
 
 sub _extract_view_count_text {
     my ($info) = @_;
-    return eval { $info->{shortViewCountText}{runs}[0]{text} }
-        // eval { $info->{overlayMetadata}{secondaryText}{content} };
+    return eval { $info->{shortViewCountText}{runs}[0]{text} } // eval { $info->{overlayMetadata}{secondaryText}{content} };
 }
 
 sub _extract_view_count {
     my ($info) = @_;
-    return _human_number_to_int(eval { $info->{viewCountText}{runs}[0]{text} } || 0)
-        || _human_number_to_int(eval { ($info->{headline}{accessibility}{accessibilityData}{label} // '') =~ m{.* (\S+) views\b} ? $1 : undef } || 0)
-        || _human_number_to_int(eval { $info->{shortViewCountText}{runs}[0]{text} } || 0)
-        || _human_number_to_int(eval { ($info->{overlayMetadata}{secondaryText}{content} // '') =~ m{^(\S+) views\b} ? $1 : undef } || 0);
+    return
+         _human_number_to_int(eval { $info->{viewCountText}{runs}[0]{text} }                                                                  || 0)
+      || _human_number_to_int(eval { ($info->{headline}{accessibility}{accessibilityData}{label} // '') =~ m{.* (\S+) views\b} ? $1 : undef } || 0)
+      || _human_number_to_int(eval { $info->{shortViewCountText}{runs}[0]{text} }                                                             || 0)
+      || _human_number_to_int(eval { ($info->{overlayMetadata}{secondaryText}{content} // '') =~ m{^(\S+) views\b} ? $1 : undef }             || 0);
 }
 
 sub _extract_thumbnails {
     my ($info) = @_;
     return eval {
         [
-            map {
-                my %thumb = %$_;
-                $thumb{url} = _fix_url_protocol($thumb{url});
-                \%thumb;
-            } @{$info}
+         map {
+             my %thumb = %$_;
+             $thumb{url} = _fix_url_protocol($thumb{url});
+             \%thumb;
+         } @{$info}
         ]
     };
 }
 
 sub _extract_title {
     my ($info) = @_;
-    return eval { $info->{title}{runs}[0]{text} }
-        // eval { $info->{title}{accessibility}{accessibilityData}{label} }
-        // eval { $info->{headline}{runs}[0]{text} }
-        // eval { $info->{overlayMetadata}{primaryText}{content} };
+    return
+      eval    { $info->{title}{runs}[0]{text} }
+      // eval { $info->{title}{accessibility}{accessibilityData}{label} }
+      // eval { $info->{headline}{runs}[0]{text} } // eval { $info->{overlayMetadata}{primaryText}{content} };
 }
 
 sub _extract_description {
     my ($info) = @_;
-    return eval { $info->{title}{accessibility}{accessibilityData}{label} }
-        // eval { $info->{headline}{accessibility}{accessibilityData}{label} }
-        // eval { $info->{accessibilityText} };
+    return
+      eval { $info->{title}{accessibility}{accessibilityData}{label} }
+      // eval { $info->{headline}{accessibility}{accessibilityData}{label} } // eval { $info->{accessibilityText} };
 }
 
 sub _extract_video_count {
     my ($info) = @_;
-    return _human_number_to_int(
-        eval { $info->{videoCountShortText}{runs}[0]{text} }
-        || eval { $info->{videoCountText}{runs}[0]{text} }
-        || 0
-    );
+    return _human_number_to_int(eval { $info->{videoCountShortText}{runs}[0]{text} } || eval { $info->{videoCountText}{runs}[0]{text} } || 0);
 }
 
 sub _extract_subscriber_count {
@@ -262,26 +262,23 @@ sub _extract_playlist_id {
 sub _extract_youtube_mix {
     my ($self, $data) = @_;
 
-    my $info = eval { $data->{callToAction}{watchCardHeroVideoRenderer} } || return;
+    my $info   = eval { $data->{callToAction}{watchCardHeroVideoRenderer} } || return;
     my $header = eval { $data->{header}{watchCardRichHeaderRenderer} };
 
     my %mix = (type => 'playlist');
 
-    $mix{title} = eval { $header->{title}{runs}[0]{text} }
-        // eval { $info->{accessibility}{accessibilityData}{label} }
-        // eval { $info->{callToActionButton}{callToActionButtonRenderer}{label}{runs}[0]{text} }
-        // 'Youtube Mix';
+    $mix{title} =
+      eval    { $header->{title}{runs}[0]{text} }
+      // eval { $info->{accessibility}{accessibilityData}{label} }
+      // eval { $info->{callToActionButton}{callToActionButtonRenderer}{label}{runs}[0]{text} } // 'Youtube Mix';
 
     $mix{playlistId} = eval { $info->{navigationEndpoint}{watchEndpoint}{playlistId} } || return;
 
-    $mix{playlistThumbnails} = _extract_thumbnails(
-        $header->{avatar}{thumbnails}
-        // $info->{heroImage}{collageHeroImageRenderer}{leftThumbnail}{thumbnails}
-    );
+    $mix{playlistThumbnails} = _extract_thumbnails($header->{avatar}{thumbnails} // $info->{heroImage}{collageHeroImageRenderer}{leftThumbnail}{thumbnails});
 
     $mix{description} = _extract_description({title => $info});
-    $mix{author} = eval { $header->{title}{runs}[0]{text} } // "YouTube";
-    $mix{authorId} = eval { $header->{titleNavigationEndpoint}{browseEndpoint}{browseId} } // "youtube";
+    $mix{author}      = eval { $header->{title}{runs}[0]{text} }                              // "YouTube";
+    $mix{authorId}    = eval { $header->{titleNavigationEndpoint}{browseEndpoint}{browseId} } // "youtube";
 
     return \%mix;
 }
@@ -295,10 +292,10 @@ sub _extract_itemSection_entry {
     return if $args{type} eq 'all' && exists $data->{horizontalCardListRenderer};
 
     # Extract video data
-    if (exists($data->{compactVideoRenderer})
+    if (   exists($data->{compactVideoRenderer})
         || exists($data->{playlistVideoRenderer})
         || exists($data->{videoWithContextRenderer})) {
-        
+
         return $self->_extract_video_entry($data, %args);
     }
 
@@ -310,14 +307,14 @@ sub _extract_itemSection_entry {
     # Extract playlist data
     if ($args{type} ne 'video'
         && (exists($data->{compactPlaylistRenderer}) || exists($data->{playlistWithContextRenderer}))) {
-        
+
         return $self->_extract_playlist_entry($data, %args);
     }
 
     # Extract channel data
     if ($args{type} ne 'video'
         && (exists($data->{compactChannelRenderer}) || exists($data->{channelWithContextRenderer}))) {
-        
+
         return $self->_extract_channel_entry($data, %args);
     }
 
@@ -327,26 +324,24 @@ sub _extract_itemSection_entry {
 sub _extract_video_entry {
     my ($self, $data, %args) = @_;
 
-    my $info = $data->{compactVideoRenderer}
-        // $data->{playlistVideoRenderer}
-        // $data->{videoWithContextRenderer};
+    my $info = $data->{compactVideoRenderer} // $data->{playlistVideoRenderer} // $data->{videoWithContextRenderer};
 
     # Skip deleted/unplayable videos
     return if defined(eval { $info->{isPlayable} }) && !$info->{isPlayable};
 
     my %video = (type => 'video');
 
-    $video{videoId} = _extract_video_id($info) // return;
-    $video{title} = _extract_title($info) // return;
-    $video{lengthSeconds} = _extract_length_seconds($info) || 0;
-    $video{liveNow} = ($video{lengthSeconds} == 0);
-    $video{author} = _extract_author_name($info);
-    $video{authorId} = _extract_channel_id($info);
-    $video{publishedText} = _extract_published_text($info);
-    $video{viewCountText} = _extract_view_count_text($info);
+    $video{videoId}         = _extract_video_id($info) // return;
+    $video{title}           = _extract_title($info)    // return;
+    $video{lengthSeconds}   = _extract_length_seconds($info) || 0;
+    $video{liveNow}         = ($video{lengthSeconds} == 0);
+    $video{author}          = _extract_author_name($info);
+    $video{authorId}        = _extract_channel_id($info);
+    $video{publishedText}   = _extract_published_text($info);
+    $video{viewCountText}   = _extract_view_count_text($info);
     $video{videoThumbnails} = _extract_thumbnails($info->{thumbnail}{thumbnails});
-    $video{description} = _extract_description($info);
-    $video{viewCount} = _extract_view_count($info);
+    $video{description}     = _extract_description($info);
+    $video{viewCount}       = _extract_view_count($info);
 
     # Filter out private/deleted videos from playlists
     if (exists($data->{playlistVideoRenderer})) {
@@ -363,17 +358,17 @@ sub _extract_shorts_entry {
 
     my %video = (type => 'video');
 
-    $video{videoId} = _extract_video_id($info) // return;
-    $video{title} = _extract_title($info) // return;
-    $video{lengthSeconds} = _extract_length_seconds($info) || 0;
-    $video{liveNow} = ($video{lengthSeconds} == 0);
-    $video{author} = _extract_author_name($info);
-    $video{authorId} = _extract_channel_id($info);
-    $video{publishedText} = _extract_published_text($info);
-    $video{viewCountText} = _extract_view_count_text($info);
+    $video{videoId}         = _extract_video_id($info) // return;
+    $video{title}           = _extract_title($info)    // return;
+    $video{lengthSeconds}   = _extract_length_seconds($info) || 0;
+    $video{liveNow}         = ($video{lengthSeconds} == 0);
+    $video{author}          = _extract_author_name($info);
+    $video{authorId}        = _extract_channel_id($info);
+    $video{publishedText}   = _extract_published_text($info);
+    $video{viewCountText}   = _extract_view_count_text($info);
     $video{videoThumbnails} = _extract_thumbnails($info->{thumbnail}{sources});
-    $video{description} = _extract_description($info);
-    $video{viewCount} = _extract_view_count($info);
+    $video{description}     = _extract_description($info);
+    $video{viewCount}       = _extract_view_count($info);
 
     return \%video;
 }
@@ -385,15 +380,13 @@ sub _extract_playlist_entry {
 
     my %playlist = (type => 'playlist');
 
-    $playlist{title} = _extract_title($info) // return;
+    $playlist{title}      = _extract_title($info)       // return;
     $playlist{playlistId} = _extract_playlist_id($info) // return;
-    $playlist{author} = _extract_author_name($info);
-    $playlist{authorId} = _extract_channel_id($info);
+    $playlist{author}     = _extract_author_name($info);
+    $playlist{authorId}   = _extract_channel_id($info);
     $playlist{videoCount} = _extract_video_count($info);
-    $playlist{playlistThumbnails} = _extract_thumbnails(
-        $info->{thumbnailRenderer}{playlistVideoThumbnailRenderer}{thumbnail}{thumbnails}
-        // $info->{thumbnail}{thumbnails}
-    );
+    $playlist{playlistThumbnails} =
+      _extract_thumbnails($info->{thumbnailRenderer}{playlistVideoThumbnailRenderer}{thumbnail}{thumbnails} // $info->{thumbnail}{thumbnails});
     $playlist{description} = _extract_description($info);
 
     return \%playlist;
@@ -406,12 +399,12 @@ sub _extract_channel_entry {
 
     my %channel = (type => 'channel');
 
-    $channel{author} = _extract_title($info) // return;
-    $channel{authorId} = _extract_channel_id($info) // return;
-    $channel{subCount} = _extract_subscriber_count($info);
-    $channel{videoCount} = _extract_video_count($info);
+    $channel{author}           = _extract_title($info)      // return;
+    $channel{authorId}         = _extract_channel_id($info) // return;
+    $channel{subCount}         = _extract_subscriber_count($info);
+    $channel{videoCount}       = _extract_video_count($info);
     $channel{authorThumbnails} = _extract_thumbnails($info->{thumbnail}{thumbnails});
-    $channel{description} = _extract_description($info);
+    $channel{description}      = _extract_description($info);
 
     return \%channel;
 }
@@ -437,13 +430,17 @@ sub _parse_itemSection {
         my $token = eval { $data->{continuations}[0]{nextContinuationData}{continuation} };
 
         if (defined $token) {
-            push @results, {
-                type => 'nextpage',
-                token => "ytplaylist:$args{type}:" . make_json_string({
-                    token => $token,
-                    args => {},
-                }),
-            };
+            push @results,
+              {
+                type  => 'nextpage',
+                token => "ytplaylist:$args{type}:"
+                  . make_json_string(
+                                     {
+                                      token => $token,
+                                      args  => {},
+                                     }
+                                    ),
+              };
         }
     }
 
@@ -457,19 +454,20 @@ sub _parse_itemSection_nextpage {
 
     foreach my $entry (@{$entry->{contents}}) {
         if (exists $entry->{continuationItemRenderer}) {
-            my $info = $entry->{continuationItemRenderer};
+            my $info  = $entry->{continuationItemRenderer};
             my $token = eval { $info->{continuationEndpoint}{continuationCommand}{token} };
 
             if (defined $token) {
                 return {
-                    type => 'nextpage',
-                    token => "ytbrowse:$args{type}:" . make_json_string({
-                        token => $token,
-                        args => {
-                            (defined($args{author_name}) ? (author_name => $args{author_name}) : ())
-                        },
-                    }),
-                };
+                        type  => 'nextpage',
+                        token => "ytbrowse:$args{type}:"
+                          . make_json_string(
+                                             {
+                                              token => $token,
+                                              args  => {(defined($args{author_name}) ? (author_name => $args{author_name}) : ())},
+                                             }
+                                            ),
+                       };
             }
         }
     }
@@ -480,7 +478,7 @@ sub _parse_itemSection_nextpage {
 sub _extract_sectionList_results {
     my ($self, $data, %args) = @_;
 
-    return unless defined $data && ref($data) eq 'HASH';
+    return unless defined $data            && ref($data) eq 'HASH';
     return unless exists $data->{contents} && ref($data->{contents}) eq 'ARRAY';
 
     my @results;
@@ -508,9 +506,9 @@ sub _process_section_entry {
     }
 
     # Playlist videos
-    if (eval { ref($entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer}) eq 'HASH' }
+    if (   eval { ref($entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer}) eq 'HASH' }
         && eval { ref($entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer}{contents}) eq 'ARRAY' }) {
-        
+
         my $res = $entry->{itemSectionRenderer}{contents}[0]{playlistVideoListRenderer};
         push @$results, $self->_parse_itemSection($res, %args);
         push @$results, $self->_parse_itemSection_nextpage($res, %args, (@$results ? (author_name => $results->[-1]{author}) : ()));
@@ -547,19 +545,23 @@ sub _process_continuation_item {
     my ($self, $info, $results, %args) = @_;
 
     my $token = eval { $info->{continuationEndpoint}{continuationCommand}{token} };
-    my $type = eval { $info->{continuationEndpoint}{commandMetadata}{webCommandMetadata}{apiUrl} };
+    my $type  = eval { $info->{continuationEndpoint}{commandMetadata}{webCommandMetadata}{apiUrl} };
 
     return unless defined $token;
 
     my $token_type = $type =~ m{/browse\z} ? 'ytbrowse' : 'ytsearch';
 
-    push @$results, {
-        type => 'nextpage',
-        token => "$token_type:$args{type}:" . make_json_string({
-            token => $token,
-            args => {},
-        }),
-    };
+    push @$results,
+      {
+        type  => 'nextpage',
+        token => "$token_type:$args{type}:"
+          . make_json_string(
+                             {
+                              token => $token,
+                              args  => {},
+                             }
+                            ),
+      };
 }
 
 #==============================================================================
@@ -568,8 +570,7 @@ sub _process_continuation_item {
 
 sub _extract_channel_header {
     my ($self, $data, %args) = @_;
-    return eval { $data->{header}{c4TabbedHeaderRenderer} }
-        // eval { $data->{metadata}{channelMetadataRenderer} };
+    return eval { $data->{header}{c4TabbedHeaderRenderer} } // eval { $data->{metadata}{channelMetadataRenderer} };
 }
 
 sub _extract_channel_tabs {
@@ -589,13 +590,13 @@ sub _extract_channel_tabs {
 
     foreach my $entry (@{$chip_bar->{contents}}) {
         next unless ref($entry) eq 'HASH';
-        
+
         my $item = $entry->{chipCloudChipRenderer} // next;
         next unless ref($item) eq 'HASH';
-        
+
         my $text = $item->{text} // next;
         $text = $text->{simpleText} // next if ref($text) eq 'HASH';
-        
+
         $channel_tabs{$text} = {%$item};
     }
 
@@ -607,20 +608,20 @@ sub _extract_videos_from_channel_data {
 
     return unless defined $hash;
 
-    my @results = $self->_extract_channel_uploads($hash, %args, type => 'video');
+    my @results     = $self->_extract_channel_uploads($hash, %args, type => 'video');
     my $author_name = @results ? $results[0]->{author} : undef;
 
     # Handle popular videos
     if (defined($args{sort_by}) && $args{sort_by} eq 'popular') {
         my %channel_tabs = $self->_extract_channel_tabs($hash);
-        
+
         foreach my $key (keys %channel_tabs) {
             next unless $key =~ /popular/i;
-            
+
             my $value = $channel_tabs{$key};
             next unless ref($value) eq 'HASH';
-            
-            my $token = eval { $value->{navigationEndpoint}{continuationCommand}{token} } // next;
+
+            my $token          = eval { $value->{navigationEndpoint}{continuationCommand}{token} } // next;
             my $popular_videos = $self->yt_browse_request($url, $token, %args, type => 'video', author_name => $author_name);
             return $popular_videos;
         }
@@ -634,15 +635,15 @@ sub _add_author_to_results {
 
     my $header = $self->_extract_channel_header($data, %args);
 
-    my $channel_id = eval { $header->{channelId} } // eval { $header->{externalId} };
-    my $channel_name = eval { $header->{title} } // $args{author_name};
+    my $channel_id   = eval { $header->{channelId} } // eval { $header->{externalId} };
+    my $channel_name = eval { $header->{title} }     // $args{author_name};
 
     # Try to extract channel ID from service tracking params
     if (!defined $channel_id) {
         if (eval { ref($data->{responseContext}{serviceTrackingParams}) eq 'ARRAY' }) {
             foreach my $entry (@{$data->{responseContext}{serviceTrackingParams}}) {
                 next unless ref($entry) eq 'HASH' && exists($entry->{params}) && ref($entry->{params}) eq 'ARRAY';
-                
+
                 foreach my $param (@{$entry->{params}}) {
                     if (($param->{key} // '') eq 'browse_id') {
                         $channel_id = $param->{value};
@@ -658,18 +659,18 @@ sub _add_author_to_results {
     # Add author info to all results
     foreach my $result (@$results) {
         if (ref($result) eq 'HASH') {
-            $result->{author} = $channel_name if defined $channel_name;
-            $result->{authorId} = $channel_id if defined $channel_id;
+            $result->{author}   = $channel_name if defined $channel_name;
+            $result->{authorId} = $channel_id   if defined $channel_id;
         }
     }
 
     # Update nextpage token with author name
     if (@$results && defined($channel_name) && $results->[-1]{type} eq 'nextpage') {
         my $token = $results->[-1]{token};
-        
+
         if (defined($token) && $token =~ /^ytbrowse:(\w+):(.*)/s) {
             my ($type, $json) = ($1, $2);
-            
+
             if ($json =~ /^\{/) {
                 my $info = parse_json_string($json);
                 $info->{args}{author_name} = $channel_name;
@@ -688,8 +689,12 @@ sub _find_sectionList {
 
     # Check for error alerts
     if (exists $data->{alerts}) {
-        if (ref($data->{alerts}) eq 'ARRAY'
-            && grep { eval { $_->{alertRenderer}{type} =~ /error/i } } @{$data->{alerts}}) {
+        if (
+            ref($data->{alerts}) eq 'ARRAY'
+            && grep {
+                eval { $_->{alertRenderer}{type} =~ /error/i }
+            } @{$data->{alerts}}
+          ) {
             return undef;
         }
     }
@@ -697,13 +702,17 @@ sub _find_sectionList {
     return undef unless exists $data->{contents};
 
     my $section = eval {
-        (grep {
-            eval { exists($_->{tabRenderer}{content}{sectionListRenderer}{contents}) }
-        } @{$data->{contents}{singleColumnBrowseResultsRenderer}{tabs}})[0]{tabRenderer}{content}{sectionListRenderer}
+        (
+         grep {
+             eval { exists($_->{tabRenderer}{content}{sectionListRenderer}{contents}) }
+         } @{$data->{contents}{singleColumnBrowseResultsRenderer}{tabs}}
+        )[0]{tabRenderer}{content}{sectionListRenderer};
     } // eval {
-        (grep {
-            eval { exists($_->{tabRenderer}{content}{richGridRenderer}{contents}) }
-        } @{$data->{contents}{singleColumnBrowseResultsRenderer}{tabs}})[0]{tabRenderer}{content}{richGridRenderer}
+        (
+         grep {
+             eval { exists($_->{tabRenderer}{content}{richGridRenderer}{contents}) }
+         } @{$data->{contents}{singleColumnBrowseResultsRenderer}{tabs}}
+        )[0]{tabRenderer}{content}{richGridRenderer};
     } // undef;
 
     return $section;
@@ -828,12 +837,12 @@ sub _prepare_results_for_return {
             }
 
             return {
-                url => $args{url},
-                results => {
-                    entries => \@results,
-                    continuation => $nextpage->{token},
-                },
-            };
+                    url     => $args{url},
+                    results => {
+                                entries      => \@results,
+                                continuation => $nextpage->{token},
+                               },
+                   };
         }
     }
 
@@ -842,9 +851,9 @@ sub _prepare_results_for_return {
     $url = undef if $url =~ m{^https://m\.youtube\.com};
 
     return {
-        url => $url,
-        results => \@results,
-    };
+            url     => $url,
+            results => \@results,
+           };
 }
 
 sub _build_search_params {
@@ -857,8 +866,8 @@ sub _build_search_params {
     # Build filter parameters
     my @filters;
 
-    push @filters, proto_uint(1, $DATE_FILTERS{$self->get_date // 'anytime'});
-    push @filters, proto_uint(2, $TYPE_FILTERS{$args{type} // 'video'});
+    push @filters, proto_uint(1, $DATE_FILTERS{$self->get_date              // 'anytime'});
+    push @filters, proto_uint(2, $TYPE_FILTERS{$args{type}                  // 'video'});
     push @filters, proto_uint(3, $DURATION_FILTERS{$self->get_videoDuration // 'any'});
 
     foreach my $feat (@{$self->get_features || []}) {
@@ -868,7 +877,7 @@ sub _build_search_params {
     push @sp, proto_nested(2, @filters);
 
     # Build paging parameters
-    my $page = $self->get_page;
+    my $page  = $self->get_page;
     my $count = $self->get_maxResults;
 
     # Minimum 20 results to avoid breaking pagination
@@ -884,40 +893,40 @@ sub _build_api_context {
     my ($self, $url) = @_;
 
     return {
-        context => {
-            client => {
-                browserName => "Firefox",
-                browserVersion => "136.0",
-                clientFormFactor => "LARGE_FORM_FACTOR",
-                clientName => "MWEB",
-                clientVersion => "2.20250314.01.00",
-                deviceMake => "Mozilla",
-                deviceModel => "Firefox for Android",
-                hl => "en",
-                mainAppWebInfo => {
-                    graftUrl => $url,
-                },
-                originalUrl => $url,
-                osName => "Android",
-                osVersion => "16",
-                platform => "MOBILE",
-                playerType => "UNIPLAYER",
-                screenDensityFloat => 1,
-                screenHeightPoints => 500,
-                screenPixelDensity => 1,
-                screenWidthPoints => 1800,
-                timeZone => "UTC",
-                userAgent => "Mozilla/5.0 (Android 16 Beta 2; Mobile; rv:136.0) Gecko/136.0 Firefox/136.0,gzip(gfe)",
-                userInterfaceTheme => "USER_INTERFACE_THEME_LIGHT",
-                utcOffsetMinutes => 0,
-            },
-            request => {
-                consistencyTokenJars => [],
-                internalExperimentFlags => [],
-            },
-            user => {},
-        },
-    };
+            context => {
+                        client => {
+                                   browserName      => "Firefox",
+                                   browserVersion   => "136.0",
+                                   clientFormFactor => "LARGE_FORM_FACTOR",
+                                   clientName       => "MWEB",
+                                   clientVersion    => "2.20250314.01.00",
+                                   deviceMake       => "Mozilla",
+                                   deviceModel      => "Firefox for Android",
+                                   hl               => "en",
+                                   mainAppWebInfo   => {
+                                                      graftUrl => $url,
+                                                     },
+                                   originalUrl        => $url,
+                                   osName             => "Android",
+                                   osVersion          => "16",
+                                   platform           => "MOBILE",
+                                   playerType         => "UNIPLAYER",
+                                   screenDensityFloat => 1,
+                                   screenHeightPoints => 500,
+                                   screenPixelDensity => 1,
+                                   screenWidthPoints  => 1800,
+                                   timeZone           => "UTC",
+                                   userAgent          => "Mozilla/5.0 (Android 16 Beta 2; Mobile; rv:136.0) Gecko/136.0 Firefox/136.0,gzip(gfe)",
+                                   userInterfaceTheme => "USER_INTERFACE_THEME_LIGHT",
+                                   utcOffsetMinutes   => 0,
+                                  },
+                        request => {
+                                    consistencyTokenJars    => [],
+                                    internalExperimentFlags => [],
+                                   },
+                        user => {},
+                       },
+           };
 }
 
 #==============================================================================
@@ -935,9 +944,9 @@ sub yt_video_info {
 
     my $url = $self->get_m_youtube_url . "/watch";
     my %params = (
-        hl => 'en',
-        v => $args{id},
-    );
+                  hl => 'en',
+                  v  => $args{id},
+                 );
 
     $url = $self->_append_url_args($url, %params);
     my $hash = $self->_get_initial_data($url) // return;
@@ -992,7 +1001,7 @@ sub _extract_like_count {
 
     foreach my $toggle_button (@$buttons) {
         next unless ref($toggle_button) eq 'HASH';
-        
+
         my $button = $toggle_button->{slimMetadataToggleButtonRenderer};
         next unless ref($button) eq 'HASH' && $button->{isLike};
 
@@ -1000,7 +1009,7 @@ sub _extract_like_count {
         next unless ref($like_button) eq 'HASH';
 
         $video_info->{likeCount} = eval { _human_number_to_int($like_button->{defaultText}{accessibility}{accessibilityData}{label}) }
-            // eval { (_human_number_to_int($like_button->{toggledText}{accessibility}{accessibilityData}{label}) // 0) - 1 };
+          // eval { (_human_number_to_int($like_button->{toggledText}{accessibility}{accessibilityData}{label}) // 0) - 1 };
 
         delete $video_info->{likeCount} if !defined($video_info->{likeCount}) || $video_info->{likeCount} <= 0;
     }
@@ -1033,7 +1042,7 @@ sub _extract_description_header {
     if (ref($desc->{factoid}) eq 'ARRAY') {
         foreach my $factoid (@{$desc->{factoid}}) {
             next unless ref($factoid) eq 'HASH';
-            
+
             if (my $likes_info = $factoid->{sentimentFactoidRenderer}) {
                 $video_info->{likeCount} //= eval { (_human_number_to_int($likes_info->{factoidIfLiked}{factoidRenderer}{value}{runs}[0]{text}) // 0) - 1 };
                 delete $video_info->{likeCount} if !defined($video_info->{likeCount}) || $video_info->{likeCount} <= 0;
@@ -1041,10 +1050,10 @@ sub _extract_description_header {
         }
     }
 
-    $video_info->{author} //= eval { $desc->{channel}{runs}[0]{text} };
+    $video_info->{author}      //= eval { $desc->{channel}{runs}[0]{text} };
     $video_info->{publishDate} //= eval { $desc->{publishDate}{runs}[0]{text} };
-    $video_info->{title} //= eval { $desc->{title}{runs}[0]{text} };
-    $video_info->{viewCount} //= eval { _human_number_to_int($desc->{views}{runs}[0]{text} || 0) };
+    $video_info->{title}       //= eval { $desc->{title}{runs}[0]{text} };
+    $video_info->{viewCount}   //= eval { _human_number_to_int($desc->{views}{runs}[0]{text} || 0) };
 }
 
 =head2 yt_search(q => $keyword, %args)
@@ -1059,18 +1068,15 @@ sub yt_search {
     my $url = $self->get_m_youtube_url . "/results";
 
     my %params = (
-        hl => 'en',
-        search_query => $args{q},
-        sp => $self->_build_search_params(%args),
-    );
+                  hl           => 'en',
+                  search_query => $args{q},
+                  sp           => $self->_build_search_params(%args),
+                 );
 
     $url = $self->_append_url_args($url, %params);
 
-    my $hash = $self->_get_initial_data($url) // return;
-    my @results = $self->_extract_sectionList_results(
-        eval { $hash->{contents}{sectionListRenderer} } // undef,
-        %args
-    );
+    my $hash    = $self->_get_initial_data($url) // return;
+    my @results = $self->_extract_sectionList_results(eval { $hash->{contents}{sectionListRenderer} } // undef, %args);
 
     return $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
@@ -1083,7 +1089,7 @@ Search for videos given a keyword string from a channel ID or username.
 
 sub yt_channel_search {
     my ($self, $channel, %args) = @_;
-    
+
     my ($url, $hash) = $self->_channel_data($channel, %args, type => 'search', params => {query => $args{q}});
     return unless defined $hash;
 
@@ -1155,9 +1161,9 @@ sub yt_channel_title {
     my ($self, $channel, %args) = @_;
     my ($url, $hash) = $self->_channel_data($channel, %args, type => '');
     return unless defined $hash;
-    
+
     my $header = $self->_extract_channel_header($hash, %args) // return;
-    my $title = eval { $header->{title} };
+    my $title  = eval { $header->{title} };
     return $title;
 }
 
@@ -1171,9 +1177,9 @@ sub yt_channel_id {
     my ($self, $username, %args) = @_;
     my ($url, $hash) = $self->_channel_data($username, %args, type => '');
     return unless defined $hash;
-    
+
     my $header = $self->_extract_channel_header($hash, %args) // return;
-    my $id = eval { $header->{channelId} } // eval { $header->{externalId} };
+    my $id     = eval { $header->{channelId} }                // eval { $header->{externalId} };
     return $id;
 }
 
@@ -1216,7 +1222,7 @@ Videos from a given playlist ID.
 sub yt_playlist_videos {
     my ($self, $playlist_id, %args) = @_;
 
-    my $url = $self->_append_url_args($self->get_m_youtube_url . "/playlist", list => $playlist_id, hl => "en");
+    my $url  = $self->_append_url_args($self->get_m_youtube_url . "/playlist", list => $playlist_id, hl => "en");
     my $hash = $self->_get_initial_data($url) // return;
 
     my @results = $self->_extract_sectionList_results($self->_find_sectionList($hash), %args, type => 'video');
@@ -1233,19 +1239,15 @@ sub yt_playlist_next_page {
     my ($self, $url, $token, %args) = @_;
 
     my $request_url = $self->_append_url_args($url, ctoken => $token);
-    my $hash = $self->_get_initial_data($request_url) // return;
+    my $hash        = $self->_get_initial_data($request_url) // return;
 
-    my @results = $self->_parse_itemSection(
-        eval { $hash->{continuationContents}{playlistVideoListContinuation} }
-        // eval { $hash->{continuationContents}{itemSectionContinuation} },
-        %args
-    );
+    my @results =
+      $self->_parse_itemSection(eval { $hash->{continuationContents}{playlistVideoListContinuation} }
+                                                         // eval { $hash->{continuationContents}{itemSectionContinuation} },
+                                %args);
 
     if (!@results) {
-        @results = $self->_extract_sectionList_results(
-            eval { $hash->{continuationContents}{sectionListContinuation} } // undef,
-            %args
-        );
+        @results = $self->_extract_sectionList_results(eval { $hash->{continuationContents}{sectionListContinuation} } // undef, %args);
     }
 
     $self->_add_author_to_results($hash, \@results, %args);
@@ -1261,21 +1263,17 @@ Make a browse request to the YouTube API with a continuation token.
 sub yt_browse_request {
     my ($self, $url, $token, %args) = @_;
 
-    my %request = (
-        %{$self->_build_api_context($url)},
-        continuation => $token,
-    );
+    my %request = (%{$self->_build_api_context($url)}, continuation => $token,);
 
     my $api_url = $self->get_m_youtube_url . _unscramble('o/ebbrky?u1wi//evsuyto=e') . _unscramble('1HUCiSlOalFEcYQSS8_9q1LW4y8JAwI2zT_qA_G');
     my $content = $self->post_as_json($api_url, \%request) // return;
 
     my $hash = parse_json_string($content);
 
-    my $res = eval { $hash->{continuationContents}{playlistVideoListContinuation} }
-        // eval { $hash->{continuationContents}{itemSectionContinuation} }
-        // $self->_extract_append_continuation($hash)
-        // $self->_extract_reload_continuation($hash)
-        // undef;
+    my $res =
+      eval { $hash->{continuationContents}{playlistVideoListContinuation} }
+      // eval { $hash->{continuationContents}{itemSectionContinuation} } // $self->_extract_append_continuation($hash)
+      // $self->_extract_reload_continuation($hash) // undef;
 
     my @results = $self->_parse_itemSection($res, %args);
 
@@ -1284,10 +1282,7 @@ sub yt_browse_request {
     }
 
     if (!@results) {
-        @results = $self->_extract_sectionList_results(
-            eval { $hash->{continuationContents}{sectionListContinuation} } // $res,
-            %args
-        );
+        @results = $self->_extract_sectionList_results(eval { $hash->{continuationContents}{sectionListContinuation} } // $res, %args);
     }
 
     $self->_add_author_to_results($hash, \@results, %args);
@@ -1315,13 +1310,10 @@ Load more search results, given a continuation token.
 sub yt_search_next_page {
     my ($self, $url, $token, %args) = @_;
 
-    my %request = (
-        %{$self->_build_api_context($url)},
-        continuation => $token,
-    );
+    my %request = (%{$self->_build_api_context($url)}, continuation => $token,);
 
     # Update client context for search
-    $request{context}{client}{gl} = "US";
+    $request{context}{client}{gl}                 = "US";
     $request{context}{client}{screenHeightPoints} = 600;
 
     my $api_url = $self->get_m_youtube_url . _unscramble('o/ebseky?u1ri//hvcuyta=e') . _unscramble('1HUCiSlOalFEcYQSS8_9q1LW4y8JAwI2zT_qA_G');
@@ -1330,11 +1322,13 @@ sub yt_search_next_page {
     my $hash = parse_json_string($content);
 
     my @results = $self->_extract_sectionList_results(
-        {
-            contents => eval { $hash->{onResponseReceivedCommands}[0]{appendContinuationItemsAction}{continuationItems} } // undef
-        },
-        %args
-    );
+                                                      {
+                                                       contents =>
+                                                         eval { $hash->{onResponseReceivedCommands}[0]{appendContinuationItemsAction}{continuationItems} }
+                                                         // undef
+                                                      },
+                                                      %args
+                                                     );
 
     return $self->_prepare_results_for_return(\@results, %args, url => $url);
 }

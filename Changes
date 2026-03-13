@@ -5,6 +5,15 @@
 
 [CHANGELOG]
 
+Version 0.5.7
+
+- Added retry on network failure. (patch by @exponentialmatrix)
+- AI-upscaled super-resolution (`sr`) support — pipe-viewer can now request and handle YouTube's AI upscaling stream format.
+- Video start time support — videos can now be opened at a specific timestamp via the `&t=` URL parameter, supporting multiple formats: plain seconds (`&t=69`), `XmYs` notation (`&t=1m9s`), and colon-separated times (`&t=2:35`). (#193, by @BlankEclair)
+- Original audio track auto-selection — when a video has multiple audio tracks, pipe-viewer now automatically selects the original language track.
+- Dislike count display via API — dislike counts are now fetched from an external API and formatted for display in the GUI. The API integration is optional. (by @pirate486743186 & @exponentialmatrix)
+- Option to delegate YouTube extraction to the player. (by @exponentialmatrix)
+
 Version 0.5.6
 
 - Bug-fix: when there are multiple audio tracks, select the default one.

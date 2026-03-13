@@ -5,7 +5,7 @@ use 5.014;
 use warnings;
 
 use List::Util qw(first);
-use POSIX qw(locale_h);
+use POSIX      qw(locale_h);
 
 =head1 NAME
 
@@ -271,18 +271,22 @@ sub get_start_time_from_url {
     $url =~ /[?&]t=(?<t>[0-9a-z:]+)/ || return undef;
     my $t = $+{t};
 
-    if ($t =~ m{
+    if (
+        $t =~ m{
         ^
         (?:(?<hour>\d+)h)?
         (?:(?<minute>\d+)m)?
         (?:(?<second>\d+)s)?
         $
-    }x) {
-        my $hour = int($+{hour} // 0);
+    }x
+      ) {
+        my $hour   = int($+{hour}   // 0);
         my $minute = int($+{minute} // 0);
         my $second = int($+{second} // 0);
         return $hour * 60 * 60 + $minute * 60 + $second;
-    } elsif ($t =~ m{
+    }
+    elsif (
+        $t =~ m{
         ^
         (?:
             (?:(?<hour>\d+):)?
@@ -290,8 +294,9 @@ sub get_start_time_from_url {
         )?
         (?<second>\d+)
         $
-    }x) {
-        my $hour = int($+{hour} // 0);
+    }x
+      ) {
+        my $hour   = int($+{hour}   // 0);
         my $minute = int($+{minute} // 0);
         my $second = int($+{second});
         return $hour * 60 * 60 + $minute * 60 + $second;
@@ -427,7 +432,7 @@ sub format_text {
         ITEMS       => sub { $self->set_thousands($self->get_playlist_item_count($info)) },
         ITEMS_SHORT => sub { $self->short_human_number($self->get_playlist_item_count($info)) },
 
-        LIKES => sub { $self->get_likes($info) },
+        LIKES    => sub { $self->get_likes($info) },
         DISLIKES => sub { $self->get_dislikes($info) },
 
         DURATION    => sub { $self->get_duration($info) },
@@ -520,24 +525,24 @@ sub set_thousands {
 
     # Return 0 for undefined or empty input
     return 0 unless defined $n && $n ne '';
-    
+
     # Return as-is if already formatted or not a plain number
-    return $n if $n =~ /[KMB,.]/;  # Skip if already has formatting
-    return $n unless $n =~ /^\d+$/;  # Only format plain integers
+    return $n if $n     =~ /[KMB,.]/;    # Skip if already has formatting
+    return $n unless $n =~ /^\d+$/;      # Only format plain integers
 
     # Get locale information
-    my $thousands_sep = ',';  # Default fallback
-    my $locale = POSIX::localeconv();
+    my $thousands_sep = ',';                   # Default fallback
+    my $locale        = POSIX::localeconv();
     $thousands_sep = $locale->{thousands_sep} if defined $locale->{thousands_sep} && $locale->{thousands_sep} ne '';
-    
+
     # Format the number with the thousands separator
     my $formatted = reverse $n;
     $formatted =~ s/(\d{3})(?=\d)(?!\d*\.)/$1$thousands_sep/g;
     $formatted = reverse $formatted;
-    
+
     # Remove any leading separator that might have been added
     $formatted =~ s/^\Q$thousands_sep\E//;
-    
+
     return $formatted;
 }
 

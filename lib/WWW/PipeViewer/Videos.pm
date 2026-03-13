@@ -170,8 +170,8 @@ sub video_details {
     }
 
     my %details = (
-        title   => eval { $microformat->{title}{simpleText} } // $videoDetails->{title},
-        videoId => $videoDetails->{videoId},
+        title     => eval { $microformat->{title}{simpleText} } // $videoDetails->{title},
+        videoId   => $videoDetails->{videoId},
         startTime => 0,
 
 #<<<
@@ -221,31 +221,32 @@ sub video_details {
     # Fetch dislikes and rating from returnyoutubedislikeapi.com
     # Note: This API requires attribution. See https://returnyoutubedislike.com/ for details.
     my ($dislike_count, $rating) = ("N/A", "N/A");
-    
+
     # Only fetch if the dislike API is enabled
     if ($self->get_dislikes_api) {
         eval {
             my $api_url = "https://returnyoutubedislikeapi.com/votes?videoId=$id";
-            my $json = $self->lwp_get($api_url);
+            my $json    = $self->lwp_get($api_url);
             if ($json) {
                 require JSON;
                 my $data = eval { JSON::decode_json($json) };
                 if (ref $data eq 'HASH') {
                     $dislike_count = $data->{dislikes} if defined $data->{dislikes};
-                    $rating = $data->{rating} if defined $data->{rating};
+                    $rating        = $data->{rating}   if defined $data->{rating};
                 }
             }
         };
     }
     $details{dislikeCount} = (defined $dislike_count ? $dislike_count : "N/A");
     if (defined $rating && $rating =~ /^-?\d+(?:\.\d+)?$/) {
-        my $formatted = sprintf('%.3f', $rating);
+        my $formatted     = sprintf('%.3f', $rating);
         my $decimal_point = localeconv()->{decimal_point} // '.';
         if ($decimal_point ne '.') {
             $formatted =~ s/\./$decimal_point/;
         }
         $details{rating} = $formatted;
-    } else {
+    }
+    else {
         $details{rating} = (defined $rating ? $rating : "N/A");
     }
 

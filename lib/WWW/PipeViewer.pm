@@ -7,7 +7,7 @@ use warnings;
 use Memoize qw(memoize);
 use WWW::PipeViewer::ParseJSON;
 
-our $VERSION = '0.5.6';
+our $VERSION = '0.5.7';
 
 # ============================================================================
 # MEMOIZATION SETUP
