@@ -1235,8 +1235,10 @@ sub get_streaming_urls {
         push @caption_urls, $self->_make_translated_captions(\@caption_urls);
     }
 
+    my $is_livestream = exists($json->{streamingData}) && exists($json->{streamingData}{hlsManifestUrl});
+
     # Fallback if no streaming URLs found
-    if (   1
+    if (   !$is_livestream
         || !@streaming_urls
         || (($json->{playabilityStatus}{status} // '') =~ /fail|error|unavailable|not available/i)
         || $self->get_force_fallback
