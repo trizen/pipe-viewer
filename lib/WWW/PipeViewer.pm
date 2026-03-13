@@ -1165,27 +1165,22 @@ sub _extract_streaming_urls {
     @results = grep { $_->{itag} == 22 || (exists($_->{contentLength}) && $_->{contentLength} > 0) } @results;
     @results = grep { $_->{url} !~ /\bdur=0\.000\b/ } grep { defined($_->{url}) } @results;
 
+    if (!@results) {
+        @results = $self->_fallback_extract_urls($videoID);
+    }
+
     # Handle livestreams
     if (!@results && exists($json->{streamingData}) && exists($json->{streamingData}{hlsManifestUrl})) {
         if ($self->get_debug) {
             say STDERR ":: Live stream detected...";
         }
-
-        @results = $self->_fallback_extract_urls($videoID);
-
-        if (!@results) {
-            push @results,
-              {
-                itag => 38,
-                type => "video/mp4",
-                wkad => 1,
-                url  => $json->{streamingData}{hlsManifestUrl},
-              };
-        }
-    }
-
-    if (!@results) {
-        @results = $self->_fallback_extract_urls($videoID);
+        push @results,
+          {
+            itag => 38,
+            type => "video/mp4",
+            wkad => 1,
+            url  => $json->{streamingData}{hlsManifestUrl},
+          };
     }
 
     return @results;
