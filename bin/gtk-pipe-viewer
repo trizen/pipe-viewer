@@ -182,21 +182,21 @@ my %symbols = (
 my %CONFIG = (
 
     video_players => {
-                      vlc => {
-                              cmd   => q{vlc},
-                              srt   => q{--sub-file=*SUB*},
-                              audio => q{--input-slave=*AUDIO*},
-                              fs    => q{--fullscreen},
-                              arg   => q{--quiet --play-and-exit --no-video-title-show --input-title-format=*TITLE* --start-time=*START* *VIDEO*},
-                             },
-                      mpv => {
-                              cmd   => q{mpv},
-                              srt   => q{--sub-file=*SUB*},
-                              audio => q{--audio-file=*AUDIO*},
-                              fs    => q{--fullscreen},
-                              arg   => q{--really-quiet --force-media-title=*TITLE* --start=*START* --no-ytdl --no-terminal *VIDEO*},
-                             },
-                     },
+          vlc => {
+                  cmd   => q{vlc},
+                  srt   => q{--sub-file=*SUB*},
+                  audio => q{--input-slave=*AUDIO*},
+                  fs    => q{--fullscreen},
+                  arg   => q{--quiet --play-and-exit --no-video-title-show --input-title-format=*TITLE* --start-time=*START* *VIDEO*},
+                 },
+          mpv => {
+              cmd   => q{mpv},
+              srt   => q{--sub-file=*SUB*},
+              audio => q{--audio-file=*AUDIO*},
+              fs    => q{--fullscreen},
+              arg => q{--really-quiet --force-media-title=*TITLE* --start=*START* --no-ytdl --stream-lavf-o-append=request_size=10485760 --no-terminal *VIDEO*},
+          },
+    },
     video_player_selected => undef,    # autodetect it later
 
     # GUI options
