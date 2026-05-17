@@ -1962,7 +1962,7 @@ sub gtk_widget_grab_focus {
 
 sub gtk_widget_show {
     my $widget = $_[-1] // $_[0];
-    $widget->show;
+    $widget->show; $widget->grab_focus;
     return 1;
 }
 
