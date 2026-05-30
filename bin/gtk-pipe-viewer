@@ -2339,6 +2339,9 @@ sub update_saved_channel_name {
         $channels{$channel_id} = $new_name;
         write_channels_to_file(\%channels, $CONFIG{saved_channels_file});
     }
+    my $column = $users_treeview->get_column(1);
+    my ($renderer) = $column->get_cells;
+    $renderer->set_property(editable => 0);
     return 1;
 }
 
@@ -2401,6 +2404,8 @@ sub rename_selected_username {
     my $iter   = $users_treeview->get_selection->get_selected;
     my $path   = $users_liststore->get_path($iter);
     my $column = $users_treeview->get_column(1);
+    my ($renderer) = $column->get_cells;
+    $renderer->set_property(editable => 1);
     $users_treeview->set_cursor($path, $column, 1);
     return;
 }
