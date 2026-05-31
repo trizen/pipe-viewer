@@ -975,31 +975,31 @@ sub get_publication_time {
             $t = bless($t, "Time::Piece");
         }
 
-        if ($age =~ /^(\d+) sec/) {
+        if ($age =~ /^(\d+)\s*(?:sec|s)/) {
             $t -= $1;
         }
 
-        if ($age =~ /^(\d+) min/) {
+        if ($age =~ /^(\d+)\s*(?:min|m)/) {
             $t -= $1 * Time::Seconds::ONE_MINUTE();
         }
 
-        if ($age =~ /^(\d+) hour/) {
+        if ($age =~ /^(\d+)\s*(?:hour|h)/) {
             $t -= $1 * Time::Seconds::ONE_HOUR();
         }
 
-        if ($age =~ /^(\d+) day/) {
+        if ($age =~ /^(\d+)\s*(?:day|d)/) {
             $t -= $1 * Time::Seconds::ONE_DAY();
         }
 
-        if ($age =~ /^(\d+) week/) {
+        if ($age =~ /^(\d+)\s*(?:week|w)/) {
             $t -= $1 * Time::Seconds::ONE_WEEK();
         }
 
-        if ($age =~ /^(\d+) month/) {
+        if ($age =~ /^(\d+)\s*(?:month|mo)/) {
             $t -= $1 * Time::Seconds::ONE_MONTH();
         }
 
-        if ($age =~ /^(\d+) year/) {
+        if ($age =~ /^(\d+)\s*(?:year|y)/) {
             $t -= $1 * Time::Seconds::ONE_YEAR();
         }
 
