@@ -53,7 +53,7 @@ my %valid_options = (
     maxResults => {valid => [1 .. 50],                                     default => 10},
     order      => {valid => [qw(relevance rating upload_date view_count)], default => 'relevance'},
     date       => {valid => [qw(anytime hour today week month year)],      default => 'anytime'},
-    channelId  => {valid => qr/^[-\w]{2,}\z/,                              default => undef},
+    channelId  => {valid => qr/^@?[-\w\s]{2,}\z/,                          default => undef},
 
     # Video only options
     videoDuration => {valid => [qw(short average long)], default => undef},
@@ -144,6 +144,12 @@ sub new {
         if (ref($valid_options{$key}{valid})) {
             *{__PACKAGE__ . '::set_' . $key} = sub {
                 my ($self, $value) = @_;
+
+                # Trim whitespace for channelId
+                if ($key eq 'channelId' && defined $value) {
+                    $value =~ s/^\s+|\s+\z//g;
+                }
+
                 $self->{$key} =
                   _our_smartmatch($value, $valid_options{$key}{valid})
                   ? $value
