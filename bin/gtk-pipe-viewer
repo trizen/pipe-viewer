@@ -1897,9 +1897,10 @@ sub send_search_request {
     $worker->abort_requests($search_request);
     $search_request = $worker->send_request(
         sub {
-            my ($result, $request) = @_;
+            my ($result, $request, $error) = @_;
             toggle_progress('pulse', 0);
             $search_progress = $search_request = undef;
+            die "$error_message\n" if $error;
             die "$error_message\n" unless ($yv_utils->has_entries($result));
             display_results($result);
         },

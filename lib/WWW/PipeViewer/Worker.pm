@@ -216,7 +216,16 @@ sub __handle_yv_method {
         my $setter = "set_$key";
         $self->{_yv_obj}->$setter($val);
     }
-    my $result = $code->($self->{_yv_obj}, @{$request->{args}});
+    my $result = eval { $code->($self->{_yv_obj}, @{$request->{args}}) };
+    if ($@) {
+        carp "[worker] yv_obj->$request->{method}() failed: $@";
+        $self->_send_message(
+                             id         => $request->{id},
+                             keep_alive => $request->{keep_alive},
+                             error      => $@,
+                            );
+        return;
+    }
     if ($self->{_debug} > 1) {
         printf "[worker] yv_obj->%s() returned:\n%s\n", $request->{method}, _dump($result);
     }
@@ -431,7 +440,12 @@ sub process_next_reply {
             $request = delete $self->{_requests}{$reply->{id}};
             delete $request->{keep_alive};
         }
-        $request->{callback}->($reply->{result}, $request);
+        if (exists $reply->{error}) {
+            $request->{callback}->(undef, $request, $reply->{error});
+        }
+        else {
+            $request->{callback}->($reply->{result}, $request);
+        }
     }
     if ($self->{_debug}) {
         printf "[worker] %u active requests\n", scalar %{$self->{_requests}};
