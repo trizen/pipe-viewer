@@ -304,6 +304,11 @@ sub _extract_itemSection_entry {
         return $self->_extract_shorts_entry($data, %args);
     }
 
+    # Extract lockup data
+    if (exists($data->{lockupViewModel})) {
+        return $self->_extract_lockup_entry($data, %args);
+    }
+
     # Extract playlist data
     if ($args{type} ne 'video'
         && (exists($data->{compactPlaylistRenderer}) || exists($data->{playlistWithContextRenderer}))) {
@@ -371,6 +376,95 @@ sub _extract_shorts_entry {
     $video{viewCount}       = _extract_view_count($info);
 
     return \%video;
+}
+
+sub _extract_lockup_entry {
+    my ($self, $data, %args) = @_;
+
+    my $info = $data->{lockupViewModel};
+
+    my $type         = 'video';
+    my $content_type = $info->{contentType} // '';
+
+    if ($content_type eq 'LOCKUP_CONTENT_TYPE_PLAYLIST') {
+        $type = 'playlist';
+    }
+    elsif ($content_type eq 'LOCKUP_CONTENT_TYPE_CHANNEL') {
+        $type = 'channel';
+    }
+
+    my %res = (type => $type);
+
+    if ($type eq 'video') {
+        $res{videoId} = $info->{contentId} // return;
+    }
+    elsif ($type eq 'playlist') {
+        $res{playlistId} = $info->{contentId} // return;
+    }
+    elsif ($type eq 'channel') {
+        $res{authorId} = $info->{contentId} // return;
+    }
+
+    my $metadata = $info->{metadata}{lockupMetadataViewModel};
+    $res{title} = eval { $metadata->{title}{content} } // return;
+
+    if ($type eq 'video' or $type eq 'playlist') {
+        my $rows = eval { $metadata->{metadata}{contentMetadataViewModel}{metadataRows} };
+        if (ref($rows) eq 'ARRAY') {
+            foreach my $row (@$rows) {
+                foreach my $part (@{$row->{metadataParts} // []}) {
+                    my $content = eval { $part->{text}{content} };
+                    next unless defined($content) && $content =~ /\S/;
+
+                    if ($content =~ /views?\b/i) {
+                        $res{viewCountText} //= $content;
+                        $res{viewCount}     //= _human_number_to_int($content);
+                    }
+                    elsif ($content =~ /\bago\b/i || $content =~ /\b\d{4}\b/) {
+                        $res{publishedText} //= $content;
+                    }
+                    elsif (not defined $res{author}) {
+                        $res{author} = $content;
+                    }
+                }
+            }
+        }
+    }
+
+    # Author ID from avatar
+    if (!defined $res{authorId}) {
+        $res{authorId} = eval {
+            $metadata->{image}{decoratedAvatarViewModel}{rendererContext}{commandContext}{onTap}{innertubeCommand}{browseEndpoint}{browseId}
+        };
+    }
+
+    # Thumbnails
+    my $thumbnails = eval { $info->{contentImage}{thumbnailViewModel}{image}{sources} };
+    if (ref($thumbnails) eq 'ARRAY') {
+        if ($type eq 'playlist') {
+            $res{playlistThumbnails} = _extract_thumbnails($thumbnails);
+        }
+        else {
+            $res{videoThumbnails} = _extract_thumbnails($thumbnails);
+        }
+    }
+
+    # Duration
+    if ($type eq 'video') {
+        my $overlays = eval { $info->{contentImage}{thumbnailViewModel}{overlays} };
+        if (ref($overlays) eq 'ARRAY') {
+            foreach my $overlay (@$overlays) {
+                my $badge = eval { $overlay->{thumbnailBottomOverlayViewModel}{badges}[0]{thumbnailBadgeViewModel} };
+                if (defined $badge && exists $badge->{text}) {
+                    $res{time}          = $badge->{text};
+                    $res{lengthSeconds} = _time_to_seconds($res{time});
+                    last;
+                }
+            }
+        }
+    }
+
+    return \%res;
 }
 
 sub _extract_playlist_entry {

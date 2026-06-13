@@ -125,7 +125,9 @@ sub new {
     foreach my $key (keys %valid_options) {
         if (exists $opts{$key}) {
             my $method = "set_$key";
-            $self->$method(delete $opts{$key});
+            if ($self->can($method)) {
+                $self->$method(delete $opts{$key});
+            }
         }
     }
 
