@@ -386,17 +386,19 @@ sub _extract_shorts_entry {
 
     my %video = (type => 'video');
 
-    $video{videoId}         = _extract_video_id($info) // return;
-    $video{title}           = _extract_title($info)    // return;
-    $video{lengthSeconds}   = _extract_length_seconds($info) || 0;
-    $video{liveNow}         = ($video{lengthSeconds} == 0);
-    $video{author}          = _extract_author_name($info);
-    $video{authorId}        = _extract_channel_id($info);
-    $video{publishedText}   = _extract_published_text($info);
-    $video{viewCountText}   = _extract_view_count_text($info);
-    $video{videoThumbnails} = _extract_thumbnails($info->{thumbnail}{sources});
-    $video{description}     = _extract_description($info);
-    $video{viewCount}       = _extract_view_count($info);
+    $video{videoId}       = _extract_video_id($info) // return;
+    $video{title}         = _extract_title($info)    // return;
+    $video{lengthSeconds} = _extract_length_seconds($info) || 0;
+    $video{liveNow}       = ($video{lengthSeconds} == 0);
+    $video{author}        = _extract_author_name($info);
+    $video{authorId}      = _extract_channel_id($info);
+    $video{publishedText} = _extract_published_text($info);
+    $video{viewCountText} = _extract_view_count_text($info);
+    $video{description}   = _extract_description($info);
+    $video{viewCount}     = _extract_view_count($info);
+
+    $video{videoThumbnails} =
+      _extract_thumbnails(eval { $info->{thumbnail}{sources} } // eval { $info->{thumbnailViewModel}{thumbnailViewModel}{image}{sources} });
 
     return \%video;
 }
