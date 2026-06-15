@@ -1198,12 +1198,14 @@ sub treeview_search_equal_func {
     # Strip HTML markup tags
     $val =~ s/<[^>]+>//g;
     $val = decode_entities($val);
+    $val = $yv_utils->normalize_text($val);
+    $key = $yv_utils->normalize_text($key);
 
     # Case-insensitive substring match
     if (index(CORE::fc($val), CORE::fc($key)) != -1) {
-        return 0; # Match
+        return 0;    # Match
     }
-    return 1; # No match
+    return 1;        # No match
 }
 
 sub get_treeview_popup_menu {
@@ -1981,7 +1983,8 @@ sub gtk_widget_grab_focus {
 
 sub gtk_widget_show {
     my $widget = $_[-1] // $_[0];
-    $widget->show; $widget->grab_focus;
+    $widget->show;
+    $widget->grab_focus;
     return 1;
 }
 
@@ -2420,9 +2423,9 @@ sub subscribe_toggle_selected_username {
 }
 
 sub rename_selected_username {
-    my $iter   = $users_treeview->get_selection->get_selected;
-    my $path   = $users_liststore->get_path($iter);
-    my $column = $users_treeview->get_column(1);
+    my $iter       = $users_treeview->get_selection->get_selected;
+    my $path       = $users_liststore->get_path($iter);
+    my $column     = $users_treeview->get_column(1);
     my ($renderer) = $column->get_cells;
     $renderer->set_property(editable => 1);
     $users_treeview->set_cursor($path, $column, 1);
