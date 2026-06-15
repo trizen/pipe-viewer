@@ -5,6 +5,20 @@
 
 [CHANGELOG]
 
+Version 0.5.8
+
+- Fixed thumbnails for shorts.
+- Fixed `next page` navigation for playlist results.
+- Fixed the main window search box.
+- Fixed playlist handling.
+- Fixed the search failure flow by stopping the indicator and showing a warning when search fails.
+- Added type hints for subwindow dialogs.
+- Corrected subscription sorting when using abbreviated time formats.
+- Improved `from author` matching to support `@` and spaces.
+- Added focus handling for saved channels.
+- Recognize itag `787` (720p AV1 for shorts).
+- Added `--stream-lavf-o-append=request_size=10485760` to `mpv` to help bypass YouTube throttling.
+
 Version 0.5.7
 
 - Added retry on network failure. (patch by @exponentialmatrix)
