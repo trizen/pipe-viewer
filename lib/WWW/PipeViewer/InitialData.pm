@@ -309,17 +309,40 @@ sub _extract_itemSection_entry {
         return $self->_extract_lockup_entry($data, %args);
     }
 
-    # Extract playlist data
-    if ($args{type} ne 'video'
-        && (exists($data->{compactPlaylistRenderer}) || exists($data->{playlistWithContextRenderer}))) {
+    # Next page for playlists
+    if (exists($data->{continuationItemViewModel})) {
+        my $token = eval { $data->{continuationItemViewModel}{continuationCommand}{innertubeCommand}{continuationCommand}{token} };
 
+        if (defined($token)) {
+            return
+              scalar {
+                      type  => 'nextpage',
+                      token => "ytbrowse:$args{type}:"
+                        . make_json_string(
+                                           {
+                                            token => $token,
+                                            args  => {playlists => 1},
+                                           }
+                                          ),
+                     };
+        }
+    }
+
+    # Extract playlist data
+    if (
+        $args{type} ne 'video'
+        && (   exists($data->{compactPlaylistRenderer})
+            || exists($data->{playlistWithContextRenderer}))
+      ) {
         return $self->_extract_playlist_entry($data, %args);
     }
 
     # Extract channel data
-    if ($args{type} ne 'video'
-        && (exists($data->{compactChannelRenderer}) || exists($data->{channelWithContextRenderer}))) {
-
+    if (
+        $args{type} ne 'video'
+        && (   exists($data->{compactChannelRenderer})
+            || exists($data->{channelWithContextRenderer}))
+      ) {
         return $self->_extract_channel_entry($data, %args);
     }
 
@@ -433,9 +456,8 @@ sub _extract_lockup_entry {
 
     # Author ID from avatar
     if (!defined $res{authorId}) {
-        $res{authorId} = eval {
-            $metadata->{image}{decoratedAvatarViewModel}{rendererContext}{commandContext}{onTap}{innertubeCommand}{browseEndpoint}{browseId}
-        };
+        $res{authorId} =
+          eval { $metadata->{image}{decoratedAvatarViewModel}{rendererContext}{commandContext}{onTap}{innertubeCommand}{browseEndpoint}{browseId} };
     }
 
     # Thumbnails
@@ -519,7 +541,7 @@ sub _parse_itemSection {
         push @results, $item if defined($item) && ref($item) eq 'HASH';
     }
 
-    # Handle continuation tokens
+    # Handle continuation tokens (old format)
     if (exists($data->{continuations}) && ref($data->{continuations}) eq 'ARRAY') {
         my $token = eval { $data->{continuations}[0]{nextContinuationData}{continuation} };
 
@@ -993,7 +1015,7 @@ sub _build_api_context {
                                    browserVersion   => "136.0",
                                    clientFormFactor => "LARGE_FORM_FACTOR",
                                    clientName       => "MWEB",
-                                   clientVersion    => "2.20250314.01.00",
+                                   clientVersion    => "2.20260612.01.00",
                                    deviceMake       => "Mozilla",
                                    deviceModel      => "Firefox for Android",
                                    hl               => "en",
@@ -1337,7 +1359,7 @@ sub yt_playlist_next_page {
 
     my @results =
       $self->_parse_itemSection(eval { $hash->{continuationContents}{playlistVideoListContinuation} }
-                                                         // eval { $hash->{continuationContents}{itemSectionContinuation} },
+                                             // eval { $hash->{continuationContents}{itemSectionContinuation} },
                                 %args);
 
     if (!@results) {
@@ -1357,7 +1379,7 @@ Make a browse request to the YouTube API with a continuation token.
 sub yt_browse_request {
     my ($self, $url, $token, %args) = @_;
 
-    my %request = (%{$self->_build_api_context($url)}, continuation => $token,);
+    my %request = (%{$self->_build_api_context($url)}, continuation => $token);
 
     my $api_url = $self->get_m_youtube_url . _unscramble('o/ebbrky?u1wi//evsuyto=e') . _unscramble('1HUCiSlOalFEcYQSS8_9q1LW4y8JAwI2zT_qA_G');
     my $content = $self->post_as_json($api_url, \%request) // return;
@@ -1379,7 +1401,7 @@ sub yt_browse_request {
         @results = $self->_extract_sectionList_results(eval { $hash->{continuationContents}{sectionListContinuation} } // $res, %args);
     }
 
-    $self->_add_author_to_results($hash, \@results, %args);
+    $self->_add_author_to_results($hash, \@results, %args) if not $args{playlists};
     return $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
