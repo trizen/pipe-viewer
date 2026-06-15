@@ -418,9 +418,9 @@ sub _retry_with_backoff {
             return $content;
         }
 
-        # Don't retry on client errors (4xx) except 429 (Too Many Requests)
+        # Don't retry on client errors (4xx)
         my $code = $response->code;
-        if ($code >= 400 && $code < 500 && $code != 429) {
+        if ($code >= 400 && $code < 500) {
             _warn_response_error($response, $url);
             return;
         }
