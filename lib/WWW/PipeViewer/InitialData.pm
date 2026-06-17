@@ -242,12 +242,60 @@ sub _extract_description {
 
 sub _extract_video_count {
     my ($info) = @_;
-    return _human_number_to_int(eval { $info->{videoCountShortText}{runs}[0]{text} } || eval { $info->{videoCountText}{runs}[0]{text} } || 0);
+    
+    # YouTube's new format may have swapped field names
+    # Try the expected field names first
+    my $video_count = _human_number_to_int(
+        eval { $info->{videoCountShortText}{runs}[0]{text} } ||
+        eval { $info->{videoCountText}{runs}[0]{text} } ||
+        0
+    );
+    
+    # If videoCountText contains "subscribers", it's actually the subscriber count (swapped format)
+    my $video_count_text = eval { $info->{videoCountText}{runs}[0]{text} } // '';
+    if ($video_count_text =~ /subscribers/i) {
+        # In swapped format, extract video count from accessibility label
+        # The label format is like: "ChannelName 964 videos 15.3K subscribers"
+        my $label = eval { $info->{title}{accessibility}{accessibilityData}{label} } // '';
+        if ($label =~ /(\d+)\s+videos\b/i) {
+            return _human_number_to_int($1);
+        }
+        # Also try the headline accessibility label
+        $label = eval { $info->{headline}{accessibility}{accessibilityData}{label} } // '';
+        if ($label =~ /(\d+)\s+videos\b/i) {
+            return _human_number_to_int($1);
+        }
+        return 0;
+    }
+    
+    return $video_count;
 }
 
 sub _extract_subscriber_count {
     my ($info) = @_;
-    return _human_number_to_int(eval { $info->{subscriberCountText}{runs}[0]{text} } || 0);
+    
+    # YouTube's new format has swapped field names
+    # subscriberCountText now contains the channel handle (e.g., @username)
+    # videoCountText now contains the subscriber count
+    
+    my $subscriber_count_text = eval { $info->{subscriberCountText}{runs}[0]{text} } // '';
+    
+    # If subscriberCountText contains a handle (@username), it's not the count
+    # Try videoCountText instead (swapped format)
+    if ($subscriber_count_text =~ /^@/) {
+        return _human_number_to_int(
+            eval { $info->{videoCountText}{runs}[0]{text} } ||
+            eval { $info->{videoCountShortText}{runs}[0]{text} } ||
+            0
+        );
+    }
+    
+    # Otherwise, try the normal field names (old format)
+    return _human_number_to_int(
+        $subscriber_count_text ||
+        eval { $info->{subscriberCountShortText}{runs}[0]{text} } ||
+        0
+    );
 }
 
 sub _extract_playlist_id {
