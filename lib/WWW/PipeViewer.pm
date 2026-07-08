@@ -136,6 +136,11 @@ sub new {
         warn "Invalid key: '${invalid_key}'";
     }
 
+    # Eagerly load cookies if cookies_from_browser is set
+    if (defined($self->{cookies_from_browser})) {
+        $self->{lwp} // $self->set_lwp_useragent();
+    }
+
     return $self;
 }
 
