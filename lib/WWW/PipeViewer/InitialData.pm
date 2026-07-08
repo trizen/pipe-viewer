@@ -919,7 +919,7 @@ sub _get_initial_data {
 
     my $content = $self->lwp_get($url) // return;
 
-    # Try to extract from JavaScript variable
+    # Try to extract from JavaScript variable (single-quoted)
     if ($content =~ m{var\s+ytInitialData\s*=\s*'(.*?)'}is) {
         my $json = $1;
 
@@ -929,6 +929,13 @@ sub _get_initial_data {
 
         my $hash = parse_utf8_json_string($json);
         return $hash;
+    }
+
+    # Try to extract from JavaScript variable (raw JSON, no quotes)
+    if ($content =~ m{var\s+ytInitialData\s*=\s*(\{.+?)\s*;\s*</script}is) {
+        my $json = $1;
+        my $hash = parse_utf8_json_string($json);
+        return $hash if defined($hash);
     }
 
     # Try to extract from HTML comment

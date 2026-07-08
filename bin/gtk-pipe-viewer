@@ -1174,6 +1174,37 @@ sub get_text {
     $gui->get_object('right_button_image')->set_from_pixbuf($right_arrow_pixbuf);
 }
 
+# Notify on startup if cookies_from_browser is configured
+if (defined($CONFIG{cookies_from_browser})) {
+    Glib::Idle->add(
+        sub {
+            Glib::Timeout->add(
+                3000,
+                sub {
+                    my $profile_loaded = eval { $yv_obj->get_profile_loaded };
+                    if ($profile_loaded) {
+                        $progressbar->set_text("Profile loaded from $CONFIG{cookies_from_browser}");
+                    }
+                    else {
+                        $progressbar->set_text("No profile loaded. Use Menu > Login with Browser to log in.");
+                    }
+                    $progressbar->set_fraction(1.0);
+                    toggle_progress('bar', 1);
+                    Glib::Timeout->add(
+                        5000,
+                        sub {
+                            toggle_progress('bar', 0);
+                            return 0;
+                        }
+                    );
+                    return 0;
+                }
+            );
+            return 0;
+        }
+    );
+}
+
 # Treeview signals
 {
     $treeview->set_activate_on_single_click($CONFIG{single_click_play});
@@ -2975,6 +3006,100 @@ sub display_subscription_videos {
     }
 
     return;
+}
+
+sub login_with_browser {
+
+    # Show browser selection dialog
+    my $dialog = Gtk3::Dialog->new(
+        "Login with Browser",
+        $mainw,
+        'modal',
+        'gtk-cancel' => 'cancel',
+        'gtk-ok'     => 'ok',
+    );
+
+    my $content_area = $dialog->get_content_area;
+    $content_area->set_border_width(12);
+    $content_area->set_spacing(8);
+
+    my $label = Gtk3::Label->new("Select a browser to extract your YouTube login cookies from:");
+    $label->set_line_wrap(1);
+    $content_area->pack_start($label, 0, 0, 8);
+
+    # Browser selection combo
+    my @browsers = ('chromium', 'chrome', 'firefox', 'brave', 'edge', 'opera', 'vivaldi');
+    my $combo = Gtk3::ComboBoxText->new();
+    foreach my $browser (@browsers) {
+        $combo->append_text($browser);
+    }
+    $combo->set_active(0);    # Default to chromium
+    $content_area->pack_start($combo, 0, 0, 4);
+
+    # Info label
+    my $info = Gtk3::Label->new("");
+    $info->set_line_wrap(1);
+    $info->set_markup('<small>This will read cookies from your browser to authenticate with YouTube.\nThe browser must be logged into your Google/YouTube account.</small>');
+    $content_area->pack_start($info, 0, 0, 4);
+
+    $dialog->show_all;
+    my $response = $dialog->run;
+    $dialog->destroy;
+
+    return unless $response eq 'ok';
+
+    my $selected_browser = $browsers[$combo->get_active];
+    return unless defined $selected_browser;
+
+    # Show progress
+    $progressbar->set_text("Extracting cookies from $selected_browser...");
+    $progressbar->set_fraction(0.5);
+    toggle_progress('bar', 1);
+
+    # Force re-extraction by deleting cache
+    my $cache_dir = "$ENV{HOME}/.cache/pipe-viewer";
+    my $cache_file = "$cache_dir/cookies_from_${selected_browser}.txt";
+    unlink $cache_file if -f $cache_file;
+
+    # Update config
+    $CONFIG{cookies_from_browser} = $selected_browser;
+
+    # Extract cookies using the worker
+    $worker->send_request(
+        sub {
+            my ($result) = @_;
+            toggle_progress('bar', 0);
+
+            # Check if profile loaded
+            my $profile_loaded = eval { $yv_obj->get_profile_loaded };
+
+            if ($profile_loaded) {
+                $progressbar->set_text("Logged in successfully with $selected_browser cookies");
+                $progressbar->set_fraction(1.0);
+                toggle_progress('bar', 1);
+                Glib::Timeout->add(
+                    5000,
+                    sub {
+                        toggle_progress('bar', 0);
+                        return 0;
+                    }
+                );
+            }
+            else {
+                my $err_dialog = Gtk3::MessageDialog->new(
+                    $mainw,
+                    'modal',
+                    'warning',
+                    'close',
+                    "Failed to extract valid cookies from $selected_browser.\n\nMake sure:\n- $selected_browser is installed\n- You are logged into YouTube in $selected_browser\n- On Linux, GNOME Keyring must be accessible"
+                );
+                $err_dialog->run;
+                $err_dialog->destroy;
+            }
+        },
+        'reload_cookies_from_browser',
+        [$selected_browser],
+    );
 }
 
 sub save_search_results_position {
