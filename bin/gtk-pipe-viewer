@@ -3073,9 +3073,13 @@ sub login_with_browser {
             my $profile_loaded = $result;
 
             if ($profile_loaded) {
-                $progressbar->set_text("Logged in successfully with $selected_browser cookies");
+                $progressbar->set_text("Logged in with $selected_browser");
                 $progressbar->set_fraction(1.0);
                 toggle_progress('bar', 1);
+
+                # Save to config
+                $CONFIG{cookies_from_browser} = $selected_browser;
+
                 Glib::Timeout->add(
                     5000,
                     sub {

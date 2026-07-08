@@ -251,6 +251,7 @@ my %CONFIG = (
     http_proxy         => undef,
     cookie_file          => undef,
     cookies_from_browser => undef,
+    yt_subs              => 0,
     user_agent           => undef,
     timeout            => undef,
     max_retries        => 3,
@@ -1664,6 +1665,7 @@ sub parse_arguments {
 
         'cookie-file|cookies=s'          => \$opt{cookie_file},
         'cookies-from-browser=s'         => \$opt{cookies_from_browser},
+        'yt-subs'                        => \$opt{yt_subs},
         'user-agent|agent=s'             => \$opt{user_agent},
         'http-proxy|https-proxy|proxy=s' => \$opt{http_proxy},
 
