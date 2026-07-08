@@ -3069,8 +3069,8 @@ sub login_with_browser {
             my ($result) = @_;
             toggle_progress('bar', 0);
 
-            # Check if profile loaded
-            my $profile_loaded = eval { $yv_obj->get_profile_loaded };
+            # reload_cookies_from_browser returns 1 on success, 0 on failure
+            my $profile_loaded = $result;
 
             if ($profile_loaded) {
                 $progressbar->set_text("Logged in successfully with $selected_browser cookies");
