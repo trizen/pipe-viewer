@@ -978,9 +978,10 @@ my %ResultsHistory = (
 $CONFIG{pipe_viewer} //= which_command('pipe-viewer') // 'pipe-viewer';
 
 my $yv_obj = WWW::PipeViewer->new(
-                                  cache_dir  => $CONFIG{cache_dir},
-                                  env_proxy  => $CONFIG{env_proxy},
-                                  http_proxy => $CONFIG{http_proxy},
+                                  cache_dir           => $CONFIG{cache_dir},
+                                  env_proxy           => $CONFIG{env_proxy},
+                                  http_proxy          => $CONFIG{http_proxy},
+                                  cookies_from_browser => $CONFIG{cookies_from_browser},
                                  );
 
 my $yv_utils = WWW::PipeViewer::Utils->new(
@@ -3005,6 +3006,27 @@ sub display_subscription_videos {
         }
     }
 
+    return;
+}
+
+sub display_youtube_subscriptions {
+    clear_search_requests();
+    send_search_request("No YouTube subscription feed available. Make sure you are logged in.",
+                        'subscription_feed', []);
+    return;
+}
+
+sub display_youtube_history {
+    clear_search_requests();
+    send_search_request("No YouTube history available. Make sure you are logged in.",
+                        'youtube_history', []);
+    return;
+}
+
+sub display_youtube_trending {
+    clear_search_requests();
+    send_search_request("No trending videos found.",
+                        'trending_videos_from_category', [undef]);
     return;
 }
 

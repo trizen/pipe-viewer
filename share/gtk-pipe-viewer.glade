@@ -294,6 +294,30 @@ Author: Trizen https://github.com/trizen
                       </object>
                     </child>
                     <child>
+                      <object class="GtkImageMenuItem" id="youtube_history">
+                        <property name="label" translatable="yes">YouTube History</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="tooltip-text" translatable="yes">Display your YouTube watch history (requires login)</property>
+                        <property name="image">image12</property>
+                        <property name="use-stock">False</property>
+                        <signal name="activate" handler="display_youtube_history" swapped="no"/>
+                        <accelerator key="h" signal="activate" modifiers="GDK_CONTROL_MASK"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkImageMenuItem" id="youtube_trending">
+                        <property name="label" translatable="yes">YouTube Trending</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="tooltip-text" translatable="yes">Display trending videos on YouTube</property>
+                        <property name="image">image12</property>
+                        <property name="use-stock">False</property>
+                        <signal name="activate" handler="display_youtube_trending" swapped="no"/>
+                        <accelerator key="t" signal="activate" modifiers="GDK_CONTROL_MASK"/>
+                      </object>
+                    </child>
+                    <child>
                       <object class="GtkImageMenuItem" id="cli_version">
                         <property name="label" translatable="yes">CLI Pipe Viewer</property>
                         <property name="visible">True</property>

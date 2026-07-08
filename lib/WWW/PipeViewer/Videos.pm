@@ -46,6 +46,40 @@ sub trending_videos_from_category {
     return $self->_get_results($self->_make_feed_url('trending', (defined($category) ? (type => $category) : ())));
 }
 
+=head2 subscription_feed(%args)
+
+Get videos from the YouTube subscription feed.
+Requires cookies_from_browser or cookie_file to be set with a logged-in session.
+
+=cut
+
+sub subscription_feed {
+    my ($self, %args) = @_;
+
+    if (my $results = $self->yt_subscription_feed(%args)) {
+        return $results;
+    }
+
+    return {results => [], url => undef};
+}
+
+=head2 youtube_history(%args)
+
+Get videos from the YouTube watch history.
+Requires cookies_from_browser or cookie_file to be set with a logged-in session.
+
+=cut
+
+sub youtube_history {
+    my ($self, %args) = @_;
+
+    if (my $results = $self->yt_youtube_history(%args)) {
+        return $results;
+    }
+
+    return {results => [], url => undef};
+}
+
 =head2 videos_details($id, $part)
 
 Get info about a videoID, such as: channelId, title, description,

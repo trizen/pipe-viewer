@@ -1533,6 +1533,7 @@ sub apply_configuration {
 
     if (defined $opt->{trending}) {
         my $cat_id = delete $opt->{trending};
+        $cat_id = undef if defined($cat_id) && $cat_id eq '';
         print_videos($yv_obj->trending_videos_from_category($cat_id));
     }
 

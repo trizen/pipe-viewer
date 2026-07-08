@@ -1254,6 +1254,196 @@ sub yt_search {
     return $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
+=head2 yt_subscription_feed(%args)
+
+Fetch the YouTube subscription feed. Requires cookies from a logged-in browser.
+
+=cut
+
+sub yt_subscription_feed {
+    my ($self, %args) = @_;
+
+    my $url = 'https://m.youtube.com/feed/subscriptions';
+
+    my %params = (
+                  hl => 'en',
+                 );
+
+    $url = $self->_append_url_args($url, %params);
+
+    my $hash = $self->_get_initial_data($url) // return;
+
+    # Try to find richGridRenderer in various locations
+    my $contents = eval {
+        # twoColumnBrowseResultsRenderer (desktop)
+        my $tabs = $hash->{contents}{twoColumnBrowseResultsRenderer}{tabs} // [];
+        for my $tab (@$tabs) {
+            my $c = eval { $tab->{tabRenderer}{content}{richGridRenderer}{contents} };
+            return $c if $c;
+        }
+        # singleColumnBrowseResultsRenderer (mobile)
+        $tabs = $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs} // [];
+        for my $tab (@$tabs) {
+            my $c = eval { $tab->{tabRenderer}{content}{richGridRenderer}{contents} };
+            return $c if $c;
+        }
+        # Direct access
+        $hash->{contents}{richGridRenderer}{contents};
+    } // [];
+
+    return $self->_extract_videos_from_richGrid($contents, %args, url => $url);
+}
+
+=head2 yt_youtube_history(%args)
+
+Fetch the YouTube watch history. Requires cookies from a logged-in browser.
+
+=cut
+
+sub yt_youtube_history {
+    my ($self, %args) = @_;
+
+    my $url = 'https://m.youtube.com/feed/history';
+
+    my %params = (
+                  hl => 'en',
+                 );
+
+    $url = $self->_append_url_args($url, %params);
+
+    my $hash = $self->_get_initial_data($url) // return;
+
+    # History uses sectionListRenderer
+    my $contents = eval {
+        my $tabs = $hash->{contents}{twoColumnBrowseResultsRenderer}{tabs} // [];
+        for my $tab (@$tabs) {
+            my $c = eval { $tab->{tabRenderer}{content}{sectionListRenderer}{contents} };
+            return $c if $c;
+        }
+        $tabs = $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs} // [];
+        for my $tab (@$tabs) {
+            my $c = eval { $tab->{tabRenderer}{content}{sectionListRenderer}{contents} };
+            return $c if $c;
+        }
+        $hash->{contents}{sectionListRenderer}{contents};
+    } // [];
+
+    my @results;
+    for my $item (@$contents) {
+        # itemSectionRenderer contains the video list
+        my $isr_items = eval { $item->{itemSectionRenderer}{contents} } // [];
+        for my $isr_item (@$isr_items) {
+            # richGridRenderer for history items
+            my $rgr = $isr_item->{richGridRenderer};
+            if ($rgr) {
+                my $rgr_items = $rgr->{contents} // [];
+                for my $ri (@$rgr_items) {
+                    my $vid = $ri->{richItemRenderer}{content}{videoWithContextRenderer}
+                           // $ri->{richItemRenderer}{content}{videoRenderer};
+                    next unless $vid;
+                    my $video = $self->_parse_video_renderer($vid);
+                    push @results, $video if $video;
+                }
+            }
+            # Direct videoRenderer
+            my $vid = $isr_item->{videoWithContextRenderer}
+                   // $isr_item->{videoRenderer};
+            if ($vid) {
+                my $video = $self->_parse_video_renderer($vid);
+                push @results, $video if $video;
+            }
+        }
+    }
+
+    return $self->_prepare_results_for_return(\@results, %args, url => $url);
+}
+
+sub _extract_videos_from_richGrid {
+    my ($self, $contents, %args) = @_;
+
+    my @results;
+    for my $item (@$contents) {
+        my $vid = $item->{richItemRenderer}{content}{videoWithContextRenderer}
+               // $item->{richItemRenderer}{content}{videoRenderer};
+        next unless $vid;
+        my $video = $self->_parse_video_renderer($vid);
+        push @results, $video if $video;
+    }
+
+    return $self->_prepare_results_for_return(\@results, %args);
+}
+
+sub _parse_video_renderer {
+    my ($self, $vid) = @_;
+
+    my $title = $vid->{headline}{runs}[0]{text}
+              // $vid->{title}{runs}[0]{text}
+              // return undef;
+
+    my $videoId = $vid->{videoId} // return undef;
+
+    my $author   = $vid->{shortBylineText}{runs}[0]{text} // '';
+    my $authorId = eval { $vid->{shortBylineText}{runs}[0]{navigationEndpoint}{browseEndpoint}{browseId} } // '';
+
+    my $viewCount = 0;
+    my $viewText = $vid->{shortViewCountText}{runs}[0]{text}
+                // $vid->{viewCountText}{simpleText}
+                // '';
+    if ($viewText =~ /^([\d,.]+[KMB]?)\s*views/i) {
+        $viewCount = WWW::PipeViewer::InitialData::_human_number_to_int($1);
+    }
+
+    my $lengthSeconds = 0;
+    if (($vid->{lengthText}{runs}[0]{text} // $vid->{lengthText}{simpleText} // '') =~ /([\d:]+)/) {
+        $lengthSeconds = WWW::PipeViewer::InitialData::_time_to_seconds($1);
+    }
+
+    my $publishedText = $vid->{publishedTimeText}{simpleText} // '';
+    my $published = undef;
+
+    if ($publishedText =~ /(\d+)\s+(\w+)\s+ago/) {
+        my ($quantity, $period) = ($1, $2);
+        $period =~ s/s\z//;
+        my %table = (
+                     year   => 31556952,
+                     month  => 2629743.83,
+                     week   => 604800,
+                     day    => 86400,
+                     hour   => 3600,
+                     minute => 60,
+                     second => 1,
+                    );
+        if (exists $table{$period}) {
+            $published = int(time - $quantity * $table{$period});
+        }
+    }
+
+    return {
+        type     => "video",
+        title    => $title,
+        videoId  => $videoId,
+        author   => $author,
+        authorId => $authorId,
+        viewCount       => $viewCount,
+        published       => $published,
+        publishedText   => $publishedText,
+        lengthSeconds   => $lengthSeconds,
+        liveNow         => ($lengthSeconds == 0),
+        paid            => 0,
+        premium         => 0,
+        videoThumbnails => [
+            map {
+                scalar {
+                        quality => 'medium',
+                        url     => ($_->{url} =~ s{/hqdefault\.jpg}{/mqdefault.jpg}r),
+                        width   => $_->{width},
+                        height  => $_->{height},
+                       }
+            } @{$vid->{thumbnail}{thumbnails} // []}
+        ],
+    };
+}
+
 =head2 yt_channel_search($channel, q => $keyword, %args)
 
 Search for videos given a keyword string from a channel ID or username.
