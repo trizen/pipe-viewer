@@ -43,6 +43,12 @@ sub trending_videos_from_category {
         $category = $_CATEGORIES{$category};
     }
 
+    # Try YouTube scraping first
+    if (my $results = $self->yt_youtube_trending()) {
+        return $results;
+    }
+
+    # Fallback to Invidious API
     return $self->_get_results($self->_make_feed_url('trending', (defined($category) ? (type => $category) : ())));
 }
 

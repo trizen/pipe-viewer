@@ -1254,6 +1254,75 @@ sub yt_search {
     return $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
+=head2 yt_youtube_trending(%args)
+
+Fetch YouTube trending videos by scraping.
+
+=cut
+
+sub yt_youtube_trending {
+    my ($self, %args) = @_;
+
+    my $url = 'https://m.youtube.com/feed/trending';
+    my %params = (hl => 'en');
+    $url = $self->_append_url_args($url, %params);
+
+    my $hash = $self->_get_initial_data($url) // return;
+
+    my $contents = eval {
+        my $tabs = $hash->{contents}{twoColumnBrowseResultsRenderer}{tabs} // [];
+        for my $tab (@$tabs) {
+            for my $key (qw(richGridRenderer sectionListRenderer)) {
+                my $c = eval { $tab->{tabRenderer}{content}{$key}{contents} };
+                return $c if $c;
+            }
+        }
+        $tabs = $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs} // [];
+        for my $tab (@$tabs) {
+            for my $key (qw(richGridRenderer sectionListRenderer)) {
+                my $c = eval { $tab->{tabRenderer}{content}{$key}{contents} };
+                return $c if $c;
+            }
+        }
+        [];
+    } // [];
+
+    # Flatten: handle richItemRenderer and richSectionRenderer
+    my @flat;
+    for my $item (@$contents) {
+        if ($item->{richItemRenderer}) {
+            push @flat, $item;
+        }
+        elsif ($item->{richSectionRenderer}) {
+            my $content = $item->{richSectionRenderer}{content} // {};
+            for my $key (keys %$content) {
+                my $shelf = $content->{$key};
+                next unless ref($shelf) eq "HASH";
+                for my $sub (@{$shelf->{contents} // []}) {
+                    if ($sub->{richItemRenderer}) {
+                        push @flat, $sub;
+                    }
+                    elsif ($sub->{videoWithContextRenderer} || $sub->{videoRenderer}) {
+                        push @flat, {richItemRenderer => {content => $sub}};
+                    }
+                }
+            }
+        }
+        elsif ($item->{itemSectionRenderer}) {
+            for my $sub (@{$item->{itemSectionRenderer}{contents} // []}) {
+                if ($sub->{richGridRenderer}) {
+                    push @flat, @{$sub->{richGridRenderer}{contents} // []};
+                }
+                elsif ($sub->{videoWithContextRenderer} || $sub->{videoRenderer}) {
+                    push @flat, {richItemRenderer => {content => $sub}};
+                }
+            }
+        }
+    }
+
+    return $self->_extract_videos_from_richGrid(\@flat, %args, url => $url);
+}
+
 =head2 yt_subscription_feed(%args)
 
 Fetch the YouTube subscription feed. Requires cookies from a logged-in browser.
@@ -1333,11 +1402,17 @@ sub yt_youtube_history {
         # itemSectionRenderer contains the video list
         my $isr_items = eval { $item->{itemSectionRenderer}{contents} } // [];
         for my $isr_item (@$isr_items) {
-            # richGridRenderer for history items
+            # compactVideoRenderer (history format)
+            my $cvr = $isr_item->{compactVideoRenderer};
+            if ($cvr) {
+                my $video = $self->_parse_compact_video_renderer($cvr);
+                push @results, $video if $video;
+                next;
+            }
+            # richGridRenderer
             my $rgr = $isr_item->{richGridRenderer};
             if ($rgr) {
-                my $rgr_items = $rgr->{contents} // [];
-                for my $ri (@$rgr_items) {
+                for my $ri (@{$rgr->{contents} // []}) {
                     my $vid = $ri->{richItemRenderer}{content}{videoWithContextRenderer}
                            // $ri->{richItemRenderer}{content}{videoRenderer};
                     next unless $vid;
@@ -1356,6 +1431,51 @@ sub yt_youtube_history {
     }
 
     return $self->_prepare_results_for_return(\@results, %args, url => $url);
+}
+
+sub _parse_compact_video_renderer {
+    my ($self, $cvr) = @_;
+
+    my $title = $cvr->{title}{runs}[0]{text} // return undef;
+    my $videoId = $cvr->{videoId} // return undef;
+    my $author   = $cvr->{shortBylineText}{runs}[0]{text} // '';
+    my $authorId = eval { $cvr->{shortBylineText}{runs}[0]{navigationEndpoint}{browseEndpoint}{browseId} } // '';
+
+    my $viewCount = 0;
+    my $viewText = $cvr->{viewCountText}{simpleText} // '';
+    if ($viewText =~ /^([\d,.]+[KMB]?)\s*views/i) {
+        $viewCount = WWW::PipeViewer::InitialData::_human_number_to_int($1);
+    }
+
+    my $lengthSeconds = 0;
+    if (($cvr->{lengthText}{runs}[0]{text} // $cvr->{lengthText}{simpleText} // '') =~ /([\d:]+)/) {
+        $lengthSeconds = WWW::PipeViewer::InitialData::_time_to_seconds($1);
+    }
+
+    return {
+        type     => "video",
+        title    => $title,
+        videoId  => $videoId,
+        author   => $author,
+        authorId => $authorId,
+        viewCount       => $viewCount,
+        published       => undef,
+        publishedText   => '',
+        lengthSeconds   => $lengthSeconds,
+        liveNow         => ($lengthSeconds == 0),
+        paid            => 0,
+        premium         => 0,
+        videoThumbnails => [
+            map {
+                scalar {
+                        quality => 'medium',
+                        url     => ($_->{url} =~ s{/hqdefault\.jpg}{/mqdefault.jpg}r),
+                        width   => $_->{width},
+                        height  => $_->{height},
+                       }
+            } @{$cvr->{thumbnail}{thumbnails} // []}
+        ],
+    };
 }
 
 sub _extract_videos_from_richGrid {
