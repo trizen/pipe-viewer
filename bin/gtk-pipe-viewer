@@ -259,7 +259,8 @@ my %CONFIG = (
     max_retries => 3,
     retry_delay => 1,
     user_agent  => undef,
-    cookie_file => undef,
+    cookie_file          => undef,
+    cookies_from_browser => undef,
     prefer_fork => (($^O eq 'linux') ? 0 : 1),
     debug       => 0,
     fullscreen  => 0,
@@ -1082,7 +1083,7 @@ sub apply_configuration {
     foreach my $option_name (
                              qw(
                              api_host cache_dir comments_order
-                             cookie_file debug env_proxy force_fallback http_proxy prefer_av1
+                             cookie_file cookies_from_browser debug env_proxy force_fallback http_proxy prefer_av1
                              prefer_invidious prefer_mp4 region timeout user_agent ytdl ytdl_cmd
                              ytdlp_comments ytdlp_max_comments ytdlp_max_replies
                              bypass_age_gate_native bypass_age_gate_with_proxy

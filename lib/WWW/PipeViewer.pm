@@ -81,7 +81,8 @@ my %valid_options = (
     retry_delay => {valid => qr/^\d+\z/, default => 1},
     config_dir  => {valid => qr/^./,     default => q{.}},
     cache_dir   => {valid => qr/^./,     default => q{.}},
-    cookie_file => {valid => qr/^./,     default => undef},
+    cookie_file          => {valid => qr/^./,     default => undef},
+    cookies_from_browser => {valid => qr/^\w+/,   default => undef},
 
     # Support for yt-dlp / youtube-dl
     ytdl     => {valid => [1, 0], default => 1},
@@ -329,6 +330,12 @@ sub _setup_cookies {
     my ($self, $agent) = @_;
 
     my $cookie_file = $self->get_cookie_file;
+    my $browser     = $self->get_cookies_from_browser;
+
+    # If cookies_from_browser is set, extract cookies via yt-dlp
+    if (defined($browser) and !defined($cookie_file)) {
+        $cookie_file = $self->_extract_browser_cookies($browser);
+    }
 
     if (defined($cookie_file) and -f $cookie_file) {
         if ($self->get_debug) {
@@ -350,6 +357,50 @@ sub _setup_cookies {
         $self->_set_default_cookies($cookies);
         $agent->cookie_jar($cookies);
     }
+}
+
+sub _extract_browser_cookies {
+    my ($self, $browser) = @_;
+
+    require File::Spec;
+
+    my $cache_dir   = $self->get_cache_dir // File::Spec->tmpdir;
+    my $cookie_file = File::Spec->catfile($cache_dir, "cookies_from_${browser}.txt");
+
+    # Re-use cached file if it exists and is less than 1 hour old
+    if (-f $cookie_file && (time() - (stat($cookie_file))[9]) < 3600) {
+        if ($self->get_debug) {
+            say STDERR ":: Reusing cached browser cookies: $cookie_file";
+        }
+        return $cookie_file;
+    }
+
+    my $ytdl_cmd = $self->get_ytdl_cmd // 'yt-dlp';
+
+    if ($self->get_debug) {
+        say STDERR ":: Extracting cookies from browser: $browser";
+    }
+
+    my @cmd = (
+        $ytdl_cmd,
+        '--cookies-from-browser', $browser,
+        '--cookies',              $cookie_file,
+        '--skip-download',
+        '--print',                '',
+        'https://www.youtube.com',
+    );
+
+    my $exit_code = system(@cmd);
+
+    if ($exit_code == 0 && -f $cookie_file && -s $cookie_file) {
+        if ($self->get_debug) {
+            say STDERR ":: Browser cookies extracted to: $cookie_file";
+        }
+        return $cookie_file;
+    }
+
+    warn ":: Warning: failed to extract cookies from browser '$browser' (exit code: $exit_code)\n";
+    return undef;
 }
 
 sub _set_default_cookies {
