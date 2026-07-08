@@ -3044,11 +3044,10 @@ sub login_with_browser {
 
     $dialog->show_all;
     my $response = $dialog->run;
+    my $selected_browser = $browsers[$combo->get_active];
     $dialog->destroy;
 
     return unless $response eq 'ok';
-
-    my $selected_browser = $browsers[$combo->get_active];
     return unless defined $selected_browser;
 
     # Show progress
