@@ -1556,9 +1556,12 @@ sub _find_cookie_file {
     return $cookie_file if $cookie_file && -f $cookie_file;
 
     my $browser = $self->get_cookies_from_browser;
-    if ($browser) {
-        require File::Spec;
 
+    require File::Spec;
+    my $default_dir = File::Spec->catdir($ENV{HOME} // '.', '.cache', 'pipe-viewer');
+
+    # If browser specified, look for its specific cookie file
+    if ($browser) {
         # Check cache_dir
         my $cache_dir = $self->get_cache_dir;
         if ($cache_dir && $cache_dir ne '.') {
@@ -1566,18 +1569,22 @@ sub _find_cookie_file {
             return $cf if -f $cf;
         }
 
-        # Check default cache location
-        my $default_dir = File::Spec->catdir($ENV{HOME} // '.', '.cache', 'pipe-viewer');
         my $cf = File::Spec->catfile($default_dir, "cookies_from_${browser}.txt");
         return $cf if -f $cf;
 
-        # Check current directory
         $cf = File::Spec->catfile('.', "cookies_from_${browser}.txt");
         return $cf if -f $cf;
+    }
 
-        # Check tmpdir
-        $cf = File::Spec->catfile(File::Spec->tmpdir(), "cookies_from_${browser}.txt");
-        return $cf if -f $cf;
+    # Fallback: find ANY cookies_from_*.txt in default cache
+    if (opendir(my $dh, $default_dir)) {
+        my @cookie_files = grep { /^cookies_from_.*\.txt$/ } readdir($dh);
+        closedir($dh);
+        if (@cookie_files) {
+            # Prefer the one matching browser, or just take the first
+            my $cf = File::Spec->catfile($default_dir, $cookie_files[0]);
+            return $cf if -f $cf;
+        }
     }
 
     return undef;

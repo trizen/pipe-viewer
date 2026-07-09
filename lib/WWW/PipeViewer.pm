@@ -469,7 +469,7 @@ sub _verify_profile {
     # Check for YouTube auth cookies
     $jar->scan(sub {
         my ($version, $key, $val, $path, $domain, $port, $path_spec, $secure, $expires, $discard, $hash) = @_;
-        if ($domain =~ /youtube\.com|google\.com/ && $key =~ /^(SID|SAPISID|HSID|SSID|__Secure-3PSID)$/) {
+        if ($domain =~ /youtube\.com|google\.com/ && $key =~ /^(SID|SAPISID|HSID|SSID|__Secure-3PSID|__Secure-3PAPISID|__Secure-1PSID)$/) {
             $has_auth = 1;
         }
     });

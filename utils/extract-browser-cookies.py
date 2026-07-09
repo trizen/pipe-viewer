@@ -122,13 +122,27 @@ def extract_cookies(browser, output_file=None):
                 unix_ts = 0
             out.write(f"{host}\t{domain_flag}\t{path}\t{secure_str}\t{unix_ts}\t{name}\t{value}\n")
             count += 1
-            # Save google.com auth cookies for youtube.com
-            if "google.com" in host and name in auth_cookie_names:
+            # Save auth cookies for cross-domain sharing
+            if ("google.com" in host or "youtube.com" in host) and name in auth_cookie_names:
                 google_auth_cookies[name] = (path, secure_str, unix_ts, value)
         # Copy auth cookies to youtube.com
         for name, (path, secure_str, unix_ts, value) in google_auth_cookies.items():
             out.write(f".youtube.com\tTRUE\t{path}\t{secure_str}\t{unix_ts}\t{name}\t{value}\n")
             count += 1
+
+        # Create legacy aliases from __Secure-3P* cookies
+        secure_to_legacy = {
+            "__Secure-3PAPISID": "SAPISID",
+            "__Secure-3PSID": "SID",
+            "__Secure-3PSIDCC": "SIDCC",
+        }
+        for secure_name, legacy_name in secure_to_legacy.items():
+            if secure_name in google_auth_cookies:
+                path, secure_str, unix_ts, value = google_auth_cookies[secure_name]
+                out.write(f".youtube.com\tTRUE\t{path}\t{secure_str}\t{unix_ts}\t{legacy_name}\t{value}\n")
+                count += 1
+                out.write(f".google.com\tTRUE\t{path}\t{secure_str}\t{unix_ts}\t{legacy_name}\t{value}\n")
+                count += 1
     finally:
         if output_file:
             out.close()
