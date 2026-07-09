@@ -1852,6 +1852,31 @@ HELP_TEXT
         }
     });
 
+    # 'Up' arrow — play previous Short (in Shorts mode)
+    $accel->connect(0xff52, ['lock-mask'], ['visible'], sub {
+        return unless $in_shorts_mode;
+        cancel_shorts_autoplay();
+        play_adjacent_short(-1);
+    });
+
+    # 'Down' arrow — play next Short (in Shorts mode)
+    $accel->connect(0xff54, ['lock-mask'], ['visible'], sub {
+        return unless $in_shorts_mode;
+        cancel_shorts_autoplay();
+        play_adjacent_short(1);
+    });
+
+    # 'Space' — toggle pause/play (in Shorts mode, also works for auto-play)
+    $accel->connect(0x020, ['lock-mask'], ['visible'], sub {
+        return unless $in_shorts_mode;
+        # Toggle auto-play
+        if ($shorts_autoplay_active) {
+            cancel_shorts_autoplay();
+            $progressbar->set_text("Paused");
+            Glib::Timeout->add(1500, sub { toggle_progress('bar', 0); 0 });
+        }
+    });
+
     $mainw->add_accel_group($accel);
 }
 
@@ -3076,6 +3101,21 @@ sub display_youtube_shorts {
     clear_search_requests();
     send_search_request("No YouTube Shorts found.",
                         'youtube_shorts', []);
+
+    # Show keyboard hints
+    Glib::Timeout->add(
+        2000,
+        sub {
+            if ($in_shorts_mode) {
+                $progressbar->set_text("Shorts mode: ↑/↓ navigate, Enter play, Esc exit");
+                $progressbar->set_fraction(1.0);
+                toggle_progress('bar', 1);
+                Glib::Timeout->add(4000, sub { toggle_progress('bar', 0); 0 });
+            }
+            return 0;
+        }
+    );
+
     return;
 }
 
@@ -3159,6 +3199,43 @@ sub start_socket_watcher {
     );
 }
 
+sub play_adjacent_short {
+    my ($direction) = @_;  # -1 for previous, +1 for next
+
+    return unless $in_shorts_mode;
+
+    my ($iter) = $treeview->get_selection->get_selected;
+    return unless defined $iter;
+
+    my $model = $treeview->get_model;
+    my $target_iter;
+
+    if ($direction > 0) {
+        # Next
+        $target_iter = $model->iter_next($iter);
+    }
+    else {
+        # Previous — need to get the path and go back
+        my $path = $model->get_path($iter);
+        if ($path->prev) {
+            $target_iter = $model->get_iter($path);
+        }
+    }
+
+    return unless defined $target_iter;
+
+    # Select and scroll to the target
+    $treeview->get_selection->select_iter($target_iter);
+    my $path = $model->get_path($target_iter);
+    $treeview->scroll_to_cell($path);
+
+    # Play the video
+    my $info = parse_json_string($model->get($target_iter, 8));
+    if ($info) {
+        play_video($info, $target_iter);
+    }
+}
+
 sub play_next_short {
     my ($delay) = @_;
     $delay //= 3;
@@ -3170,15 +3247,10 @@ sub play_next_short {
     my ($iter) = $treeview->get_selection->get_selected;
     return unless defined $iter;
 
-    # Get next iter
+    # Get next iter to check if there is one
     my $model = $treeview->get_model;
     my $next_iter = $model->iter_next($iter);
     return unless defined $next_iter;
-
-    # Select next item
-    $treeview->get_selection->select_iter($next_iter);
-    my $path = $model->get_path($next_iter);
-    $treeview->scroll_to_cell($path);
 
     $shorts_autoplay_active = 1;
 
@@ -3196,12 +3268,7 @@ sub play_next_short {
                 toggle_progress('bar', 0);
                 $shorts_autoplay_timer = undef;
                 $shorts_autoplay_active = 0;
-
-                # Play the video
-                my $info = parse_json_string($model->get($next_iter, 8));
-                if ($info) {
-                    play_video($info, $next_iter);
-                }
+                play_adjacent_short(1);
                 return 0;    # don't repeat
             }
             $progressbar->set_text("Playing next Short in ${remaining}s...");
