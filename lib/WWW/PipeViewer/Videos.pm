@@ -86,6 +86,23 @@ sub youtube_history {
     return {results => [], url => undef};
 }
 
+=head2 youtube_playlists(%args)
+
+Get the user's YouTube playlists.
+Requires cookies_from_browser or cookie_file to be set with a logged-in session.
+
+=cut
+
+sub youtube_playlists {
+    my ($self, %args) = @_;
+
+    if (my $results = $self->yt_youtube_playlists(%args)) {
+        return $results;
+    }
+
+    return {results => [], url => undef};
+}
+
 =head2 videos_details($id, $part)
 
 Get info about a videoID, such as: channelId, title, description,

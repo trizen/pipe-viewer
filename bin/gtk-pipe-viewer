@@ -3079,6 +3079,13 @@ sub display_youtube_shorts {
     return;
 }
 
+sub display_youtube_playlists {
+    clear_search_requests();
+    send_search_request("No YouTube playlists found. Make sure you are logged in.",
+                        'youtube_playlists', []);
+    return;
+}
+
 sub cancel_shorts_autoplay {
     $shorts_autoplay_active = 0;
     if (defined $shorts_autoplay_timer) {

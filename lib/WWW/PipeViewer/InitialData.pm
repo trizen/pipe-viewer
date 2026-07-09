@@ -1363,6 +1363,90 @@ sub yt_subscription_feed {
     return $self->_extract_videos_from_richGrid($contents, %args, url => $url);
 }
 
+=head2 yt_youtube_playlists(%args)
+
+Fetch the user's YouTube playlists. Requires cookies from a logged-in browser.
+
+=cut
+
+sub yt_youtube_playlists {
+    my ($self, %args) = @_;
+
+    # Use yt-dlp to extract playlists (page loads dynamically)
+    my $ytdl_cmd = $self->get_ytdl_cmd // 'yt-dlp';
+    my $cookie_file = $self->_find_cookie_file();
+
+    my @cmd = ($ytdl_cmd, '--flat-playlist', '--print', '%(title)s|||%(id)s|||%(playlist_count)s');
+    push @cmd, '--cookies', $cookie_file if $cookie_file;
+    push @cmd, 'https://www.youtube.com/feed/playlists';
+
+    my $cmd_str = join(' ', map { quotemeta($_) } @cmd);
+    my $output = `$cmd_str 2>/dev/null`;
+    return unless $output;
+
+    my @results;
+    for my $line (split /\n/, $output) {
+        chomp $line;
+        my ($title, $id, $count) = split /\|\|\|/, $line;
+        next unless $title && $id;
+
+        # Determine type
+        my $type = 'playlist';
+        if ($id eq 'LL') {
+            $type = 'special';
+            $title = 'Liked videos';
+        }
+        elsif ($id eq 'WL') {
+            $type = 'special';
+            $title = 'Watch later';
+        }
+
+        push @results, {
+            type        => $type,
+            title       => $title,
+            playlistId  => $id,
+            author      => '',
+            videoCount  => ($count // 0),
+        };
+    }
+
+    return $self->_prepare_results_for_return(\@results, %args, url => 'https://www.youtube.com/feed/playlists');
+}
+
+sub _find_cookie_file {
+    my ($self) = @_;
+
+    my $cookie_file = $self->get_cookie_file;
+    return $cookie_file if $cookie_file && -f $cookie_file;
+
+    my $browser = $self->get_cookies_from_browser;
+    if ($browser) {
+        require File::Spec;
+
+        # Check cache_dir
+        my $cache_dir = $self->get_cache_dir;
+        if ($cache_dir && $cache_dir ne '.') {
+            my $cf = File::Spec->catfile($cache_dir, "cookies_from_${browser}.txt");
+            return $cf if -f $cf;
+        }
+
+        # Check default cache location
+        my $default_dir = File::Spec->catdir($ENV{HOME} // '.', '.cache', 'pipe-viewer');
+        my $cf = File::Spec->catfile($default_dir, "cookies_from_${browser}.txt");
+        return $cf if -f $cf;
+
+        # Check current directory
+        $cf = File::Spec->catfile('.', "cookies_from_${browser}.txt");
+        return $cf if -f $cf;
+
+        # Check tmpdir
+        $cf = File::Spec->catfile(File::Spec->tmpdir(), "cookies_from_${browser}.txt");
+        return $cf if -f $cf;
+    }
+
+    return undef;
+}
+
 =head2 yt_youtube_history(%args)
 
 Fetch the YouTube watch history. Requires cookies from a logged-in browser.

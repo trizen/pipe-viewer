@@ -99,6 +99,13 @@ def extract_cookies(browser, output_file=None):
         os.unlink(tmp_path)
     out = open(output_file, "w") if output_file else sys.stdout
     count = 0
+    # Auth cookies that need to be shared with youtube.com
+    auth_cookie_names = {
+        "SAPISID", "APISID", "SSID", "SID", "HSID", "SIDCC",
+        "__Secure-1PAPISID", "__Secure-1PSID", "__Secure-1PSIDCC", "__Secure-1PSIDTS",
+        "__Secure-3PAPISID", "__Secure-3PSID", "__Secure-3PSIDCC", "__Secure-3PSIDTS",
+    }
+    google_auth_cookies = {}
     try:
         out.write("# Netscape HTTP Cookie File\n")
         for host, name, path, secure, expires, httponly, enc_val in rows:
@@ -114,6 +121,13 @@ def extract_cookies(browser, output_file=None):
             else:
                 unix_ts = 0
             out.write(f"{host}\t{domain_flag}\t{path}\t{secure_str}\t{unix_ts}\t{name}\t{value}\n")
+            count += 1
+            # Save google.com auth cookies for youtube.com
+            if "google.com" in host and name in auth_cookie_names:
+                google_auth_cookies[name] = (path, secure_str, unix_ts, value)
+        # Copy auth cookies to youtube.com
+        for name, (path, secure_str, unix_ts, value) in google_auth_cookies.items():
+            out.write(f".youtube.com\tTRUE\t{path}\t{secure_str}\t{unix_ts}\t{name}\t{value}\n")
             count += 1
     finally:
         if output_file:
