@@ -272,7 +272,7 @@ Author: Trizen https://github.com/trizen
                       <object class="GtkImageMenuItem" id="youtube_menu">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
-                        <property name="label" translatable="yes">YouTube</property>
+                        <property name="label" translatable="yes">Profile</property>
                         <child type="submenu">
                           <object class="GtkMenu" id="youtube_submenu">
                             <property name="visible">True</property>

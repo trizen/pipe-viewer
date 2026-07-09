@@ -1269,23 +1269,28 @@ sub yt_youtube_trending {
 
     my $hash = $self->_get_initial_data($url) // return;
 
-    my $contents = eval {
+    my $contents = do {
+        my $result = [];
         my $tabs = $hash->{contents}{twoColumnBrowseResultsRenderer}{tabs} // [];
         for my $tab (@$tabs) {
             for my $key (qw(richGridRenderer sectionListRenderer)) {
                 my $c = eval { $tab->{tabRenderer}{content}{$key}{contents} };
-                return $c if $c;
+                if ($c && @$c) { $result = $c; last; }
+            }
+            last if @$result;
+        }
+        if (!@$result) {
+            $tabs = $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs} // [];
+            for my $tab (@$tabs) {
+                for my $key (qw(richGridRenderer sectionListRenderer)) {
+                    my $c = eval { $tab->{tabRenderer}{content}{$key}{contents} };
+                    if ($c && @$c) { $result = $c; last; }
+                }
+                last if @$result;
             }
         }
-        $tabs = $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs} // [];
-        for my $tab (@$tabs) {
-            for my $key (qw(richGridRenderer sectionListRenderer)) {
-                my $c = eval { $tab->{tabRenderer}{content}{$key}{contents} };
-                return $c if $c;
-            }
-        }
-        [];
-    } // [];
+        $result;
+    };
 
     # Flatten: handle richItemRenderer and richSectionRenderer
     my @flat;
@@ -1343,22 +1348,29 @@ sub yt_subscription_feed {
     my $hash = $self->_get_initial_data($url) // return;
 
     # Try to find richGridRenderer in various locations
-    my $contents = eval {
+    my $contents = do {
+        my $result = [];
         # twoColumnBrowseResultsRenderer (desktop)
         my $tabs = $hash->{contents}{twoColumnBrowseResultsRenderer}{tabs} // [];
         for my $tab (@$tabs) {
             my $c = eval { $tab->{tabRenderer}{content}{richGridRenderer}{contents} };
-            return $c if $c;
+            if ($c && @$c) { $result = $c; last; }
         }
         # singleColumnBrowseResultsRenderer (mobile)
-        $tabs = $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs} // [];
-        for my $tab (@$tabs) {
-            my $c = eval { $tab->{tabRenderer}{content}{richGridRenderer}{contents} };
-            return $c if $c;
+        if (!@$result) {
+            $tabs = $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs} // [];
+            for my $tab (@$tabs) {
+                my $c = eval { $tab->{tabRenderer}{content}{richGridRenderer}{contents} };
+                if ($c && @$c) { $result = $c; last; }
+            }
         }
         # Direct access
-        $hash->{contents}{richGridRenderer}{contents};
-    } // [];
+        if (!@$result) {
+            my $c = eval { $hash->{contents}{richGridRenderer}{contents} };
+            $result = $c if $c && @$c;
+        }
+        $result;
+    };
 
     # Extract videos from all items including richSectionRenderer
     my @results;
@@ -1591,19 +1603,26 @@ sub yt_youtube_history {
     my $hash = $self->_get_initial_data($url) // return;
 
     # History uses sectionListRenderer
-    my $contents = eval {
+    my $contents = do {
+        my $result = [];
         my $tabs = $hash->{contents}{twoColumnBrowseResultsRenderer}{tabs} // [];
         for my $tab (@$tabs) {
             my $c = eval { $tab->{tabRenderer}{content}{sectionListRenderer}{contents} };
-            return $c if $c;
+            if ($c && @$c) { $result = $c; last; }
         }
-        $tabs = $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs} // [];
-        for my $tab (@$tabs) {
-            my $c = eval { $tab->{tabRenderer}{content}{sectionListRenderer}{contents} };
-            return $c if $c;
+        if (!@$result) {
+            $tabs = $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs} // [];
+            for my $tab (@$tabs) {
+                my $c = eval { $tab->{tabRenderer}{content}{sectionListRenderer}{contents} };
+                if ($c && @$c) { $result = $c; last; }
+            }
         }
-        $hash->{contents}{sectionListRenderer}{contents};
-    } // [];
+        if (!@$result) {
+            my $c = eval { $hash->{contents}{sectionListRenderer}{contents} };
+            $result = $c if $c && @$c;
+        }
+        $result;
+    };
 
     my @results;
     for my $item (@$contents) {
@@ -1691,14 +1710,82 @@ sub _extract_videos_from_richGrid {
 
     my @results;
     for my $item (@$contents) {
-        my $vid = $item->{richItemRenderer}{content}{videoWithContextRenderer}
-               // $item->{richItemRenderer}{content}{videoRenderer};
+        my $content = $item->{richItemRenderer}{content} // {};
+
+        # New YouTube format: lockupViewModel
+        my $lvm = $content->{lockupViewModel};
+        if ($lvm && ($lvm->{contentType} // '') =~ /VIDEO/) {
+            my $video = $self->_parse_lockup_view_model($lvm);
+            push @results, $video if $video;
+            next;
+        }
+
+        # Legacy format
+        my $vid = $content->{videoWithContextRenderer}
+               // $content->{videoRenderer};
         next unless $vid;
         my $video = $self->_parse_video_renderer($vid);
         push @results, $video if $video;
     }
 
     return $self->_prepare_results_for_return(\@results, %args);
+}
+
+sub _parse_lockup_view_model {
+    my ($self, $lvm) = @_;
+
+    my $videoId = $lvm->{contentId} // return undef;
+    my $meta = $lvm->{metadata}{lockupMetadataViewModel} // {};
+
+    my $title = $meta->{title}{content} // return undef;
+
+    # Extract thumbnail
+    my $thumb_url = $lvm->{contentImage}{thumbnailViewModel}{image}{sources}[0]{url}
+                  // "https://i.ytimg.com/vi/$videoId/default.jpg";
+
+    # Extract metadata (views, author, etc.)
+    my $viewCount = 0;
+    my $author = '';
+    my $publishedText = '';
+    my $lengthSeconds = 0;
+
+    if ($meta->{metadata}{metadataRows}) {
+        for my $row (@{$meta->{metadata}{metadataRows}}) {
+            for my $part (@{$row->{metadataParts}}) {
+                my $text = $part->{text}{content} // '';
+                if ($text =~ /^([\d,.]+[KMB]?)\s*views/i) {
+                    $viewCount = WWW::PipeViewer::InitialData::_human_number_to_int($1);
+                }
+                elsif ($text =~ /\d+:\d+/) {
+                    $lengthSeconds = WWW::PipeViewer::InitialData::_time_to_seconds($text);
+                }
+                elsif ($text =~ /\d+\s+\w+\s+ago/) {
+                    $publishedText = $text;
+                }
+                elsif (!$author && $text && $text !~ /^\d/ && length($text) > 2) {
+                    $author = $text;
+                }
+            }
+        }
+    }
+
+    return {
+        type          => 'video',
+        title         => $title,
+        videoId       => $videoId,
+        author        => $author,
+        authorId      => '',
+        viewCount     => $viewCount,
+        published     => undef,
+        publishedText => $publishedText,
+        lengthSeconds => $lengthSeconds,
+        liveNow       => 0,
+        paid          => 0,
+        premium       => 0,
+        videoThumbnails => [
+            {quality => 'medium', url => $thumb_url =~ s{/hqdefault\.jpg}{/mqdefault.jpg}r, width => 320, height => 180},
+        ],
+    };
 }
 
 sub _parse_video_renderer {
