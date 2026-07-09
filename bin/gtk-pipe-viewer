@@ -3030,6 +3030,13 @@ sub display_youtube_trending {
     return;
 }
 
+sub display_youtube_shorts {
+    clear_search_requests();
+    send_search_request("No YouTube Shorts found.",
+                        'search_videos', ['shorts'], type => 'video', duration => 'short');
+    return;
+}
+
 sub login_with_browser {
 
     # Show browser selection dialog

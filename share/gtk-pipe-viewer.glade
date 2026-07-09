@@ -318,6 +318,17 @@ Author: Trizen https://github.com/trizen
                       </object>
                     </child>
                     <child>
+                      <object class="GtkImageMenuItem" id="youtube_shorts">
+                        <property name="label" translatable="yes">YouTube Shorts</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="tooltip-text" translatable="yes">Display YouTube Shorts (vertical short videos)</property>
+                        <property name="image">image12</property>
+                        <property name="use-stock">False</property>
+                        <signal name="activate" handler="display_youtube_shorts" swapped="no"/>
+                      </object>
+                    </child>
+                    <child>
                       <object class="GtkImageMenuItem" id="cli_version">
                         <property name="label" translatable="yes">CLI Pipe Viewer</property>
                         <property name="visible">True</property>
