@@ -1360,7 +1360,76 @@ sub yt_subscription_feed {
         $hash->{contents}{richGridRenderer}{contents};
     } // [];
 
-    return $self->_extract_videos_from_richGrid($contents, %args, url => $url);
+    # Extract videos from all items including richSectionRenderer
+    my @results;
+    for my $item (@$contents) {
+        # Regular videos
+        if ($item->{richItemRenderer}) {
+            my $vid = $item->{richItemRenderer}{content}{videoWithContextRenderer}
+                   // $item->{richItemRenderer}{content}{videoRenderer};
+            if ($vid) {
+                my $video = $self->_parse_video_renderer($vid);
+                push @results, $video if $video;
+            }
+        }
+        # richSectionRenderer (contains Shorts shelf)
+        elsif ($item->{richSectionRenderer}) {
+            my $section = $item->{richSectionRenderer}{content} // {};
+            for my $key (keys %$section) {
+                my $shelf = $section->{$key};
+                next unless ref($shelf) eq "HASH";
+                my $items = $shelf->{items} // $shelf->{contents} // [];
+                for my $sub (@$items) {
+                    # Shorts use shortsLockupViewModel
+                    my $slvm = $sub->{shortsLockupViewModel};
+                    if ($slvm) {
+                        # Extract video ID from thumbnail URL
+                        my $thumb_url = $slvm->{thumbnailViewModel}{thumbnailViewModel}{image}{sources}[0]{url} // "";
+                        my ($video_id) = $thumb_url =~ m{/vi/([^/]+)/};
+                        next unless $video_id;
+                        my $access_text = $slvm->{accessibilityText} // "";
+                        # Extract title - it's between quotes in accessibility text
+                        # Format: Воспроизвести короткое видео "Title, view count"
+                        my $title = "";
+                        if ($access_text =~ /\x{201c}(.+?)\x{201d}/ || $access_text =~ /"(.+?)"/) {
+                            $title = $1;
+                            # Remove view count from end (e.g., ", 1,1 тысячи просмотров")
+                            $title =~ s/,\s*\d+[\d,.\s]*\S*\s*(тысяч[а-я]*|миллион[а-я]*|просмотр[а-я]*|views|vueltas).*//i;
+                        }
+                        next unless $title;
+                        push @results, {
+                            type          => 'video',
+                            title         => $title,
+                            videoId       => $video_id,
+                            author        => '',
+                            lengthSeconds => 0,
+                            viewCount     => 0,
+                            published     => undef,
+                            publishedText => '',
+                            liveNow       => 0,
+                            videoThumbnails => [
+                                {quality => 'medium', url => "https://i.ytimg.com/vi/$video_id/default.jpg", width => 120, height => 90},
+                            ],
+                        } if $title;
+                        next;
+                    }
+                    # Regular video in shelf
+                    my $vid = $sub->{richItemRenderer}{content}{videoWithContextRenderer}
+                           // $sub->{richItemRenderer}{content}{videoRenderer};
+                    if ($vid) {
+                        my $video = $self->_parse_video_renderer($vid);
+                        push @results, $video if $video;
+                    }
+                }
+            }
+        }
+        # Continuation (skip for now)
+        elsif ($item->{continuationItemRenderer}) {
+            # TODO: implement continuation pagination
+        }
+    }
+
+    return $self->_prepare_results_for_return(\@results, %args, url => $url);
 }
 
 =head2 yt_youtube_shorts(%args)
