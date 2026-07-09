@@ -3027,6 +3027,30 @@ sub display_watched_videos {
     display_results(get_watched_video_results());
 }
 
+sub require_login {
+    my ($feature_name) = @_;
+    $feature_name //= "This feature";
+
+    if (!$CONFIG{cookies_from_browser} && !$CONFIG{cookie_file}) {
+        my $dialog = Gtk3::MessageDialog->new(
+            $mainw, 'modal', 'warning', 'ok',
+            "$feature_name requires YouTube login"
+        );
+        $dialog->format_secondary_text(
+            "You are not logged in to YouTube.\n\n"
+            . "Use Menu > Profile > Login with Browser to sign in."
+        );
+        $dialog->add_button("Login Now", 1);
+        my $response = $dialog->run;
+        $dialog->destroy;
+        if ($response == 1) {
+            login_with_browser();
+        }
+        return 0;    # not logged in
+    }
+    return 1;    # logged in
+}
+
 sub display_subscription_videos {
     my ($refresh) = @_;
     $refresh //= 1;
@@ -3040,11 +3064,8 @@ sub display_subscription_videos {
         return;
     }
 
-    # Not logged in — show helpful message
-    $progressbar->set_text("Not logged in. Use Menu > Login with Browser to see your subscriptions.");
-    $progressbar->set_fraction(1.0);
-    toggle_progress('bar', 1);
-    Glib::Timeout->add(5000, sub { toggle_progress('bar', 0); 0 });
+    # Not logged in — show login dialog
+    require_login("Subscriptions");
     return;
 
     # Fallback to local subscription list
@@ -3080,13 +3101,15 @@ sub display_youtube_subscriptions {
 }
 
 sub display_youtube_history {
+    return unless require_login("YouTube History");
     clear_search_requests();
-    send_search_request("No YouTube history available. Make sure you are logged in.",
+    send_search_request("No YouTube history available.",
                         'youtube_history', []);
     return;
 }
 
 sub display_youtube_trending {
+    # Trending works without login too
     clear_search_requests();
     send_search_request("No trending videos found.",
                         'trending_videos_from_category', [undef]);
@@ -3120,8 +3143,9 @@ sub display_youtube_shorts {
 }
 
 sub display_youtube_playlists {
+    return unless require_login("YouTube Playlists");
     clear_search_requests();
-    send_search_request("No YouTube playlists found. Make sure you are logged in.",
+    send_search_request("No YouTube playlists found.",
                         'youtube_playlists', []);
     return;
 }
@@ -3350,15 +3374,15 @@ sub login_with_browser {
         $progressbar->set_fraction(0.3);
         toggle_progress('bar', 1);
 
-        system("$cmd &");
+        # Launch browser and open YouTube login page
+        system("$cmd 'https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26hl%3Den%26next%3D%252F' &");
 
-        # Wait for browser to start (up to 10 seconds)
+        # Wait for browser to start (up to 15 seconds)
         my $waited = 0;
-        while ($waited < 10) {
+        while ($waited < 15) {
             sleep 1;
             $waited++;
-            $progressbar->set_fraction(0.3 + ($waited * 0.05));
-            # Process GTK events while waiting
+            $progressbar->set_fraction(0.3 + ($waited * 0.04));
             while (Gtk3::events_pending()) {
                 Gtk3::main_iteration();
             }
@@ -3369,7 +3393,10 @@ sub login_with_browser {
         if (!$is_running) {
             my $err_dialog = Gtk3::MessageDialog->new(
                 $mainw, 'modal', 'warning', 'close',
-                "Could not launch $selected_browser. Please open it manually and log into YouTube."
+                "Could not launch $selected_browser."
+            );
+            $err_dialog->format_secondary_text(
+                "Please open $selected_browser manually, log into YouTube, then try again."
             );
             $err_dialog->run;
             $err_dialog->destroy;
@@ -3377,11 +3404,13 @@ sub login_with_browser {
             return;
         }
 
-        # Give browser time to initialize
-        $progressbar->set_text("Waiting for $selected_browser to initialize...");
-        sleep 3;
-        while (Gtk3::events_pending()) {
-            Gtk3::main_iteration();
+        # Give browser time to initialize and user time to log in
+        $progressbar->set_text("Please log into YouTube in $selected_browser...");
+        for my $i (1..8) {
+            sleep 1;
+            while (Gtk3::events_pending()) {
+                Gtk3::main_iteration();
+            }
         }
     }
 
@@ -3428,14 +3457,24 @@ sub login_with_browser {
                     $mainw,
                     'modal',
                     'warning',
-                    'close',
-                    "Failed to extract valid cookies from $selected_browser."
+                    'ok',
+                    "Not logged in to YouTube"
                 );
                 $err_dialog->format_secondary_text(
-                    "Make sure:\n- $selected_browser is installed\n- You are logged into YouTube in $selected_browser\n- On Linux, GNOME Keyring must be accessible"
+                    "Could not find valid YouTube login cookies in $selected_browser.\n\n"
+                    . "Please:\n"
+                    . "1. Open $selected_browser\n"
+                    . "2. Go to youtube.com and sign in to your Google account\n"
+                    . "3. Come back here and try Login with Browser again"
                 );
-                $err_dialog->run;
+                # Add a button to open YouTube login page
+                $err_dialog->add_button("Open YouTube Login", 1);
+                my $response = $err_dialog->run;
                 $err_dialog->destroy;
+                if ($response == 1) {
+                    my $cmd = $browser_cmds{$selected_browser} // $selected_browser;
+                    system("$cmd 'https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26hl%3Den%26next%3D%252F' &");
+                }
             }
         },
         'reload_cookies_from_browser',
