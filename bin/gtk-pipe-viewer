@@ -3246,6 +3246,71 @@ sub login_with_browser {
     return unless $response eq 'ok';
     return unless defined $selected_browser;
 
+    # Check if browser is running, launch if not
+    my %browser_cmds = (
+        chromium => 'chromium-browser',
+        chrome   => 'google-chrome',
+        firefox  => 'firefox',
+        brave    => 'brave-browser',
+        edge     => 'microsoft-edge',
+        opera    => 'opera',
+        vivaldi  => 'vivaldi',
+    );
+
+    my %browser_procs = (
+        chromium => 'chromium',
+        chrome   => 'chrome',
+        firefox  => 'firefox',
+        brave    => 'brave',
+        edge     => 'msedge',
+        opera    => 'opera',
+        vivaldi  => 'vivaldi',
+    );
+
+    my $proc_name = $browser_procs{$selected_browser} // $selected_browser;
+    my $is_running = (`pgrep -f $proc_name 2>/dev/null` ne '');
+
+    if (!$is_running) {
+        my $cmd = $browser_cmds{$selected_browser} // $selected_browser;
+        $progressbar->set_text("Launching $selected_browser...");
+        $progressbar->set_fraction(0.3);
+        toggle_progress('bar', 1);
+
+        system("$cmd &");
+
+        # Wait for browser to start (up to 10 seconds)
+        my $waited = 0;
+        while ($waited < 10) {
+            sleep 1;
+            $waited++;
+            $progressbar->set_fraction(0.3 + ($waited * 0.05));
+            # Process GTK events while waiting
+            while (Gtk3::events_pending()) {
+                Gtk3::main_iteration();
+            }
+            $is_running = (`pgrep -f $proc_name 2>/dev/null` ne '');
+            last if $is_running;
+        }
+
+        if (!$is_running) {
+            my $err_dialog = Gtk3::MessageDialog->new(
+                $mainw, 'modal', 'warning', 'close',
+                "Could not launch $selected_browser. Please open it manually and log into YouTube."
+            );
+            $err_dialog->run;
+            $err_dialog->destroy;
+            toggle_progress('bar', 0);
+            return;
+        }
+
+        # Give browser time to initialize
+        $progressbar->set_text("Waiting for $selected_browser to initialize...");
+        sleep 3;
+        while (Gtk3::events_pending()) {
+            Gtk3::main_iteration();
+        }
+    }
+
     # Show progress
     $progressbar->set_text("Extracting cookies from $selected_browser...");
     $progressbar->set_fraction(0.5);
