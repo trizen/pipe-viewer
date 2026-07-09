@@ -3362,7 +3362,10 @@ sub login_with_browser {
                     'modal',
                     'warning',
                     'close',
-                    "Failed to extract valid cookies from $selected_browser.\n\nMake sure:\n- $selected_browser is installed\n- You are logged into YouTube in $selected_browser\n- On Linux, GNOME Keyring must be accessible"
+                    "Failed to extract valid cookies from $selected_browser."
+                );
+                $err_dialog->format_secondary_text(
+                    "Make sure:\n- $selected_browser is installed\n- You are logged into YouTube in $selected_browser\n- On Linux, GNOME Keyring must be accessible"
                 );
                 $err_dialog->run;
                 $err_dialog->destroy;
