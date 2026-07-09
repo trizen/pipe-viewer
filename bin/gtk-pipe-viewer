@@ -3008,6 +3008,14 @@ sub display_subscription_videos {
 
     clear_search_requests();
 
+    # If logged in, try YouTube subscription feed first
+    if ($CONFIG{cookies_from_browser} || $CONFIG{cookie_file}) {
+        send_search_request("No subscriptions found.",
+                            'subscription_feed', []);
+        return;
+    }
+
+    # Fallback to local subscription list
     state $t0 = time;
     state $d0 = $t0;
 
