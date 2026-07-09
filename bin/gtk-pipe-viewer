@@ -3015,6 +3015,13 @@ sub display_subscription_videos {
         return;
     }
 
+    # Not logged in — show helpful message
+    $progressbar->set_text("Not logged in. Use Menu > Login with Browser to see your subscriptions.");
+    $progressbar->set_fraction(1.0);
+    toggle_progress('bar', 1);
+    Glib::Timeout->add(5000, sub { toggle_progress('bar', 0); 0 });
+    return;
+
     # Fallback to local subscription list
     state $t0 = time;
     state $d0 = $t0;
