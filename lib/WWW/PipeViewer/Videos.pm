@@ -86,6 +86,22 @@ sub youtube_history {
     return {results => [], url => undef};
 }
 
+=head2 youtube_shorts(%args)
+
+Get YouTube Shorts (vertical short videos under 60 seconds).
+
+=cut
+
+sub youtube_shorts {
+    my ($self, %args) = @_;
+
+    if (my $results = $self->yt_youtube_shorts(%args)) {
+        return $results;
+    }
+
+    return {results => [], url => undef};
+}
+
 =head2 youtube_playlists(%args)
 
 Get the user's YouTube playlists.

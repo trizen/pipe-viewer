@@ -3075,7 +3075,7 @@ sub display_youtube_shorts {
     $in_shorts_mode = 1;
     clear_search_requests();
     send_search_request("No YouTube Shorts found.",
-                        'search_videos', ['shorts'], type => 'video', duration => 'short');
+                        'youtube_shorts', []);
     return;
 }
 

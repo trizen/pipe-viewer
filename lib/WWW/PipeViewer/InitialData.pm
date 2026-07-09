@@ -1363,6 +1363,61 @@ sub yt_subscription_feed {
     return $self->_extract_videos_from_richGrid($contents, %args, url => $url);
 }
 
+=head2 yt_youtube_shorts(%args)
+
+Fetch YouTube Shorts using yt-dlp with the Shorts filter.
+
+=cut
+
+sub yt_youtube_shorts {
+    my ($self, %args) = @_;
+
+    my $ytdl_cmd = $self->get_ytdl_cmd // 'yt-dlp';
+    my $cookie_file = $self->_find_cookie_file();
+
+    # Use yt-dlp to search for Shorts (videos under 60s, vertical format)
+    # sp=EgIYAQ%3D%3D is the protobuf filter for Shorts
+    my @cmd = ($ytdl_cmd, '--flat-playlist', '--print', '%(id)s|||%(title)s|||%(channel)s|||%(duration)s');
+    push @cmd, '--cookies', $cookie_file if $cookie_file;
+    push @cmd, 'https://www.youtube.com/results?search_query=shorts&sp=EgIYAQ%253D%253D';
+
+    my $cmd_str = join(' ', map { quotemeta($_) } @cmd);
+    my $output = `$cmd_str 2>/dev/null`;
+    return unless $output;
+
+    my @results;
+    my %seen;
+    for my $line (split /\n/, $output) {
+        chomp $line;
+        my ($id, $title, $channel, $duration) = split /\|\|\|/, $line;
+        next unless $id && $title;
+        next if $seen{$id}++;
+
+        # Only include videos under 60 seconds (actual Shorts)
+        next if $duration && $duration > 60;
+
+        push @results, {
+            type          => 'video',
+            title         => $title,
+            videoId       => $id,
+            author        => $channel // '',
+            authorId      => '',
+            lengthSeconds => $duration // 0,
+            viewCount     => 0,
+            published     => undef,
+            publishedText => '',
+            liveNow       => 0,
+            paid          => 0,
+            premium       => 0,
+            videoThumbnails => [
+                {quality => 'medium', url => "https://i.ytimg.com/vi/$id/default.jpg", width => 120, height => 90},
+            ],
+        };
+    }
+
+    return $self->_prepare_results_for_return(\@results, %args, url => 'https://www.youtube.com/results?search_query=shorts');
+}
+
 =head2 yt_youtube_playlists(%args)
 
 Fetch the user's YouTube playlists. Requires cookies from a logged-in browser.
