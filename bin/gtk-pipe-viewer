@@ -3412,14 +3412,16 @@ sub login_with_browser {
     my $proc_name = $browser_procs{$selected_browser} // $selected_browser;
     my $is_running = (`pgrep -f $proc_name 2>/dev/null` ne '');
 
+    my $login_url = 'https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26hl%3Den%26next%3D%252F';
+    my $cmd = $browser_cmds{$selected_browser} // $selected_browser;
+
     if (!$is_running) {
-        my $cmd = $browser_cmds{$selected_browser} // $selected_browser;
         $progressbar->set_text("Launching $selected_browser...");
         $progressbar->set_fraction(0.3);
         toggle_progress('bar', 1);
 
         # Launch browser and open YouTube login page
-        system("$cmd 'https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26hl%3Den%26next%3D%252F' &");
+        system("$cmd '$login_url' &");
 
         # Wait for browser to start (up to 15 seconds)
         my $waited = 0;
@@ -3451,6 +3453,19 @@ sub login_with_browser {
         # Give browser time to initialize and user time to log in
         $progressbar->set_text("Please log into YouTube in $selected_browser...");
         for my $i (1..8) {
+            sleep 1;
+            while (Gtk3::events_pending()) {
+                Gtk3::main_iteration();
+            }
+        }
+    }
+    else {
+        # Browser is already running — open YouTube login page in it
+        system("$cmd '$login_url' &");
+        $progressbar->set_text("Opening YouTube login in $selected_browser...");
+        $progressbar->set_fraction(0.5);
+        toggle_progress('bar', 1);
+        for my $i (1..3) {
             sleep 1;
             while (Gtk3::events_pending()) {
                 Gtk3::main_iteration();
