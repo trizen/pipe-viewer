@@ -1990,13 +1990,25 @@ sub send_search_request {
     clear_search_requests();
     toggle_progress($search_progress = 'pulse', 1);
     $worker->abort_requests($search_request);
+    my $is_auth_feature = ($method =~ /subscription|history|playlists/);
     $search_request = $worker->send_request(
         sub {
             my ($result, $request, $error) = @_;
             toggle_progress('pulse', 0);
             $search_progress = $search_request = undef;
-            die "$error_message\n" if $error;
-            die "$error_message\n" unless ($yv_utils->has_entries($result));
+            if ($error || !$yv_utils->has_entries($result)) {
+                # If this is an auth feature and we have cookies, session may have expired
+                if ($is_auth_feature && ($CONFIG{cookies_from_browser} || $CONFIG{cookie_file})) {
+                    show_session_expired_dialog();
+                }
+                else {
+                    $progressbar->set_text($error_message);
+                    $progressbar->set_fraction(1.0);
+                    toggle_progress('bar', 1);
+                    Glib::Timeout->add(4000, sub { toggle_progress('bar', 0); 0 });
+                }
+                return;
+            }
             display_results($result);
         },
         $method,
@@ -2005,6 +2017,38 @@ sub send_search_request {
         priority => REQUEST_PRIORITY_SEARCH,
     );
     return;
+}
+
+sub show_session_expired_dialog {
+    my $browser = $CONFIG{cookies_from_browser} // "your browser";
+    my $dialog = Gtk3::MessageDialog->new(
+        $mainw, 'modal', 'warning', 'ok',
+        "YouTube session expired"
+    );
+    $dialog->format_secondary_text(
+        "Your YouTube login session has expired.\n\n"
+        . "To fix this:\n"
+        . "1. Open $browser\n"
+        . "2. Go to youtube.com and sign out, then sign back in\n"
+        . "3. Come back and use Menu > Profile > Login with Browser\n\n"
+        . "This is required because YouTube periodically invalidates old sessions."
+    );
+    $dialog->add_button("Open YouTube Login", 1);
+    $dialog->add_button("Re-extract Cookies", 2);
+    my $response = $dialog->run;
+    $dialog->destroy;
+    if ($response == 1) {
+        my %browser_cmds = (
+            chromium => 'chromium-browser', chrome => 'google-chrome',
+            firefox => 'firefox', brave => 'brave-browser',
+            edge => 'microsoft-edge', opera => 'opera', vivaldi => 'vivaldi',
+        );
+        my $cmd = $browser_cmds{$browser} // $browser;
+        system("$cmd 'https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26hl%3Den%26next%3D%252F' &");
+    }
+    elsif ($response == 2) {
+        login_with_browser();
+    }
 }
 
 sub fetch_thumbnails {
