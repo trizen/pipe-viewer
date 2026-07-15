@@ -454,7 +454,9 @@ $control_options
 :subscribe=i      : subscribe to author's channel
 :w=i :mark=i      : add video to watched history
 :(dis)like=i      : like or dislike a video
+:un(dis)like=i    : unlike or undislike a video
 :fav(orite)=i     : favorite a video
+:unfav(orite)=i   : unfavorite a video
 :autoplay=i       : autoplay mode, starting from video i
 
 # Playing
@@ -885,8 +887,11 @@ usage: $execname [options] ([url] | [keywords])
    --save=s             : save a given channel ID or username in -lc
    --subscribe=s        : subscribe to a given channel ID or username
    --favorite=s         : favorite a video by URL or ID
+   --unfavorite=s       : unfavorite a video by URL or ID
    --like=s             : like a video by URL or ID (see: -L)
+   --unlike=s           : unlike a video by URL or ID
    --dislike=s          : dislike a video by URL or ID (see: -D)
+   --undislike=s        : undislike a video by URL or ID
 
 
 == Player Options ==
@@ -1358,12 +1363,24 @@ sub apply_configuration {
         favorite_videos(split(/[,\s]+/, delete $opt->{favorite_video}));
     }
 
+    if (defined $opt->{unfavorite_video}) {
+        unfavorite_video(split(/[,\s]+/, delete $opt->{unfavorite_video}));
+    }
+
     if (defined $opt->{like_video}) {
         rate_videos('like', split(/[,\s]+/, delete $opt->{like_video}));
     }
 
+    if (defined $opt->{unlike_video}) {
+        unlike_video(split(/[,\s]+/, delete $opt->{unlike_video}));
+    }
+
     if (defined $opt->{dislike_video}) {
         rate_videos('dislike', split(/[,\s]+/, delete $opt->{dislike_video}));
+    }
+
+    if (defined $opt->{undislike_video}) {
+        undislike_video(split(/[,\s]+/, delete $opt->{undislike_video}));
     }
 
     if (defined $opt->{play_video_ids}) {
@@ -1653,6 +1670,7 @@ sub parse_arguments {
 
         # English-UK friendly
         'favorite|favourite|favorite-video|favourite-video|fav=s' => \$opt{favorite_video},
+        'unfavorite|unfavourite|unfavorite-video|unfavourite-video|unfav=s' => \$opt{unfavorite_video},
 
         'related-videos|rv=s'           => \$opt{related_videos},
         'popular-videos|popular|pv:s'   => \$opt{popular_videos},
@@ -1674,7 +1692,9 @@ sub parse_arguments {
         'min-seconds|min_seconds=i' => \$opt{min_seconds},
 
         'like=s'                     => \$opt{like_video},
+        'unlike=s'                   => \$opt{unlike_video},
         'dislike=s'                  => \$opt{dislike_video},
+        'undislike=s'                => \$opt{undislike_video},
         'author=s'                   => \$opt{author},
         'all|A|play-all!'            => \$opt{play_all},
         'backwards|B!'               => \$opt{play_backwards},
@@ -2090,7 +2110,7 @@ sub favorite_videos {
     my (@videos) = @_;
 
     foreach my $video_data (@videos) {
-        prepend_video_data_to_file($video_data, $favorite_videos_data_file);
+        $yv_utils->prepend_video_data_to_file($video_data, $favorite_videos_data_file, $opt{local_playlist_limit}, $opt{debug});
     }
 
     return 1;
@@ -2102,7 +2122,7 @@ sub rate_videos {
     my $file = ($rating eq 'like') ? $liked_videos_data_file : $disliked_videos_data_file;
 
     foreach my $video_data (@_) {
-        prepend_video_data_to_file($video_data, $file);
+        $yv_utils->prepend_video_data_to_file($video_data, $file, $opt{local_playlist_limit}, $opt{debug});
     }
 
     return 1;
@@ -3919,30 +3939,33 @@ sub download_video {
     return 1;
 }
 
-sub prepend_video_data_to_file {
-    my ($video_data, $file) = @_;
+sub unlike_video {
+    my (@videos) = @_;
 
-    require Storable;
-
-    my $videos = eval { Storable::retrieve($file) } // [];
-
-    if (ref($video_data) ne 'HASH') {
-        my $videoID = get_valid_video_id($video_data) // return;
-        $video_data = $yv_obj->video_details($videoID);
+    foreach my $video_data (@videos) {
+        $yv_utils->remove_video_data_from_file($video_data, $liked_videos_data_file);
     }
 
-    get_valid_video_id($yv_utils->get_video_id($video_data)) // return;
+    return 1;
+}
 
-    unshift(@$videos, $video_data);
+sub undislike_video {
+    my (@videos) = @_;
 
-    my %seen;
-    @$videos = grep { !$seen{$yv_utils->get_video_id($_)}++ } @$videos;
-
-    if ($opt{local_playlist_limit} > 0 and scalar(@$videos) > $opt{local_playlist_limit}) {
-        $#$videos = $opt{local_playlist_limit} - 1;
+    foreach my $video_data (@videos) {
+        $yv_utils->remove_video_data_from_file($video_data, $disliked_videos_data_file);
     }
 
-    Storable::store($videos, $file);
+    return 1;
+}
+
+sub unfavorite_video {
+    my (@videos) = @_;
+
+    foreach my $video_data (@videos) {
+        $yv_utils->remove_video_data_from_file($video_data, $favorite_videos_data_file);
+    }
+
     return 1;
 }
 
@@ -3960,7 +3983,7 @@ sub save_watched_video {
             close $fh;
         }
 
-        prepend_video_data_to_file($video_data, $watch_history_data_file);
+        $yv_utils->prepend_video_data_to_file($video_data, $watch_history_data_file, $opt{local_playlist_limit}, $opt{debug});
     }
 
     $WATCHED_VIDEOS{$video_id} = 1;
@@ -4662,10 +4685,36 @@ sub print_videos {
                 }
             }
 
+            # :unlike=i, :undislike=i
+            elsif ($opt =~ /^(un(?:dis)?like)${digit_or_equal_re}(.*)/) {
+                my $rating = $1;
+                if (my @nums = get_valid_numbers($#{$videos}, $2)) {
+                    if ($rating eq 'unlike') {
+                        unlike_video(map { $videos->[$_] } @nums);
+                    }
+                    elsif ($rating eq 'undislike') {
+                        undislike_video(map { $videos->[$_] } @nums);
+                    }
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+
             # :fav=i, :favorite=i
             elsif ($opt =~ /^(?:fav|favorite|F)${digit_or_equal_re}(.*)/) {
                 if (my @nums = get_valid_numbers($#{$videos}, $1)) {
                     favorite_videos(map { $videos->[$_] } @nums);
+                }
+                else {
+                    warn_no_thing_selected('video');
+                }
+            }
+
+            # :unfav=i, :unfavorite=i
+            elsif ($opt =~ /^(?:unfav|unfavorite)${digit_or_equal_re}(.*)/) {
+                if (my @nums = get_valid_numbers($#{$videos}, $1)) {
+                    unfavorite_video(map { $videos->[$_] } @nums);
                 }
                 else {
                     warn_no_thing_selected('video');

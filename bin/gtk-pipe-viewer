@@ -1279,15 +1279,22 @@ sub get_treeview_popup_menu {
 
             # Favorite
             {
-                my $item = 'Gtk3::ImageMenuItem'->new("Favorite");
-                $item->set_property(tooltip_text => "Save the video in the playlist of favorite videos");
+                my $is_favorite = $yv_utils->is_video_in_file($video_data, $favorite_videos_data_file);
+                my $item = 'Gtk3::ImageMenuItem'->new($is_favorite ? "Unfavorite" : "Favorite");
+                $item->set_property(tooltip_text => $is_favorite ? "Remove the video from the playlist of favorite videos" : "Save the video in the playlist of favorite videos");
                 $item->signal_connect(
                     activate => sub {
-                        say(":: Favorite video: ", $yv_utils->get_title($video_data)) if $DEBUG;
-                        prepend_video_data_to_file($video_data, $favorite_videos_data_file);
+                        if ($is_favorite) {
+                            $yv_utils->remove_video_data_from_file($video_data, $favorite_videos_data_file);
+                            say(":: Unfavorite video: ", $yv_utils->get_title($video_data)) if $DEBUG;
+                        }
+                        else {
+                            $yv_utils->prepend_video_data_to_file($video_data, $favorite_videos_data_file, $CONFIG{local_playlist_limit}, $DEBUG);
+                            say(":: Favorite video: ", $yv_utils->get_title($video_data)) if $DEBUG;
+                        }
                     }
                 );
-                $item->set_image('Gtk3::Image'->new_from_icon_name("starred-symbolic", q{menu}));
+                $item->set_image('Gtk3::Image'->new_from_icon_name($is_favorite ? "non-starred-symbolic" : "starred-symbolic", q{menu}));
                 $item->show;
                 $video->append($item);
             }
@@ -1311,30 +1318,44 @@ sub get_treeview_popup_menu {
 
             # Like
             {
-                my $item = 'Gtk3::ImageMenuItem'->new("Like");
-                $item->set_property(tooltip_text => "Save video in the playlist of liked videos");
+                my $is_liked = $yv_utils->is_video_in_file($video_data, $liked_videos_data_file);
+                my $item = 'Gtk3::ImageMenuItem'->new($is_liked ? "Unlike" : "Like");
+                $item->set_property(tooltip_text => $is_liked ? "Remove video from the playlist of liked videos" : "Save video in the playlist of liked videos");
                 $item->signal_connect(
                     activate => sub {
-                        say(":: Liking video: ", $yv_utils->get_title($video_data)) if $DEBUG;
-                        prepend_video_data_to_file($video_data, $liked_videos_data_file);
+                        if ($is_liked) {
+                            $yv_utils->remove_video_data_from_file($video_data, $liked_videos_data_file);
+                            say(":: Unliking video: ", $yv_utils->get_title($video_data)) if $DEBUG;
+                        }
+                        else {
+                            $yv_utils->prepend_video_data_to_file($video_data, $liked_videos_data_file, $CONFIG{local_playlist_limit}, $DEBUG);
+                            say(":: Liking video: ", $yv_utils->get_title($video_data)) if $DEBUG;
+                        }
                     }
                 );
-                $item->set_image('Gtk3::Image'->new_from_icon_name("go-up-symbolic", q{menu}));
+                $item->set_image('Gtk3::Image'->new_from_icon_name($is_liked ? "edit-delete" : "go-up-symbolic", q{menu}));
                 $item->show;
                 $video->append($item);
             }
 
             # Disike
             {
-                my $item = 'Gtk3::ImageMenuItem'->new("Dislike");
-                $item->set_property(tooltip_text => "Save video in the playlist of disliked videos");
+                my $is_disliked = $yv_utils->is_video_in_file($video_data, $disliked_videos_data_file);
+                my $item = 'Gtk3::ImageMenuItem'->new($is_disliked ? "Undislike" : "Dislike");
+                $item->set_property(tooltip_text => $is_disliked ? "Remove video from the playlist of disliked videos" : "Save video in the playlist of disliked videos");
                 $item->signal_connect(
                     activate => sub {
-                        say(":: Disliking video: ", $yv_utils->get_title($video_data)) if $DEBUG;
-                        prepend_video_data_to_file($video_data, $disliked_videos_data_file);
+                        if ($is_disliked) {
+                            $yv_utils->remove_video_data_from_file($video_data, $disliked_videos_data_file);
+                            say(":: Undisliking video: ", $yv_utils->get_title($video_data)) if $DEBUG;
+                        }
+                        else {
+                            $yv_utils->prepend_video_data_to_file($video_data, $disliked_videos_data_file, $CONFIG{local_playlist_limit}, $DEBUG);
+                            say(":: Disliking video: ", $yv_utils->get_title($video_data)) if $DEBUG;
+                        }
                     }
                 );
-                $item->set_image('Gtk3::Image'->new_from_icon_name("go-down-symbolic", q{menu}));
+                $item->set_image('Gtk3::Image'->new_from_icon_name($is_disliked ? "edit-delete" : "go-down-symbolic", q{menu}));
                 $item->show;
                 $video->append($item);
             }
@@ -3375,33 +3396,6 @@ sub get_player_command {
     $has_video ? $cmd : join(' ', $cmd, quotemeta($streaming->{streaming}{url}));
 }
 
-sub prepend_video_data_to_file {
-    my ($video_data, $file) = @_;
-
-    my $videos = eval { Storable::retrieve($file) } // [];
-
-    if (ref($video_data) ne 'HASH') {
-        return;
-    }
-
-    $yv_utils->get_video_id($video_data) // return;
-
-    unshift(@$videos, $video_data);
-
-    my %seen;
-    @$videos = grep { !$seen{$yv_utils->get_video_id($_)}++ } @$videos;
-
-    if ($CONFIG{local_playlist_limit} > 0 and scalar(@$videos) > $CONFIG{local_playlist_limit}) {
-        if ($DEBUG) {
-            say STDERR ":: Resizing the playlist <<$file>> from $#$videos+1 to $CONFIG{local_playlist_limit} entries.";
-        }
-        $#$videos = $CONFIG{local_playlist_limit} - 1;
-    }
-
-    Storable::store($videos, $file);
-    return 1;
-}
-
 sub save_watched_video {
     my ($info, $iter) = @_;
 
@@ -3425,7 +3419,7 @@ sub save_watched_video {
             close $fh;
         }
 
-        prepend_video_data_to_file($info, $watch_history_data_file);
+        $yv_utils->prepend_video_data_to_file($info, $watch_history_data_file, $CONFIG{local_playlist_limit}, $DEBUG);
     }
 
     $WATCHED_VIDEOS{$video_id} = 1;

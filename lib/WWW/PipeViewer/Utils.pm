@@ -6,6 +6,7 @@ use warnings;
 
 use List::Util qw(first);
 use POSIX      qw(locale_h);
+use Storable   qw();
 
 =head1 NAME
 
@@ -740,7 +741,6 @@ sub local_playlist_snippet {
     $title =~ s/_/ /g;
     $title = ucfirst($title);
 
-    require Storable;
     my $entries = eval { Storable::retrieve($id) } // [];
 
     if (ref($entries) ne 'ARRAY') {
@@ -1193,6 +1193,90 @@ sub period_to_date {
     join('-', $time[5] + 1900, sprintf('%02d', $time[4] + 1), sprintf('%02d', $time[3])) . 'T'
       . join(':', sprintf('%02d', $time[2]), sprintf('%02d', $time[1]), sprintf('%02d', $time[0])) . 'Z';
 }
+
+=head2 remove_video_data_from_file($video_data, $file)
+
+Remove video data from a Storable-based playlist file.
+
+=cut
+
+sub remove_video_data_from_file {
+    my ($self, $video_data, $file) = @_;
+
+    my $videos = eval { Storable::retrieve($file) } // [];
+
+    if (ref($video_data) ne 'HASH') {
+        return 0;
+    }
+
+    my $video_id = $self->get_video_id($video_data) // return 0;
+
+    # Remove the video if it exists
+    my $original_count = scalar(@$videos);
+    @$videos = grep { $self->get_video_id($_) ne $video_id } @$videos;
+
+    if (scalar(@$videos) < $original_count) {
+        Storable::store($videos, $file);
+        return 1; # Removed
+    }
+
+    return 0; # Not found
+}
+
+=head2 is_video_in_file($video_data, $file)
+
+Check if video data exists in a Storable-based playlist file.
+
+=cut
+
+sub is_video_in_file {
+    my ($self, $video_data, $file) = @_;
+
+    my $videos = eval { Storable::retrieve($file) } // [];
+
+    if (ref($video_data) ne 'HASH') {
+        return 0;
+    }
+
+    my $video_id = $self->get_video_id($video_data) // return 0;
+
+    return grep { $self->get_video_id($_) eq $video_id } @$videos;
+}
+
+=head2 prepend_video_data_to_file($video_data, $file, $limit)
+
+Add video data to a Storable-based playlist file, prepending to the beginning.
+
+=cut
+
+sub prepend_video_data_to_file {
+    my ($self, $video_data, $file, $limit, $debug) = @_;
+
+    my $videos = eval { Storable::retrieve($file) } // [];
+
+    if (ref($video_data) ne 'HASH') {
+        return;
+    }
+
+    $self->get_video_id($video_data) // return;
+
+    unshift(@$videos, $video_data);
+
+    my %seen;
+    @$videos = grep { !$seen{$self->get_video_id($_)}++ } @$videos;
+
+    if (defined $limit && $limit > 0 && scalar(@$videos) > $limit) {
+        if ($debug) {
+            warn ":: Resizing the playlist <<$file>> from $#$videos+1 to $limit entries.\n";
+        }
+        $#$videos = $limit - 1;
+    }
+
+    Storable::store($videos, $file);
+    return 1;
+}
+
+1;
 
 =head1 AUTHOR
 
