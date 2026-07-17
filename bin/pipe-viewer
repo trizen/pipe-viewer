@@ -1196,6 +1196,18 @@ Results: like or dislike the selected videos.
 Command: :fav=4, :favorite=3..5
 Results: favorite the selected videos.
 
+Command: :L, :likes
+Results: show the videos that you liked.
+
+Command: :D, :dislikes
+Results: show the videos that you disliked.
+
+Command: :F, :favorites
+Results: show the local favorite videos.
+
+Command: :wv, :watched-videos
+Results: show the most recent watched videos.
+
 Command: 3, 5..7, 12-1, 9..4, 2 3 9
 Results: play the selected videos.
 
@@ -2322,6 +2334,18 @@ sub general_options {
     }
     elsif ($option =~ /^playlist(?:ID)?=(.*)/) {
         get_and_print_videos_from_playlist($1);
+    }
+    elsif ($option =~ /^(?:L|likes)\z/) {
+        print_liked_videos();
+    }
+    elsif ($option =~ /^(?:D|dislikes)\z/) {
+        print_disliked_videos();
+    }
+    elsif ($option =~ /^(?:F|favorites)\z/) {
+        print_favorite_videos();
+    }
+    elsif ($option =~ /^(?:wv|watched-videos)\z/) {
+        print_watched_videos();
     }
     else {
         return;
