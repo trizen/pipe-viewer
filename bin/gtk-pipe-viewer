@@ -194,7 +194,7 @@ my %CONFIG = (
               srt   => q{--sub-file=*SUB*},
               audio => q{--audio-file=*AUDIO*},
               fs    => q{--fullscreen},
-              arg => q{--really-quiet --force-media-title=*TITLE* --start=*START* --no-ytdl --stream-lavf-o-append=request_size=10485760 --no-terminal *VIDEO*},
+              arg => q{--really-quiet --force-window=yes --force-media-title=*TITLE* --start=*START* --no-ytdl --stream-lavf-o-append=request_size=10485760 --no-terminal *VIDEO*},
           },
     },
     video_player_selected => undef,    # autodetect it later
