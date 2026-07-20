@@ -249,8 +249,10 @@ my %CONFIG = (
     # Misc options
     autoplay_mode      => 0,
     http_proxy         => undef,
-    cookie_file        => undef,
-    user_agent         => undef,
+    cookie_file          => undef,
+    cookies_from_browser => undef,
+    yt_subs              => 0,
+    user_agent           => undef,
     timeout            => undef,
     max_retries        => 3,
     retry_delay        => 1,
@@ -767,6 +769,7 @@ my $yv_obj = WWW::PipeViewer->new(
                                   cache_dir               => $opt{cache_dir},
                                   env_proxy               => $opt{env_proxy},
                                   cookie_file             => $opt{cookie_file},
+                                  cookies_from_browser    => $opt{cookies_from_browser},
                                   http_proxy              => $opt{http_proxy},
                                   user_agent              => $opt{user_agent},
                                   timeout                 => $opt{timeout},
@@ -983,6 +986,7 @@ usage: $execname [options] ([url] | [keywords])
    --skip-youtube-extraction! : Skip video/audio URL extraction, pass YouTube URL directly to player
    --dislikes-api!      : Enable dislikes from https://returnyoutubedislike.com
    --cookies=s          : file to read cookies from and dump cookie
+   --cookies-from-browser=s : extract cookies from a browser (chromium, firefox, chrome, brave, edge, opera, vivaldi)
    --user-agent=s       : specify a custom user agent
    --proxy=s            : set HTTP(S)/SOCKS proxy: 'proto://domain.tld:port/'
                           If authentication is required,
@@ -1271,7 +1275,7 @@ sub apply_configuration {
                              channelId region debug
                              http_proxy page comments_order
                              user_agent force_fallback
-                             cookie_file timeout ytdl ytdl_cmd
+                             cookie_file cookies_from_browser timeout ytdl ytdl_cmd
                              prefer_mp4 prefer_av1 prefer_invidious
                              ytdlp_comments ytdlp_max_comments
                              ytdlp_max_replies
@@ -1558,6 +1562,7 @@ sub apply_configuration {
 
     if (defined $opt->{trending}) {
         my $cat_id = delete $opt->{trending};
+        $cat_id = undef if defined($cat_id) && $cat_id eq '';
         print_videos($yv_obj->trending_videos_from_category($cat_id));
     }
 
@@ -1690,6 +1695,8 @@ sub parse_arguments {
         'popular-shorts|pshorts=s'      => \$opt{popular_shorts},
 
         'cookie-file|cookies=s'          => \$opt{cookie_file},
+        'cookies-from-browser=s'         => \$opt{cookies_from_browser},
+        'yt-subs'                        => \$opt{yt_subs},
         'user-agent|agent=s'             => \$opt{user_agent},
         'http-proxy|https-proxy|proxy=s' => \$opt{http_proxy},
 
@@ -5026,6 +5033,28 @@ The file must be a C<# Netscape HTTP Cookie File>. Same format as C<youtube-dl> 
 See also:
 
     https://github.com/ytdl-org/youtube-dl#how-do-i-pass-cookies-to-youtube-dl
+
+=head2 cookies_from_browser
+
+Automatically extract cookies from an installed browser using C<yt-dlp>.
+
+Supported values: C<chromium>, C<chrome>, C<firefox>, C<brave>, C<edge>, C<opera>, C<vivaldi>.
+
+When set, cookies are extracted on startup and cached for 1 hour. This allows access to
+logged-in content, age-restricted videos, and personalized results without manually
+exporting a cookie file.
+
+Example usage:
+
+    pipe-viewer --cookies-from-browser=chromium
+
+Or in the config file:
+
+    cookies_from_browser => "chromium",
+
+Note: C<cookie_file> takes precedence over C<cookies_from_browser> if both are set.
+
+Requires C<yt-dlp> to be installed.
 
 =head2 copy_caption
 

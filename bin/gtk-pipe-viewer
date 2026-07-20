@@ -61,6 +61,7 @@ use Gtk3         qw(-init);
 use Storable     qw();
 use Scalar::Util qw(looks_like_number);
 use List::Util   qw(any max min pairs);
+use Socket       qw(PF_UNIX SOCK_STREAM sockaddr_un);
 
 binmode(STDOUT, ':utf8');
 binmode(STDERR, ':utf8');
@@ -259,7 +260,8 @@ my %CONFIG = (
     max_retries => 3,
     retry_delay => 1,
     user_agent  => undef,
-    cookie_file => undef,
+    cookie_file          => undef,
+    cookies_from_browser => undef,
     prefer_fork => (($^O eq 'linux') ? 0 : 1),
     debug       => 0,
     fullscreen  => 0,
@@ -267,6 +269,7 @@ my %CONFIG = (
 
     autoscroll_to_end => 0,
     single_click_play => 0,
+    shorts_autoplay   => 1,
 
     # yt-dlp / youtube-dl support
     ytdl     => 1,
@@ -973,13 +976,20 @@ my %ResultsHistory = (
                       position => [],
                      );
 
+# Shorts auto-play state
+my $in_shorts_mode         = 0;
+my $shorts_autoplay_active = 0;
+my $shorts_autoplay_timer  = undef;
+my $shorts_mpv_socket      = undef;
+
 # Locate CLI pipe-viewer
 $CONFIG{pipe_viewer} //= which_command('pipe-viewer') // 'pipe-viewer';
 
 my $yv_obj = WWW::PipeViewer->new(
-                                  cache_dir  => $CONFIG{cache_dir},
-                                  env_proxy  => $CONFIG{env_proxy},
-                                  http_proxy => $CONFIG{http_proxy},
+                                  cache_dir           => $CONFIG{cache_dir},
+                                  env_proxy           => $CONFIG{env_proxy},
+                                  http_proxy          => $CONFIG{http_proxy},
+                                  cookies_from_browser => $CONFIG{cookies_from_browser},
                                  );
 
 my $yv_utils = WWW::PipeViewer::Utils->new(
@@ -1082,7 +1092,7 @@ sub apply_configuration {
     foreach my $option_name (
                              qw(
                              api_host cache_dir comments_order
-                             cookie_file debug env_proxy force_fallback http_proxy prefer_av1
+                             cookie_file cookies_from_browser debug env_proxy force_fallback http_proxy prefer_av1
                              prefer_invidious prefer_mp4 region timeout user_agent ytdl ytdl_cmd
                              ytdlp_comments ytdlp_max_comments ytdlp_max_replies
                              bypass_age_gate_native bypass_age_gate_with_proxy
@@ -1171,6 +1181,37 @@ sub get_text {
     $gui->get_object('subscription_videos')->get_image->set_from_pixbuf($feed_icon_pixbuf);
     $gui->get_object('left_button_image')->set_from_pixbuf($left_arrow_pixbuf);
     $gui->get_object('right_button_image')->set_from_pixbuf($right_arrow_pixbuf);
+}
+
+# Notify on startup if cookies_from_browser is configured
+if (defined($CONFIG{cookies_from_browser})) {
+    Glib::Idle->add(
+        sub {
+            Glib::Timeout->add(
+                3000,
+                sub {
+                    my $profile_loaded = eval { $yv_obj->get_profile_loaded };
+                    if ($profile_loaded) {
+                        $progressbar->set_text("Profile loaded from $CONFIG{cookies_from_browser}");
+                    }
+                    else {
+                        $progressbar->set_text("No profile loaded. Use Menu > Login with Browser to log in.");
+                    }
+                    $progressbar->set_fraction(1.0);
+                    toggle_progress('bar', 1);
+                    Glib::Timeout->add(
+                        5000,
+                        sub {
+                            toggle_progress('bar', 0);
+                            return 0;
+                        }
+                    );
+                    return 0;
+                }
+            );
+            return 0;
+        }
+    );
 }
 
 # Treeview signals
@@ -1823,6 +1864,40 @@ HELP_TEXT
     # 'F11' key
     $accel->connect(0xffc8, ['lock-mask'], ['visible'], \&maximize_unmaximize_mainw);
 
+    # 'Escape' key — cancel shorts auto-play
+    $accel->connect(0xff1b, ['lock-mask'], ['visible'], sub {
+        if ($shorts_autoplay_active) {
+            cancel_shorts_autoplay();
+            $progressbar->set_text("Auto-play cancelled");
+            Glib::Timeout->add(2000, sub { toggle_progress('bar', 0); 0 });
+        }
+    });
+
+    # 'Up' arrow — play previous Short (in Shorts mode)
+    $accel->connect(0xff52, ['lock-mask'], ['visible'], sub {
+        return unless $in_shorts_mode;
+        cancel_shorts_autoplay();
+        play_adjacent_short(-1);
+    });
+
+    # 'Down' arrow — play next Short (in Shorts mode)
+    $accel->connect(0xff54, ['lock-mask'], ['visible'], sub {
+        return unless $in_shorts_mode;
+        cancel_shorts_autoplay();
+        play_adjacent_short(1);
+    });
+
+    # 'Space' — toggle pause/play (in Shorts mode, also works for auto-play)
+    $accel->connect(0x020, ['lock-mask'], ['visible'], sub {
+        return unless $in_shorts_mode;
+        # Toggle auto-play
+        if ($shorts_autoplay_active) {
+            cancel_shorts_autoplay();
+            $progressbar->set_text("Paused");
+            Glib::Timeout->add(1500, sub { toggle_progress('bar', 0); 0 });
+        }
+    });
+
     $mainw->add_accel_group($accel);
 }
 
@@ -1936,13 +2011,25 @@ sub send_search_request {
     clear_search_requests();
     toggle_progress($search_progress = 'pulse', 1);
     $worker->abort_requests($search_request);
+    my $is_auth_feature = ($method =~ /subscription|history|playlists/);
     $search_request = $worker->send_request(
         sub {
             my ($result, $request, $error) = @_;
             toggle_progress('pulse', 0);
             $search_progress = $search_request = undef;
-            die "$error_message\n" if $error;
-            die "$error_message\n" unless ($yv_utils->has_entries($result));
+            if ($error || !$yv_utils->has_entries($result)) {
+                # If this is an auth feature and we have cookies, session may have expired
+                if ($is_auth_feature && ($CONFIG{cookies_from_browser} || $CONFIG{cookie_file})) {
+                    show_session_expired_dialog();
+                }
+                else {
+                    $progressbar->set_text($error_message);
+                    $progressbar->set_fraction(1.0);
+                    toggle_progress('bar', 1);
+                    Glib::Timeout->add(4000, sub { toggle_progress('bar', 0); 0 });
+                }
+                return;
+            }
             display_results($result);
         },
         $method,
@@ -1951,6 +2038,38 @@ sub send_search_request {
         priority => REQUEST_PRIORITY_SEARCH,
     );
     return;
+}
+
+sub show_session_expired_dialog {
+    my $browser = $CONFIG{cookies_from_browser} // "your browser";
+    my $dialog = Gtk3::MessageDialog->new(
+        $mainw, 'modal', 'warning', 'ok',
+        "YouTube session expired"
+    );
+    $dialog->format_secondary_text(
+        "Your YouTube login session has expired.\n\n"
+        . "To fix this:\n"
+        . "1. Open $browser\n"
+        . "2. Go to youtube.com and sign out, then sign back in\n"
+        . "3. Come back and use Menu > Profile > Login with Browser\n\n"
+        . "This is required because YouTube periodically invalidates old sessions."
+    );
+    $dialog->add_button("Open YouTube Login", 1);
+    $dialog->add_button("Re-extract Cookies", 2);
+    my $response = $dialog->run;
+    $dialog->destroy;
+    if ($response == 1) {
+        my %browser_cmds = (
+            chromium => 'chromium-browser', chrome => 'google-chrome',
+            firefox => 'firefox', brave => 'brave-browser',
+            edge => 'microsoft-edge', opera => 'opera', vivaldi => 'vivaldi',
+        );
+        my $cmd = $browser_cmds{$browser} // $browser;
+        system("$cmd 'https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26hl%3Den%26next%3D%252F' &");
+    }
+    elsif ($response == 2) {
+        login_with_browser();
+    }
 }
 
 sub fetch_thumbnails {
@@ -2595,6 +2714,12 @@ sub check_keywords {
 sub search {
     my $keywords = $search_entry->get_text();
 
+    # Exit shorts mode when searching
+    if ($in_shorts_mode) {
+        cancel_shorts_autoplay();
+        $in_shorts_mode = 0;
+    }
+
     return if check_keywords($keywords);
 
     # Remember the input text when "history" is enabled
@@ -2967,12 +3092,48 @@ sub display_watched_videos {
     display_results(get_watched_video_results());
 }
 
+sub require_login {
+    my ($feature_name) = @_;
+    $feature_name //= "This feature";
+
+    if (!$CONFIG{cookies_from_browser} && !$CONFIG{cookie_file}) {
+        my $dialog = Gtk3::MessageDialog->new(
+            $mainw, 'modal', 'warning', 'ok',
+            "$feature_name requires YouTube login"
+        );
+        $dialog->format_secondary_text(
+            "You are not logged in to YouTube.\n\n"
+            . "Use Menu > Profile > Login with Browser to sign in."
+        );
+        $dialog->add_button("Login Now", 1);
+        my $response = $dialog->run;
+        $dialog->destroy;
+        if ($response == 1) {
+            login_with_browser();
+        }
+        return 0;    # not logged in
+    }
+    return 1;    # logged in
+}
+
 sub display_subscription_videos {
     my ($refresh) = @_;
     $refresh //= 1;
 
     clear_search_requests();
 
+    # If logged in, try YouTube subscription feed first
+    if ($CONFIG{cookies_from_browser} || $CONFIG{cookie_file}) {
+        send_search_request("No subscriptions found.",
+                            'subscription_feed', []);
+        return;
+    }
+
+    # Not logged in — show login dialog
+    require_login("Subscriptions");
+    return;
+
+    # Fallback to local subscription list
     state $t0 = time;
     state $d0 = $t0;
 
@@ -2995,6 +3156,410 @@ sub display_subscription_videos {
     }
 
     return;
+}
+
+sub display_youtube_subscriptions {
+    clear_search_requests();
+    send_search_request("No YouTube subscription feed available. Make sure you are logged in.",
+                        'subscription_feed', []);
+    return;
+}
+
+sub display_youtube_history {
+    return unless require_login("YouTube History");
+    clear_search_requests();
+    send_search_request("No YouTube history available.",
+                        'youtube_history', []);
+    return;
+}
+
+sub display_youtube_trending {
+    # Trending works without login too
+    clear_search_requests();
+    send_search_request("No trending videos found.",
+                        'trending_videos_from_category', [undef]);
+    return;
+}
+
+sub display_youtube_shorts {
+    # Cancel any existing auto-play
+    cancel_shorts_autoplay();
+
+    $in_shorts_mode = 1;
+    clear_search_requests();
+    send_search_request("No YouTube Shorts found.",
+                        'youtube_shorts', []);
+
+    # Show keyboard hints
+    Glib::Timeout->add(
+        2000,
+        sub {
+            if ($in_shorts_mode) {
+                $progressbar->set_text("Shorts mode: ↑/↓ navigate, Enter play, Esc exit");
+                $progressbar->set_fraction(1.0);
+                toggle_progress('bar', 1);
+                Glib::Timeout->add(4000, sub { toggle_progress('bar', 0); 0 });
+            }
+            return 0;
+        }
+    );
+
+    return;
+}
+
+sub display_youtube_playlists {
+    return unless require_login("YouTube Playlists");
+    clear_search_requests();
+    send_search_request("No YouTube playlists found.",
+                        'youtube_playlists', []);
+    return;
+}
+
+sub cancel_shorts_autoplay {
+    $shorts_autoplay_active = 0;
+    if (defined $shorts_autoplay_timer) {
+        Glib::Source->remove($shorts_autoplay_timer);
+        $shorts_autoplay_timer = undef;
+    }
+    if (defined $shorts_mpv_socket) {
+        close($shorts_mpv_socket) if $shorts_mpv_socket;
+        $shorts_mpv_socket = undef;
+    }
+}
+
+sub watch_mpv_for_shorts_autoplay {
+    my ($socket_path) = @_;
+
+    # Wait for socket to appear (mpv startup)
+    my $wait_count = 0;
+    my $wait_timer;
+    $wait_timer = Glib::Timeout->add(
+        500,
+        sub {
+            $wait_count++;
+            if (-S $socket_path || $wait_count > 10) {
+                # Socket appeared or timed out — start watching
+                Glib::Source->remove($wait_timer);
+                start_socket_watcher($socket_path);
+                return 0;
+            }
+            return 1;    # keep waiting
+        }
+    );
+}
+
+sub start_socket_watcher {
+    my ($socket_path) = @_;
+
+    # Poll the socket — when mpv exits, the socket becomes unreadable
+    $shorts_mpv_socket = Glib::Timeout->add(
+        1000,
+        sub {
+            if (!-S $socket_path) {
+                # Socket gone — mpv exited
+                $shorts_mpv_socket = undef;
+                unlink $socket_path if -e $socket_path;
+
+                # Trigger auto-play after a short delay
+                if ($in_shorts_mode && $CONFIG{shorts_autoplay} && !$shorts_autoplay_active) {
+                    play_next_short(2);
+                }
+                return 0;    # don't repeat
+            }
+
+            # Try to send a command to check if mpv is alive
+            if (socket(my $sock, PF_UNIX, SOCK_STREAM, 0)) {
+                if (connect($sock, sockaddr_un($socket_path))) {
+                    # mpv is still running
+                    close($sock);
+                    return 1;    # keep checking
+                }
+            }
+
+            # Can't connect — mpv exited
+            $shorts_mpv_socket = undef;
+            unlink $socket_path if -e $socket_path;
+
+            if ($in_shorts_mode && $CONFIG{shorts_autoplay} && !$shorts_autoplay_active) {
+                play_next_short(2);
+            }
+            return 0;    # don't repeat
+        }
+    );
+}
+
+sub play_adjacent_short {
+    my ($direction) = @_;  # -1 for previous, +1 for next
+
+    return unless $in_shorts_mode;
+
+    my ($iter) = $treeview->get_selection->get_selected;
+    return unless defined $iter;
+
+    my $model = $treeview->get_model;
+    my $target_iter;
+
+    if ($direction > 0) {
+        # Next
+        $target_iter = $model->iter_next($iter);
+    }
+    else {
+        # Previous — need to get the path and go back
+        my $path = $model->get_path($iter);
+        if ($path->prev) {
+            $target_iter = $model->get_iter($path);
+        }
+    }
+
+    return unless defined $target_iter;
+
+    # Select and scroll to the target
+    $treeview->get_selection->select_iter($target_iter);
+    my $path = $model->get_path($target_iter);
+    $treeview->scroll_to_cell($path);
+
+    # Play the video
+    my $info = parse_json_string($model->get($target_iter, 8));
+    if ($info) {
+        play_video($info, $target_iter);
+    }
+}
+
+sub play_next_short {
+    my ($delay) = @_;
+    $delay //= 3;
+
+    return unless $in_shorts_mode;
+    return unless $CONFIG{shorts_autoplay};
+
+    # Get current selection
+    my ($iter) = $treeview->get_selection->get_selected;
+    return unless defined $iter;
+
+    # Get next iter to check if there is one
+    my $model = $treeview->get_model;
+    my $next_iter = $model->iter_next($iter);
+    return unless defined $next_iter;
+
+    $shorts_autoplay_active = 1;
+
+    # Show countdown
+    my $remaining = $delay;
+    $progressbar->set_text("Playing next Short in ${remaining}s...");
+    $progressbar->set_fraction(0);
+    toggle_progress('bar', 1);
+
+    $shorts_autoplay_timer = Glib::Timeout->add(
+        1000,
+        sub {
+            $remaining--;
+            if ($remaining <= 0) {
+                toggle_progress('bar', 0);
+                $shorts_autoplay_timer = undef;
+                $shorts_autoplay_active = 0;
+                play_adjacent_short(1);
+                return 0;    # don't repeat
+            }
+            $progressbar->set_text("Playing next Short in ${remaining}s...");
+            $progressbar->set_fraction(1 - ($remaining / $delay));
+            return 1;    # repeat
+        }
+    );
+}
+
+sub login_with_browser {
+
+    # Show browser selection dialog
+    my $dialog = Gtk3::Dialog->new(
+        "Login with Browser",
+        $mainw,
+        'modal',
+        'gtk-cancel' => 'cancel',
+        'gtk-ok'     => 'ok',
+    );
+
+    my $content_area = $dialog->get_content_area;
+    $content_area->set_border_width(12);
+    $content_area->set_spacing(8);
+
+    my $label = Gtk3::Label->new("Select a browser to extract your YouTube login cookies from:");
+    $label->set_line_wrap(1);
+    $content_area->pack_start($label, 0, 0, 8);
+
+    # Browser selection combo
+    my @browsers = ('chromium', 'chrome', 'firefox', 'brave', 'edge', 'opera', 'vivaldi');
+    my $combo = Gtk3::ComboBoxText->new();
+    foreach my $browser (@browsers) {
+        $combo->append_text($browser);
+    }
+    $combo->set_active(0);    # Default to chromium
+    $content_area->pack_start($combo, 0, 0, 4);
+
+    # Info label
+    my $info = Gtk3::Label->new("");
+    $info->set_line_wrap(1);
+    $info->set_markup('<small>This will read cookies from your browser to authenticate with YouTube.\nThe browser must be logged into your Google/YouTube account.</small>');
+    $content_area->pack_start($info, 0, 0, 4);
+
+    $dialog->show_all;
+    my $response = $dialog->run;
+    my $selected_browser = $browsers[$combo->get_active];
+    $dialog->destroy;
+
+    return unless $response eq 'ok';
+    return unless defined $selected_browser;
+
+    # Check if browser is running, launch if not
+    my %browser_cmds = (
+        chromium => 'chromium-browser',
+        chrome   => 'google-chrome',
+        firefox  => 'firefox',
+        brave    => 'brave-browser',
+        edge     => 'microsoft-edge',
+        opera    => 'opera',
+        vivaldi  => 'vivaldi',
+    );
+
+    my %browser_procs = (
+        chromium => 'chromium',
+        chrome   => 'chrome',
+        firefox  => 'firefox',
+        brave    => 'brave',
+        edge     => 'msedge',
+        opera    => 'opera',
+        vivaldi  => 'vivaldi',
+    );
+
+    my $proc_name = $browser_procs{$selected_browser} // $selected_browser;
+    my $is_running = (`pgrep -f $proc_name 2>/dev/null` ne '');
+
+    my $login_url = 'https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26hl%3Den%26next%3D%252F';
+    my $cmd = $browser_cmds{$selected_browser} // $selected_browser;
+
+    if (!$is_running) {
+        $progressbar->set_text("Launching $selected_browser...");
+        $progressbar->set_fraction(0.3);
+        toggle_progress('bar', 1);
+
+        # Launch browser and open YouTube login page
+        system("$cmd '$login_url' &");
+
+        # Wait for browser to start (up to 15 seconds)
+        my $waited = 0;
+        while ($waited < 15) {
+            sleep 1;
+            $waited++;
+            $progressbar->set_fraction(0.3 + ($waited * 0.04));
+            while (Gtk3::events_pending()) {
+                Gtk3::main_iteration();
+            }
+            $is_running = (`pgrep -f $proc_name 2>/dev/null` ne '');
+            last if $is_running;
+        }
+
+        if (!$is_running) {
+            my $err_dialog = Gtk3::MessageDialog->new(
+                $mainw, 'modal', 'warning', 'close',
+                "Could not launch $selected_browser."
+            );
+            $err_dialog->format_secondary_text(
+                "Please open $selected_browser manually, log into YouTube, then try again."
+            );
+            $err_dialog->run;
+            $err_dialog->destroy;
+            toggle_progress('bar', 0);
+            return;
+        }
+
+        # Give browser time to initialize and user time to log in
+        $progressbar->set_text("Please log into YouTube in $selected_browser...");
+        for my $i (1..8) {
+            sleep 1;
+            while (Gtk3::events_pending()) {
+                Gtk3::main_iteration();
+            }
+        }
+    }
+    else {
+        # Browser is already running — open YouTube login page in it
+        system("$cmd '$login_url' &");
+        $progressbar->set_text("Opening YouTube login in $selected_browser...");
+        $progressbar->set_fraction(0.5);
+        toggle_progress('bar', 1);
+        for my $i (1..3) {
+            sleep 1;
+            while (Gtk3::events_pending()) {
+                Gtk3::main_iteration();
+            }
+        }
+    }
+
+    # Show progress
+    $progressbar->set_text("Extracting cookies from $selected_browser...");
+    $progressbar->set_fraction(0.5);
+    toggle_progress('bar', 1);
+
+    # Force re-extraction by deleting cache
+    my $cache_dir = "$ENV{HOME}/.cache/pipe-viewer";
+    my $cache_file = "$cache_dir/cookies_from_${selected_browser}.txt";
+    unlink $cache_file if -f $cache_file;
+
+    # Update config
+    $CONFIG{cookies_from_browser} = $selected_browser;
+
+    # Extract cookies using the worker
+    $worker->send_request(
+        sub {
+            my ($result) = @_;
+            toggle_progress('bar', 0);
+
+            # reload_cookies_from_browser returns 1 on success, 0 on failure
+            my $profile_loaded = $result;
+
+            if ($profile_loaded) {
+                $progressbar->set_text("Logged in with $selected_browser");
+                $progressbar->set_fraction(1.0);
+                toggle_progress('bar', 1);
+
+                # Save to config
+                $CONFIG{cookies_from_browser} = $selected_browser;
+
+                Glib::Timeout->add(
+                    5000,
+                    sub {
+                        toggle_progress('bar', 0);
+                        return 0;
+                    }
+                );
+            }
+            else {
+                my $err_dialog = Gtk3::MessageDialog->new(
+                    $mainw,
+                    'modal',
+                    'warning',
+                    'ok',
+                    "Not logged in to YouTube"
+                );
+                $err_dialog->format_secondary_text(
+                    "Could not find valid YouTube login cookies in $selected_browser.\n\n"
+                    . "Please:\n"
+                    . "1. Open $selected_browser\n"
+                    . "2. Go to youtube.com and sign in to your Google account\n"
+                    . "3. Come back here and try Login with Browser again"
+                );
+                # Add a button to open YouTube login page
+                $err_dialog->add_button("Open YouTube Login", 1);
+                my $response = $err_dialog->run;
+                $err_dialog->destroy;
+                if ($response == 1) {
+                    my $cmd = $browser_cmds{$selected_browser} // $selected_browser;
+                    system("$cmd 'https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26hl%3Den%26next%3D%252F' &");
+                }
+            }
+        },
+        'reload_cookies_from_browser',
+        [$selected_browser],
+    );
 }
 
 sub save_search_results_position {
@@ -3483,6 +4048,13 @@ sub play_video {
 
             my $command = get_player_command($streaming, $info);
 
+            # Add IPC socket for shorts auto-play detection
+            my $ipc_socket;
+            if ($in_shorts_mode && $CONFIG{shorts_autoplay}) {
+                $ipc_socket = "/tmp/mpv-pipe-viewer-$$.sock";
+                $command =~ s{(/usr/bin/mpv|mpv)}{$1 --input-ipc-server=$ipc_socket};
+            }
+
             if ($DEBUG) {
                 say "-> Resolution: $streaming->{resolution}";
                 say "-> Video itag: $streaming->{streaming}{itag}";
@@ -3500,6 +4072,11 @@ sub play_video {
             }
 
             save_watched_video($info, $iter);
+
+            # Start watching for mpv exit (shorts auto-play)
+            if ($in_shorts_mode && $CONFIG{shorts_autoplay} && defined $ipc_socket) {
+                watch_mpv_for_shorts_autoplay($ipc_socket);
+            }
         },
         'fetch_streaming_urls',
         [$video_id, \%options],

@@ -33,3 +33,4 @@ inc/
 /MANIFEST.bak
 /pm_to_blib
 /*.zip
+cookies_from_chromium.txt
