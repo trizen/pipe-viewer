@@ -1681,7 +1681,7 @@ sub parse_arguments {
         'playlist-id|pid=s' => \$opt{playlist_id},
 
         # English-UK friendly
-        'favorite|favourite|favorite-video|favourite-video|fav=s' => \$opt{favorite_video},
+        'favorite|favourite|favorite-video|favourite-video|fav=s'           => \$opt{favorite_video},
         'unfavorite|unfavourite|unfavorite-video|unfavourite-video|unfav=s' => \$opt{unfavorite_video},
 
         'related-videos|rv=s'           => \$opt{related_videos},
@@ -4090,24 +4090,6 @@ sub play_videos {
     foreach my $video (@{$videos}) {
 
         my $video_id = $yv_utils->get_video_id($video);
-        if ($yv_obj->get_skip_youtube_extraction) {
-            my $url     = sprintf($opt{youtube_video_url}, $video_id);
-            my $command = get_player_command({streaming => {url => $url}, srt_file => undef, info => {videoId => $video_id}}, $video);
-            print_video_info($video);
-            if ($yv_obj->get_debug) {
-                say "-> Command: $command";
-            }
-            $yv_obj->proxy_system($command);
-            save_watched_video($video_id, $video);
-            press_enter_to_continue() if $opt{confirm};
-            next;
-        }
-
-        if ($opt{autoplay_mode}) {
-            local $opt{autoplay_mode} = 0;
-            autoplay($video_id);
-            next;
-        }
 
         # Ignore already watched videos
         if (exists($WATCHED_VIDEOS{$video_id}) and $opt{skip_watched}) {
@@ -4121,6 +4103,25 @@ sub play_videos {
 
         if (defined($opt{min_seconds}) and $opt{min_seconds} >= 0) {
             next if $yv_utils->get_duration($video) < $opt{min_seconds};
+        }
+
+        if ($opt{autoplay_mode}) {
+            local $opt{autoplay_mode} = 0;
+            autoplay($video_id);
+            next;
+        }
+
+        if ($yv_obj->get_skip_youtube_extraction) {
+            my $url     = sprintf($opt{youtube_video_url}, $video_id);
+            my $command = get_player_command({streaming => {url => $url}, srt_file => undef, info => {videoId => $video_id}}, $video);
+            print_video_info($video);
+            if ($yv_obj->get_debug) {
+                say "-> Command: $command";
+            }
+            $yv_obj->proxy_system($command);
+            save_watched_video($video_id, $video);
+            press_enter_to_continue() if $opt{confirm};
+            next;
         }
 
         my $streaming = get_streaming_url($video_id);
