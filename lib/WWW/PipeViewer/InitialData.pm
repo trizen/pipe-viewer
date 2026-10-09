@@ -919,7 +919,7 @@ sub _get_initial_data {
 
     my $content = $self->lwp_get($url) // return;
 
-    # Try to extract from JavaScript variable
+    # Try to extract from JavaScript variable (single-quoted)
     if ($content =~ m{var\s+ytInitialData\s*=\s*'(.*?)'}is) {
         my $json = $1;
 
@@ -929,6 +929,13 @@ sub _get_initial_data {
 
         my $hash = parse_utf8_json_string($json);
         return $hash;
+    }
+
+    # Try to extract from JavaScript variable (raw JSON, no quotes)
+    if ($content =~ m{var\s+ytInitialData\s*=\s*(\{.+?)\s*;\s*</script}is) {
+        my $json = $1;
+        my $hash = parse_utf8_json_string($json);
+        return $hash if defined($hash);
     }
 
     # Try to extract from HTML comment
@@ -1245,6 +1252,618 @@ sub yt_search {
     my @results = $self->_extract_sectionList_results(eval { $hash->{contents}{sectionListRenderer} } // undef, %args);
 
     return $self->_prepare_results_for_return(\@results, %args, url => $url);
+}
+
+=head2 yt_youtube_trending(%args)
+
+Fetch YouTube trending videos by scraping.
+
+=cut
+
+sub yt_youtube_trending {
+    my ($self, %args) = @_;
+
+    my $url = 'https://m.youtube.com/feed/trending';
+    my %params = (hl => 'en');
+    $url = $self->_append_url_args($url, %params);
+
+    my $hash = $self->_get_initial_data($url) // return;
+
+    my $contents = do {
+        my $result = [];
+        my $tabs = $hash->{contents}{twoColumnBrowseResultsRenderer}{tabs} // [];
+        for my $tab (@$tabs) {
+            for my $key (qw(richGridRenderer sectionListRenderer)) {
+                my $c = eval { $tab->{tabRenderer}{content}{$key}{contents} };
+                if ($c && @$c) { $result = $c; last; }
+            }
+            last if @$result;
+        }
+        if (!@$result) {
+            $tabs = $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs} // [];
+            for my $tab (@$tabs) {
+                for my $key (qw(richGridRenderer sectionListRenderer)) {
+                    my $c = eval { $tab->{tabRenderer}{content}{$key}{contents} };
+                    if ($c && @$c) { $result = $c; last; }
+                }
+                last if @$result;
+            }
+        }
+        $result;
+    };
+
+    # Flatten: handle richItemRenderer and richSectionRenderer
+    my @flat;
+    for my $item (@$contents) {
+        if ($item->{richItemRenderer}) {
+            push @flat, $item;
+        }
+        elsif ($item->{richSectionRenderer}) {
+            my $content = $item->{richSectionRenderer}{content} // {};
+            for my $key (keys %$content) {
+                my $shelf = $content->{$key};
+                next unless ref($shelf) eq "HASH";
+                for my $sub (@{$shelf->{contents} // []}) {
+                    if ($sub->{richItemRenderer}) {
+                        push @flat, $sub;
+                    }
+                    elsif ($sub->{videoWithContextRenderer} || $sub->{videoRenderer}) {
+                        push @flat, {richItemRenderer => {content => $sub}};
+                    }
+                }
+            }
+        }
+        elsif ($item->{itemSectionRenderer}) {
+            for my $sub (@{$item->{itemSectionRenderer}{contents} // []}) {
+                if ($sub->{richGridRenderer}) {
+                    push @flat, @{$sub->{richGridRenderer}{contents} // []};
+                }
+                elsif ($sub->{videoWithContextRenderer} || $sub->{videoRenderer}) {
+                    push @flat, {richItemRenderer => {content => $sub}};
+                }
+            }
+        }
+    }
+
+    return $self->_extract_videos_from_richGrid(\@flat, %args, url => $url);
+}
+
+=head2 yt_subscription_feed(%args)
+
+Fetch the YouTube subscription feed. Requires cookies from a logged-in browser.
+
+=cut
+
+sub yt_subscription_feed {
+    my ($self, %args) = @_;
+
+    my $url = 'https://m.youtube.com/feed/subscriptions';
+
+    my %params = (
+                  hl => 'en',
+                 );
+
+    $url = $self->_append_url_args($url, %params);
+
+    my $hash = $self->_get_initial_data($url) // return;
+
+    # Try to find richGridRenderer in various locations
+    my $contents = do {
+        my $result = [];
+        # twoColumnBrowseResultsRenderer (desktop)
+        my $tabs = $hash->{contents}{twoColumnBrowseResultsRenderer}{tabs} // [];
+        for my $tab (@$tabs) {
+            my $c = eval { $tab->{tabRenderer}{content}{richGridRenderer}{contents} };
+            if ($c && @$c) { $result = $c; last; }
+        }
+        # singleColumnBrowseResultsRenderer (mobile)
+        if (!@$result) {
+            $tabs = $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs} // [];
+            for my $tab (@$tabs) {
+                my $c = eval { $tab->{tabRenderer}{content}{richGridRenderer}{contents} };
+                if ($c && @$c) { $result = $c; last; }
+            }
+        }
+        # Direct access
+        if (!@$result) {
+            my $c = eval { $hash->{contents}{richGridRenderer}{contents} };
+            $result = $c if $c && @$c;
+        }
+        $result;
+    };
+
+    # Extract videos from all items including richSectionRenderer
+    my @results;
+    for my $item (@$contents) {
+        # Regular videos
+        if ($item->{richItemRenderer}) {
+            my $vid = $item->{richItemRenderer}{content}{videoWithContextRenderer}
+                   // $item->{richItemRenderer}{content}{videoRenderer};
+            if ($vid) {
+                my $video = $self->_parse_video_renderer($vid);
+                push @results, $video if $video;
+            }
+        }
+        # richSectionRenderer (contains Shorts shelf)
+        elsif ($item->{richSectionRenderer}) {
+            my $section = $item->{richSectionRenderer}{content} // {};
+            for my $key (keys %$section) {
+                my $shelf = $section->{$key};
+                next unless ref($shelf) eq "HASH";
+                my $items = $shelf->{items} // $shelf->{contents} // [];
+                for my $sub (@$items) {
+                    # Shorts use shortsLockupViewModel
+                    my $slvm = $sub->{shortsLockupViewModel};
+                    if ($slvm) {
+                        # Extract video ID from thumbnail URL
+                        my $thumb_url = $slvm->{thumbnailViewModel}{thumbnailViewModel}{image}{sources}[0]{url} // "";
+                        my ($video_id) = $thumb_url =~ m{/vi/([^/]+)/};
+                        next unless $video_id;
+                        my $access_text = $slvm->{accessibilityText} // "";
+                        # Extract title - it's between quotes in accessibility text
+                        # Format: Воспроизвести короткое видео "Title, view count"
+                        my $title = "";
+                        if ($access_text =~ /\x{201c}(.+?)\x{201d}/ || $access_text =~ /"(.+?)"/) {
+                            $title = $1;
+                            # Remove view count from end (e.g., ", 1,1 тысячи просмотров")
+                            $title =~ s/,\s*\d+[\d,.\s]*\S*\s*(тысяч[а-я]*|миллион[а-я]*|просмотр[а-я]*|views|vueltas).*//i;
+                        }
+                        next unless $title;
+                        push @results, {
+                            type          => 'video',
+                            title         => $title,
+                            videoId       => $video_id,
+                            author        => '',
+                            lengthSeconds => 0,
+                            viewCount     => 0,
+                            published     => undef,
+                            publishedText => '',
+                            liveNow       => 0,
+                            videoThumbnails => [
+                                {quality => 'medium', url => "https://i.ytimg.com/vi/$video_id/default.jpg", width => 120, height => 90},
+                            ],
+                        } if $title;
+                        next;
+                    }
+                    # Regular video in shelf
+                    my $vid = $sub->{richItemRenderer}{content}{videoWithContextRenderer}
+                           // $sub->{richItemRenderer}{content}{videoRenderer};
+                    if ($vid) {
+                        my $video = $self->_parse_video_renderer($vid);
+                        push @results, $video if $video;
+                    }
+                }
+            }
+        }
+        # Continuation (skip for now)
+        elsif ($item->{continuationItemRenderer}) {
+            # TODO: implement continuation pagination
+        }
+    }
+
+    return $self->_prepare_results_for_return(\@results, %args, url => $url);
+}
+
+=head2 yt_youtube_shorts(%args)
+
+Fetch YouTube Shorts using yt-dlp with the Shorts filter.
+
+=cut
+
+sub yt_youtube_shorts {
+    my ($self, %args) = @_;
+
+    my $ytdl_cmd = $self->get_ytdl_cmd // 'yt-dlp';
+    my $cookie_file = $self->_find_cookie_file();
+
+    # Use yt-dlp to search for Shorts (videos under 60s, vertical format)
+    # sp=EgIYAQ%3D%3D is the protobuf filter for Shorts
+    my @cmd = ($ytdl_cmd, '--flat-playlist', '--print', '%(id)s|||%(title)s|||%(channel)s|||%(duration)s');
+    push @cmd, '--cookies', $cookie_file if $cookie_file;
+    push @cmd, 'https://www.youtube.com/results?search_query=shorts&sp=EgIYAQ%253D%253D';
+
+    my $cmd_str = join(' ', map { quotemeta($_) } @cmd);
+    my $output = `$cmd_str 2>/dev/null`;
+    return unless $output;
+
+    my @results;
+    my %seen;
+    for my $line (split /\n/, $output) {
+        chomp $line;
+        my ($id, $title, $channel, $duration) = split /\|\|\|/, $line;
+        next unless $id && $title;
+        next if $seen{$id}++;
+
+        # Only include videos under 60 seconds (actual Shorts)
+        next if $duration && $duration > 60;
+
+        push @results, {
+            type          => 'video',
+            title         => $title,
+            videoId       => $id,
+            author        => $channel // '',
+            authorId      => '',
+            lengthSeconds => $duration // 0,
+            viewCount     => 0,
+            published     => undef,
+            publishedText => '',
+            liveNow       => 0,
+            paid          => 0,
+            premium       => 0,
+            videoThumbnails => [
+                {quality => 'medium', url => "https://i.ytimg.com/vi/$id/default.jpg", width => 120, height => 90},
+            ],
+        };
+    }
+
+    return $self->_prepare_results_for_return(\@results, %args, url => 'https://www.youtube.com/results?search_query=shorts');
+}
+
+=head2 yt_youtube_playlists(%args)
+
+Fetch the user's YouTube playlists. Requires cookies from a logged-in browser.
+
+=cut
+
+sub yt_youtube_playlists {
+    my ($self, %args) = @_;
+
+    # Use yt-dlp to extract playlists (page loads dynamically)
+    my $ytdl_cmd = $self->get_ytdl_cmd // 'yt-dlp';
+    my $cookie_file = $self->_find_cookie_file();
+
+    my @cmd = ($ytdl_cmd, '--flat-playlist', '--print', '%(title)s|||%(id)s|||%(playlist_count)s');
+    push @cmd, '--cookies', $cookie_file if $cookie_file;
+    push @cmd, 'https://www.youtube.com/feed/playlists';
+
+    my $cmd_str = join(' ', map { quotemeta($_) } @cmd);
+    my $output = `$cmd_str 2>/dev/null`;
+    return unless $output;
+
+    my @results;
+    for my $line (split /\n/, $output) {
+        chomp $line;
+        my ($title, $id, $count) = split /\|\|\|/, $line;
+        next unless $title && $id;
+
+        # Determine type
+        my $type = 'playlist';
+        if ($id eq 'LL') {
+            $type = 'special';
+            $title = 'Liked videos';
+        }
+        elsif ($id eq 'WL') {
+            $type = 'special';
+            $title = 'Watch later';
+        }
+
+        push @results, {
+            type        => $type,
+            title       => $title,
+            playlistId  => $id,
+            author      => '',
+            videoCount  => ($count // 0),
+        };
+    }
+
+    return $self->_prepare_results_for_return(\@results, %args, url => 'https://www.youtube.com/feed/playlists');
+}
+
+sub _find_cookie_file {
+    my ($self) = @_;
+
+    my $cookie_file = $self->get_cookie_file;
+    return $cookie_file if $cookie_file && -f $cookie_file;
+
+    my $browser = $self->get_cookies_from_browser;
+
+    require File::Spec;
+    my $default_dir = File::Spec->catdir($ENV{HOME} // '.', '.cache', 'pipe-viewer');
+
+    # If browser specified, look for its specific cookie file
+    if ($browser) {
+        # Check cache_dir
+        my $cache_dir = $self->get_cache_dir;
+        if ($cache_dir && $cache_dir ne '.') {
+            my $cf = File::Spec->catfile($cache_dir, "cookies_from_${browser}.txt");
+            return $cf if -f $cf;
+        }
+
+        my $cf = File::Spec->catfile($default_dir, "cookies_from_${browser}.txt");
+        return $cf if -f $cf;
+
+        $cf = File::Spec->catfile('.', "cookies_from_${browser}.txt");
+        return $cf if -f $cf;
+    }
+
+    # Fallback: find ANY cookies_from_*.txt in default cache
+    if (opendir(my $dh, $default_dir)) {
+        my @cookie_files = grep { /^cookies_from_.*\.txt$/ } readdir($dh);
+        closedir($dh);
+        if (@cookie_files) {
+            # Prefer the one matching browser, or just take the first
+            my $cf = File::Spec->catfile($default_dir, $cookie_files[0]);
+            return $cf if -f $cf;
+        }
+    }
+
+    return undef;
+}
+
+=head2 yt_youtube_history(%args)
+
+Fetch the YouTube watch history. Requires cookies from a logged-in browser.
+
+=cut
+
+sub yt_youtube_history {
+    my ($self, %args) = @_;
+
+    my $url = 'https://m.youtube.com/feed/history';
+
+    my %params = (
+                  hl => 'en',
+                 );
+
+    $url = $self->_append_url_args($url, %params);
+
+    my $hash = $self->_get_initial_data($url) // return;
+
+    # History uses sectionListRenderer
+    my $contents = do {
+        my $result = [];
+        my $tabs = $hash->{contents}{twoColumnBrowseResultsRenderer}{tabs} // [];
+        for my $tab (@$tabs) {
+            my $c = eval { $tab->{tabRenderer}{content}{sectionListRenderer}{contents} };
+            if ($c && @$c) { $result = $c; last; }
+        }
+        if (!@$result) {
+            $tabs = $hash->{contents}{singleColumnBrowseResultsRenderer}{tabs} // [];
+            for my $tab (@$tabs) {
+                my $c = eval { $tab->{tabRenderer}{content}{sectionListRenderer}{contents} };
+                if ($c && @$c) { $result = $c; last; }
+            }
+        }
+        if (!@$result) {
+            my $c = eval { $hash->{contents}{sectionListRenderer}{contents} };
+            $result = $c if $c && @$c;
+        }
+        $result;
+    };
+
+    my @results;
+    for my $item (@$contents) {
+        # itemSectionRenderer contains the video list
+        my $isr_items = eval { $item->{itemSectionRenderer}{contents} } // [];
+        for my $isr_item (@$isr_items) {
+            # compactVideoRenderer (history format)
+            my $cvr = $isr_item->{compactVideoRenderer};
+            if ($cvr) {
+                my $video = $self->_parse_compact_video_renderer($cvr);
+                push @results, $video if $video;
+                next;
+            }
+            # richGridRenderer
+            my $rgr = $isr_item->{richGridRenderer};
+            if ($rgr) {
+                for my $ri (@{$rgr->{contents} // []}) {
+                    my $vid = $ri->{richItemRenderer}{content}{videoWithContextRenderer}
+                           // $ri->{richItemRenderer}{content}{videoRenderer};
+                    next unless $vid;
+                    my $video = $self->_parse_video_renderer($vid);
+                    push @results, $video if $video;
+                }
+            }
+            # Direct videoRenderer
+            my $vid = $isr_item->{videoWithContextRenderer}
+                   // $isr_item->{videoRenderer};
+            if ($vid) {
+                my $video = $self->_parse_video_renderer($vid);
+                push @results, $video if $video;
+            }
+        }
+    }
+
+    return $self->_prepare_results_for_return(\@results, %args, url => $url);
+}
+
+sub _parse_compact_video_renderer {
+    my ($self, $cvr) = @_;
+
+    my $title = $cvr->{title}{runs}[0]{text} // return undef;
+    my $videoId = $cvr->{videoId} // return undef;
+    my $author   = $cvr->{shortBylineText}{runs}[0]{text} // '';
+    my $authorId = eval { $cvr->{shortBylineText}{runs}[0]{navigationEndpoint}{browseEndpoint}{browseId} } // '';
+
+    my $viewCount = 0;
+    my $viewText = $cvr->{viewCountText}{simpleText} // '';
+    if ($viewText =~ /^([\d,.]+[KMB]?)\s*views/i) {
+        $viewCount = WWW::PipeViewer::InitialData::_human_number_to_int($1);
+    }
+
+    my $lengthSeconds = 0;
+    if (($cvr->{lengthText}{runs}[0]{text} // $cvr->{lengthText}{simpleText} // '') =~ /([\d:]+)/) {
+        $lengthSeconds = WWW::PipeViewer::InitialData::_time_to_seconds($1);
+    }
+
+    return {
+        type     => "video",
+        title    => $title,
+        videoId  => $videoId,
+        author   => $author,
+        authorId => $authorId,
+        viewCount       => $viewCount,
+        published       => undef,
+        publishedText   => '',
+        lengthSeconds   => $lengthSeconds,
+        liveNow         => ($lengthSeconds == 0),
+        paid            => 0,
+        premium         => 0,
+        videoThumbnails => [
+            map {
+                scalar {
+                        quality => 'medium',
+                        url     => ($_->{url} =~ s{/hqdefault\.jpg}{/mqdefault.jpg}r),
+                        width   => $_->{width},
+                        height  => $_->{height},
+                       }
+            } @{$cvr->{thumbnail}{thumbnails} // []}
+        ],
+    };
+}
+
+sub _extract_videos_from_richGrid {
+    my ($self, $contents, %args) = @_;
+
+    my @results;
+    for my $item (@$contents) {
+        my $content = $item->{richItemRenderer}{content} // {};
+
+        # New YouTube format: lockupViewModel
+        my $lvm = $content->{lockupViewModel};
+        if ($lvm && ($lvm->{contentType} // '') =~ /VIDEO/) {
+            my $video = $self->_parse_lockup_view_model($lvm);
+            push @results, $video if $video;
+            next;
+        }
+
+        # Legacy format
+        my $vid = $content->{videoWithContextRenderer}
+               // $content->{videoRenderer};
+        next unless $vid;
+        my $video = $self->_parse_video_renderer($vid);
+        push @results, $video if $video;
+    }
+
+    return $self->_prepare_results_for_return(\@results, %args);
+}
+
+sub _parse_lockup_view_model {
+    my ($self, $lvm) = @_;
+
+    my $videoId = $lvm->{contentId} // return undef;
+    my $meta = $lvm->{metadata}{lockupMetadataViewModel} // {};
+
+    my $title = $meta->{title}{content} // return undef;
+
+    # Extract thumbnail
+    my $thumb_url = $lvm->{contentImage}{thumbnailViewModel}{image}{sources}[0]{url}
+                  // "https://i.ytimg.com/vi/$videoId/default.jpg";
+
+    # Extract metadata (views, author, etc.)
+    my $viewCount = 0;
+    my $author = '';
+    my $publishedText = '';
+    my $lengthSeconds = 0;
+
+    if ($meta->{metadata}{metadataRows}) {
+        for my $row (@{$meta->{metadata}{metadataRows}}) {
+            for my $part (@{$row->{metadataParts}}) {
+                my $text = $part->{text}{content} // '';
+                if ($text =~ /^([\d,.]+[KMB]?)\s*views/i) {
+                    $viewCount = WWW::PipeViewer::InitialData::_human_number_to_int($1);
+                }
+                elsif ($text =~ /\d+:\d+/) {
+                    $lengthSeconds = WWW::PipeViewer::InitialData::_time_to_seconds($text);
+                }
+                elsif ($text =~ /\d+\s+\w+\s+ago/) {
+                    $publishedText = $text;
+                }
+                elsif (!$author && $text && $text !~ /^\d/ && length($text) > 2) {
+                    $author = $text;
+                }
+            }
+        }
+    }
+
+    return {
+        type          => 'video',
+        title         => $title,
+        videoId       => $videoId,
+        author        => $author,
+        authorId      => '',
+        viewCount     => $viewCount,
+        published     => undef,
+        publishedText => $publishedText,
+        lengthSeconds => $lengthSeconds,
+        liveNow       => 0,
+        paid          => 0,
+        premium       => 0,
+        videoThumbnails => [
+            {quality => 'medium', url => $thumb_url =~ s{/hqdefault\.jpg}{/mqdefault.jpg}r, width => 320, height => 180},
+        ],
+    };
+}
+
+sub _parse_video_renderer {
+    my ($self, $vid) = @_;
+
+    my $title = $vid->{headline}{runs}[0]{text}
+              // $vid->{title}{runs}[0]{text}
+              // return undef;
+
+    my $videoId = $vid->{videoId} // return undef;
+
+    my $author   = $vid->{shortBylineText}{runs}[0]{text} // '';
+    my $authorId = eval { $vid->{shortBylineText}{runs}[0]{navigationEndpoint}{browseEndpoint}{browseId} } // '';
+
+    my $viewCount = 0;
+    my $viewText = $vid->{shortViewCountText}{runs}[0]{text}
+                // $vid->{viewCountText}{simpleText}
+                // '';
+    if ($viewText =~ /^([\d,.]+[KMB]?)\s*views/i) {
+        $viewCount = WWW::PipeViewer::InitialData::_human_number_to_int($1);
+    }
+
+    my $lengthSeconds = 0;
+    if (($vid->{lengthText}{runs}[0]{text} // $vid->{lengthText}{simpleText} // '') =~ /([\d:]+)/) {
+        $lengthSeconds = WWW::PipeViewer::InitialData::_time_to_seconds($1);
+    }
+
+    my $publishedText = $vid->{publishedTimeText}{simpleText} // '';
+    my $published = undef;
+
+    if ($publishedText =~ /(\d+)\s+(\w+)\s+ago/) {
+        my ($quantity, $period) = ($1, $2);
+        $period =~ s/s\z//;
+        my %table = (
+                     year   => 31556952,
+                     month  => 2629743.83,
+                     week   => 604800,
+                     day    => 86400,
+                     hour   => 3600,
+                     minute => 60,
+                     second => 1,
+                    );
+        if (exists $table{$period}) {
+            $published = int(time - $quantity * $table{$period});
+        }
+    }
+
+    return {
+        type     => "video",
+        title    => $title,
+        videoId  => $videoId,
+        author   => $author,
+        authorId => $authorId,
+        viewCount       => $viewCount,
+        published       => $published,
+        publishedText   => $publishedText,
+        lengthSeconds   => $lengthSeconds,
+        liveNow         => ($lengthSeconds == 0),
+        paid            => 0,
+        premium         => 0,
+        videoThumbnails => [
+            map {
+                scalar {
+                        quality => 'medium',
+                        url     => ($_->{url} =~ s{/hqdefault\.jpg}{/mqdefault.jpg}r),
+                        width   => $_->{width},
+                        height  => $_->{height},
+                       }
+            } @{$vid->{thumbnail}{thumbnails} // []}
+        ],
+    };
 }
 
 =head2 yt_channel_search($channel, q => $keyword, %args)
