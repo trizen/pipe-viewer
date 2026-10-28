@@ -242,24 +242,22 @@ sub _extract_description {
 
 sub _extract_video_count {
     my ($info) = @_;
-    
+
     # YouTube's new format may have swapped field names
     # Try the expected field names first
-    my $video_count = _human_number_to_int(
-        eval { $info->{videoCountShortText}{runs}[0]{text} } ||
-        eval { $info->{videoCountText}{runs}[0]{text} } ||
-        0
-    );
-    
+    my $video_count = _human_number_to_int(eval { $info->{videoCountShortText}{runs}[0]{text} } || eval { $info->{videoCountText}{runs}[0]{text} } || 0);
+
     # If videoCountText contains "subscribers", it's actually the subscriber count (swapped format)
     my $video_count_text = eval { $info->{videoCountText}{runs}[0]{text} } // '';
     if ($video_count_text =~ /subscribers/i) {
+
         # In swapped format, extract video count from accessibility label
         # The label format is like: "ChannelName 964 videos 15.3K subscribers"
         my $label = eval { $info->{title}{accessibility}{accessibilityData}{label} } // '';
         if ($label =~ /(\d+)\s+videos\b/i) {
             return _human_number_to_int($1);
         }
+
         # Also try the headline accessibility label
         $label = eval { $info->{headline}{accessibility}{accessibilityData}{label} } // '';
         if ($label =~ /(\d+)\s+videos\b/i) {
@@ -267,35 +265,27 @@ sub _extract_video_count {
         }
         return 0;
     }
-    
+
     return $video_count;
 }
 
 sub _extract_subscriber_count {
     my ($info) = @_;
-    
+
     # YouTube's new format has swapped field names
     # subscriberCountText now contains the channel handle (e.g., @username)
     # videoCountText now contains the subscriber count
-    
+
     my $subscriber_count_text = eval { $info->{subscriberCountText}{runs}[0]{text} } // '';
-    
+
     # If subscriberCountText contains a handle (@username), it's not the count
     # Try videoCountText instead (swapped format)
     if ($subscriber_count_text =~ /^@/) {
-        return _human_number_to_int(
-            eval { $info->{videoCountText}{runs}[0]{text} } ||
-            eval { $info->{videoCountShortText}{runs}[0]{text} } ||
-            0
-        );
+        return _human_number_to_int(eval { $info->{videoCountText}{runs}[0]{text} } || eval { $info->{videoCountShortText}{runs}[0]{text} } || 0);
     }
-    
+
     # Otherwise, try the normal field names (old format)
-    return _human_number_to_int(
-        $subscriber_count_text ||
-        eval { $info->{subscriberCountShortText}{runs}[0]{text} } ||
-        0
-    );
+    return _human_number_to_int($subscriber_count_text || eval { $info->{subscriberCountShortText}{runs}[0]{text} } || 0);
 }
 
 sub _extract_playlist_id {
@@ -749,15 +739,15 @@ sub _extract_channel_tabs {
     return %channel_tabs unless exists $section_list->{header};
 
     my $header = $section_list->{header};
-    return %channel_tabs unless ref($header) eq 'HASH' && exists($header->{feedFilterChipBarRenderer});
+    return %channel_tabs unless ref($header) eq 'HASH' && exists($header->{chipBarViewModel});
 
-    my $chip_bar = $header->{feedFilterChipBarRenderer};
-    return %channel_tabs unless ref($chip_bar) eq 'HASH' && exists($chip_bar->{contents}) && ref($chip_bar->{contents}) eq 'ARRAY';
+    my $chip_bar = $header->{chipBarViewModel};
+    return %channel_tabs unless ref($chip_bar) eq 'HASH' && exists($chip_bar->{chips}) && ref($chip_bar->{chips}) eq 'ARRAY';
 
-    foreach my $entry (@{$chip_bar->{contents}}) {
+    foreach my $entry (@{$chip_bar->{chips}}) {
         next unless ref($entry) eq 'HASH';
 
-        my $item = $entry->{chipCloudChipRenderer} // next;
+        my $item = $entry->{chipViewModel} // next;
         next unless ref($item) eq 'HASH';
 
         my $text = $item->{text} // next;
@@ -787,7 +777,7 @@ sub _extract_videos_from_channel_data {
             my $value = $channel_tabs{$key};
             next unless ref($value) eq 'HASH';
 
-            my $token          = eval { $value->{navigationEndpoint}{continuationCommand}{token} } // next;
+            my $token          = eval { $value->{tapCommand}{innertubeCommand}{continuationCommand}{token} } // next;
             my $popular_videos = $self->yt_browse_request($url, $token, %args, type => 'video', author_name => $author_name);
             return $popular_videos;
         }
@@ -1061,11 +1051,12 @@ sub _build_api_context {
     return {
             context => {
                         client => {
+                                   applicationState => "ACTIVE",
                                    browserName      => "Firefox",
-                                   browserVersion   => "136.0",
+                                   browserVersion   => "158.0",
                                    clientFormFactor => "LARGE_FORM_FACTOR",
                                    clientName       => "MWEB",
-                                   clientVersion    => "2.20260612.01.00",
+                                   clientVersion    => "2.20261028.01.00",
                                    deviceMake       => "Mozilla",
                                    deviceModel      => "Firefox for Android",
                                    hl               => "en",
@@ -1074,7 +1065,7 @@ sub _build_api_context {
                                                      },
                                    originalUrl        => $url,
                                    osName             => "Android",
-                                   osVersion          => "16",
+                                   osVersion          => "17",
                                    platform           => "MOBILE",
                                    playerType         => "UNIPLAYER",
                                    screenDensityFloat => 1,
@@ -1082,7 +1073,7 @@ sub _build_api_context {
                                    screenPixelDensity => 1,
                                    screenWidthPoints  => 1800,
                                    timeZone           => "UTC",
-                                   userAgent          => "Mozilla/5.0 (Android 16 Beta 2; Mobile; rv:136.0) Gecko/136.0 Firefox/136.0,gzip(gfe)",
+                                   userAgent          => "Mozilla/5.0 (Android 17; Tablet; rv:158.0) Gecko/158.0 Firefox/158.0,gzip(gfe)",
                                    userInterfaceTheme => "USER_INTERFACE_THEME_LIGHT",
                                    utcOffsetMinutes   => 0,
                                   },
@@ -1463,7 +1454,7 @@ sub _extract_append_continuation {
 
 sub _extract_reload_continuation {
     my ($self, $hash) = @_;
-    my $v = eval { $hash->{onResponseReceivedActions}[0]{reloadContinuationItemsCommand}{continuationItems} };
+    my $v = eval { $hash->{onResponseReceivedActions}[1]{reloadContinuationItemsCommand}{continuationItems} };
     return defined($v) ? {contents => $v} : undef;
 }
 
