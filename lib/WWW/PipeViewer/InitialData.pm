@@ -230,7 +230,7 @@ sub _extract_title {
     return
       eval    { $info->{title}{runs}[0]{text} }
       // eval { $info->{title}{accessibility}{accessibilityData}{label} }
-      // eval { $info->{headline}{runs}[0]{text} } // eval { $info->{overlayMetadata}{primaryText}{content} };
+      // eval { $info->{headline}{runs}[0]{text} } // eval { $info->{overlayMetadata}{primaryText}{content} } // eval { $info->{accessibilityText} };
 }
 
 sub _extract_description {
