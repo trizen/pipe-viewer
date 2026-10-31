@@ -5,6 +5,14 @@
 
 [CHANGELOG]
 
+Version 0.5.9
+
+- Fix title extraction for `shorts`.
+- Fix sorting by `popular`.
+- Fix the `--skip-watched` option, in combination with `skip_youtube_extraction`
+- Add `unlike`, `undislike` and `unfavorite` options. (by @exponentialmatrix)
+- Add options for accessing local playlists in interactive CLI. (by @exponentialmatrix)
+
 Version 0.5.8
 
 - Fixed thumbnails for shorts.

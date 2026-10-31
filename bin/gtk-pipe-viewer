@@ -15,7 +15,7 @@
 #-------------------------------------------------------
 #  GTK Pipe Viewer
 #  Fork: 30 October 2020
-#  Edit: 15 June 2026
+#  Edit: 31 October 2026
 #  https://github.com/trizen/pipe-viewer
 #-------------------------------------------------------
 
@@ -50,7 +50,7 @@ sub devel_path {
 
 use if $DEVEL, lib => $DEVEL && catdir(devel_path(), 'lib');
 
-use WWW::PipeViewer v0.5.8;
+use WWW::PipeViewer v0.5.9;
 use WWW::PipeViewer::DiskCache;
 use WWW::PipeViewer::ParseJSON;
 use WWW::PipeViewer::RegularExpressions;
@@ -182,20 +182,20 @@ my %symbols = (
 my %CONFIG = (
 
     video_players => {
-          vlc => {
-                  cmd   => q{vlc},
-                  srt   => q{--sub-file=*SUB*},
-                  audio => q{--input-slave=*AUDIO*},
-                  fs    => q{--fullscreen},
-                  arg   => q{--quiet --play-and-exit --no-video-title-show --input-title-format=*TITLE* --start-time=*START* *VIDEO*},
-                 },
-          mpv => {
-              cmd   => q{mpv},
-              srt   => q{--sub-file=*SUB*},
-              audio => q{--audio-file=*AUDIO*},
-              fs    => q{--fullscreen},
-              arg => q{--really-quiet --force-window=yes --force-media-title=*TITLE* --start=*START* --no-ytdl --stream-lavf-o-append=request_size=10485760 --no-terminal *VIDEO*},
-          },
+           vlc => {
+                   cmd   => q{vlc},
+                   srt   => q{--sub-file=*SUB*},
+                   audio => q{--input-slave=*AUDIO*},
+                   fs    => q{--fullscreen},
+                   arg   => q{--quiet --play-and-exit --no-video-title-show --input-title-format=*TITLE* --start-time=*START* *VIDEO*},
+                  },
+           mpv => {
+               cmd   => q{mpv},
+               srt   => q{--sub-file=*SUB*},
+               audio => q{--audio-file=*AUDIO*},
+               fs    => q{--fullscreen},
+               arg => q{--really-quiet --force-window=yes --force-media-title=*TITLE* --start=*START* --no-ytdl --stream-lavf-o-append=request_size=10485760 --no-terminal *VIDEO*},
+           },
     },
     video_player_selected => undef,    # autodetect it later
 
@@ -945,10 +945,9 @@ if (not $CONFIG{video_player_selected}) {
 # Locate a terminal
 if (not defined $CONFIG{terminal}) {
     foreach my $term (
-                      'gnome-terminal', 'lxterminal', 'terminal',  'xfce4-terminal', 'sakura', 'st',
-                      'lilyterm',       'evilvte',    'superterm', 'terminator',     'kterm',  'mlterm',
-                      'mrxvt',          'rxvt',       'urxvt',     'termite',        'termit', 'fbterm',
-                      'stjerm',         'yakuake',    'tilix',     'roxterm',        'xterm',
+                      'gnome-terminal', 'lxterminal', 'terminal', 'xfce4-terminal', 'sakura', 'st',      'lilyterm', 'evilvte',
+                      'superterm',      'terminator', 'kterm',    'mlterm',         'mrxvt',  'rxvt',    'urxvt',    'termite',
+                      'termit',         'fbterm',     'stjerm',   'yakuake',        'tilix',  'roxterm', 'xterm',
       ) {
         if (defined(my $abs_path = which_command($term))) {
             $CONFIG{terminal} = $abs_path;
@@ -1280,8 +1279,12 @@ sub get_treeview_popup_menu {
             # Favorite
             {
                 my $is_favorite = $yv_utils->is_video_in_file($video_data, $favorite_videos_data_file);
-                my $item = 'Gtk3::ImageMenuItem'->new($is_favorite ? "Unfavorite" : "Favorite");
-                $item->set_property(tooltip_text => $is_favorite ? "Remove the video from the playlist of favorite videos" : "Save the video in the playlist of favorite videos");
+                my $item        = 'Gtk3::ImageMenuItem'->new($is_favorite ? "Unfavorite" : "Favorite");
+                $item->set_property(
+                                    tooltip_text => $is_favorite
+                                    ? "Remove the video from the playlist of favorite videos"
+                                    : "Save the video in the playlist of favorite videos"
+                                   );
                 $item->signal_connect(
                     activate => sub {
                         if ($is_favorite) {
@@ -1319,7 +1322,7 @@ sub get_treeview_popup_menu {
             # Like
             {
                 my $is_liked = $yv_utils->is_video_in_file($video_data, $liked_videos_data_file);
-                my $item = 'Gtk3::ImageMenuItem'->new($is_liked ? "Unlike" : "Like");
+                my $item     = 'Gtk3::ImageMenuItem'->new($is_liked ? "Unlike" : "Like");
                 $item->set_property(tooltip_text => $is_liked ? "Remove video from the playlist of liked videos" : "Save video in the playlist of liked videos");
                 $item->signal_connect(
                     activate => sub {
@@ -1341,7 +1344,7 @@ sub get_treeview_popup_menu {
             # Disike
             {
                 my $is_disliked = $yv_utils->is_video_in_file($video_data, $disliked_videos_data_file);
-                my $item = 'Gtk3::ImageMenuItem'->new($is_disliked ? "Undislike" : "Dislike");
+                my $item        = 'Gtk3::ImageMenuItem'->new($is_disliked ? "Undislike" : "Dislike");
                 $item->set_property(tooltip_text => $is_disliked ? "Remove video from the playlist of disliked videos" : "Save video in the playlist of disliked videos");
                 $item->signal_connect(
                     activate => sub {
@@ -3171,23 +3174,19 @@ sub add_video_entry {
     set_entry_tooltip($iter, $title, $description);
 
     my $title_label = reflow_text(
-                                  sprintf("<big><b>%s</b></big>", encode_entities($title)) . "\n\n"
-                                    . join(
-                                           "\n",
-                                           map { sprintf("%s   %s", $_->[0], $_->[1]) } (
-                                                                                    [$symbols{author} => encode_entities($yv_utils->get_channel_title($video))],
-                                                                                    [$symbols{published} => ($yv_utils->get_publication_date($video) // 'N/A')],
-                                           )
-                                          )
-                                    . "\n\n"
-                                    . sprintf("<i>%s</i>", encode_entities($row_description))
-                                 );
+             sprintf("<big><b>%s</b></big>", encode_entities($title)) . "\n\n"
+               . join("\n",
+                      map { sprintf("%s   %s", $_->[0], $_->[1]) }
+                        ([$symbols{author} => encode_entities($yv_utils->get_channel_title($video))], [$symbols{published} => ($yv_utils->get_publication_date($video) // 'N/A')],))
+               . "\n\n"
+               . sprintf("<i>%s</i>", encode_entities($row_description))
+    );
 
     my $info_label = reflow_text(
-                         join("\n",
-                              map { sprintf("%s   %s", $_->[0], $_->[1]) }
-                                ([$symbols{play} => $yv_utils->get_time($video)], [$symbols{views} => $yv_utils->set_thousands($yv_utils->get_views($video))],))
-    );
+                                 join("\n",
+                                      map { sprintf("%s   %s", $_->[0], $_->[1]) }
+                                        ([$symbols{play} => $yv_utils->get_time($video)], [$symbols{views} => $yv_utils->set_thousands($yv_utils->get_views($video))],))
+                                );
 
     $liststore->set(
                     $iter,
@@ -3645,9 +3644,8 @@ sub play_selected_with_cli {
 sub execute_cli {
     my @arguments = @_;
 
-    my $command = join(q{ },
-                      $CONFIG{terminal},
-                      sprintf($CONFIG{terminal_exec}, join(q{ }, $CONFIG{pipe_viewer}, get_options_as_arguments(), @arguments, @{$CONFIG{pipe_viewer_args}}),));
+    my $command =
+      join(q{ }, $CONFIG{terminal}, sprintf($CONFIG{terminal_exec}, join(q{ }, $CONFIG{pipe_viewer}, get_options_as_arguments(), @arguments, @{$CONFIG{pipe_viewer_args}}),));
     my $code = execute_external_program($command);
 
     say $command if $DEBUG;
@@ -4251,8 +4249,7 @@ sub set_entry_details {
     # Add attribution for Return YouTube Dislike API (only when enabled)
     if ($CONFIG{dislikes_api}) {
         my $attribution_label = Gtk3::Label->new();
-        $attribution_label->set_markup(
-                        reflow_text("<small><i>Dislike data provided by <a href=\"https://returnyoutubedislike.com/\">Return YouTube Dislike</a></i></small>"));
+        $attribution_label->set_markup(reflow_text("<small><i>Dislike data provided by <a href=\"https://returnyoutubedislike.com/\">Return YouTube Dislike</a></i></small>"));
         $attribution_label->set_selectable(1);
         $attribution_label->set_xalign(0.0);
         $attribution_label->show();

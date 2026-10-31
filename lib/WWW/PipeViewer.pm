@@ -7,7 +7,7 @@ use warnings;
 use Memoize qw(memoize);
 use WWW::PipeViewer::ParseJSON;
 
-our $VERSION = '0.5.8';
+our $VERSION = '0.5.9';
 
 # ============================================================================
 # MEMOIZATION SETUP
@@ -107,11 +107,11 @@ my %valid_options = (
     api_host => {valid => qr/\w/, default => "auto"},
 
     # No input value allowed
-    api_path         => {valid => q[], default => '/api/v1/'},
-    www_content_type => {valid => q[], default => 'application/x-www-form-urlencoded'},
-    m_youtube_url    => {valid => q[], default => 'https://m.youtube.com'},
-    youtubei_url     => {valid => q[], default => 'https://youtubei.googleapis.com/youtubei/v1/%s?key=' . reverse("8Wcq11_9Y_wliCGLHETS4Q8UqlS2JF_OAySazIA")},
-    user_agent       => {valid => qr/^.{5}/, default => 'Mozilla/5.0 (Android 16 Beta 2; Mobile; rv:136.0) Gecko/136.0 Firefox/136.0,gzip(gfe)'},
+    api_path         => {valid => q[],       default => '/api/v1/'},
+    www_content_type => {valid => q[],       default => 'application/x-www-form-urlencoded'},
+    m_youtube_url    => {valid => q[],       default => 'https://m.youtube.com'},
+    youtubei_url     => {valid => q[],       default => 'https://youtubei.googleapis.com/youtubei/v1/%s?key=' . reverse("8Wcq11_9Y_wliCGLHETS4Q8UqlS2JF_OAySazIA")},
+    user_agent       => {valid => qr/^.{5}/, default => 'Mozilla/5.0 (Android 17; Tablet; rv:158.0) Gecko/158.0 Firefox/158.0,gzip(gfe)'},
 );
 
 # ============================================================================
