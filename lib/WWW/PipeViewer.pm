@@ -81,7 +81,8 @@ my %valid_options = (
     retry_delay => {valid => qr/^\d+\z/, default => 1},
     config_dir  => {valid => qr/^./,     default => q{.}},
     cache_dir   => {valid => qr/^./,     default => q{.}},
-    cookie_file => {valid => qr/^./,     default => undef},
+    cookie_file          => {valid => qr/^./,     default => undef},
+    cookies_from_browser => {valid => qr/^\w+/,   default => undef},
 
     # Support for yt-dlp / youtube-dl
     ytdl     => {valid => [1, 0], default => 1},
@@ -133,6 +134,11 @@ sub new {
 
     foreach my $invalid_key (keys %opts) {
         warn "Invalid key: '${invalid_key}'";
+    }
+
+    # Eagerly load cookies if cookies_from_browser is set
+    if (defined($self->{cookies_from_browser})) {
+        $self->{lwp} // $self->set_lwp_useragent();
     }
 
     return $self;
@@ -329,6 +335,12 @@ sub _setup_cookies {
     my ($self, $agent) = @_;
 
     my $cookie_file = $self->get_cookie_file;
+    my $browser     = $self->get_cookies_from_browser;
+
+    # If cookies_from_browser is set, extract cookies
+    if (defined($browser) and !defined($cookie_file)) {
+        $cookie_file = $self->_extract_browser_cookies($browser);
+    }
 
     if (defined($cookie_file) and -f $cookie_file) {
         if ($self->get_debug) {
@@ -343,6 +355,11 @@ sub _setup_cookies {
                                                   );
         $cookies->load;
         $agent->cookie_jar($cookies);
+
+        # Verify profile if cookies_from_browser is set
+        if (defined($browser)) {
+            $self->_verify_profile($agent);
+        }
     }
     else {
         require HTTP::Cookies;
@@ -350,6 +367,165 @@ sub _setup_cookies {
         $self->_set_default_cookies($cookies);
         $agent->cookie_jar($cookies);
     }
+}
+
+sub _extract_browser_cookies {
+    my ($self, $browser) = @_;
+
+    require File::Spec;
+
+    my $cache_dir   = $self->get_cache_dir // File::Spec->tmpdir;
+    my $cookie_file = File::Spec->catfile($cache_dir, "cookies_from_${browser}.txt");
+
+    # Re-use cached file if it exists and is less than 1 hour old
+    if (-f $cookie_file && (time() - (stat($cookie_file))[9]) < 3600) {
+        if ($self->get_debug) {
+            say STDERR ":: Reusing cached browser cookies: $cookie_file";
+        }
+        $self->{profile_loaded} = 1;
+        return $cookie_file;
+    }
+
+    if ($self->get_debug) {
+        say STDERR ":: Extracting cookies from browser: $browser";
+    }
+
+    # Try the bundled Python helper first (fast, native decryption)
+    my $helper_script = $self->_find_cookie_helper_script();
+
+    if (defined($helper_script)) {
+        my $exit_code = system('python3', $helper_script, $browser, $cookie_file);
+
+        if ($exit_code == 0 && -f $cookie_file && -s $cookie_file) {
+            if ($self->get_debug) {
+                say STDERR ":: Browser cookies extracted to: $cookie_file";
+            }
+            $self->{profile_loaded} = 1;
+            return $cookie_file;
+        }
+
+        warn ":: Warning: Python cookie extraction failed for '$browser', falling back to yt-dlp\n";
+    }
+
+    # Fallback to yt-dlp
+    my $ytdl_cmd = $self->get_ytdl_cmd // 'yt-dlp';
+
+    my @cmd = (
+        $ytdl_cmd,
+        '--cookies-from-browser', $browser,
+        '--cookies',              $cookie_file,
+        '--skip-download',
+        '--print',                '',
+        'https://www.youtube.com',
+    );
+
+    my $exit_code = system(@cmd);
+
+    if ($exit_code == 0 && -f $cookie_file && -s $cookie_file) {
+        if ($self->get_debug) {
+            say STDERR ":: Browser cookies extracted to: $cookie_file";
+        }
+        $self->{profile_loaded} = 1;
+        return $cookie_file;
+    }
+
+    warn ":: Warning: failed to extract cookies from browser '$browser' (exit code: $exit_code)\n";
+    $self->{profile_loaded} = 0;
+    return undef;
+}
+
+sub _find_cookie_helper_script {
+    my ($self) = @_;
+
+    require File::Spec;
+
+    # Look relative to the pipe-viewer binary
+    require FindBin;
+    my $bin_dir = $FindBin::Bin || '/usr/local/bin';
+    foreach my $subdir ('', '..', 'utils', '../utils', '../share/pipe-viewer') {
+        my $path = File::Spec->catfile($bin_dir, $subdir, 'extract-browser-cookies.py');
+        if (-f $path) {
+            return $path;
+        }
+    }
+
+    # Check standard install locations
+    foreach my $dir ('/usr/local/share/pipe-viewer', '/usr/share/pipe-viewer') {
+        my $path = File::Spec->catfile($dir, 'extract-browser-cookies.py');
+        if (-f $path) {
+            return $path;
+        }
+    }
+
+    return undef;
+}
+
+sub _verify_profile {
+    my ($self, $agent) = @_;
+
+    my $jar = $agent->cookie_jar;
+    my $has_auth = 0;
+
+    # Check for YouTube auth cookies
+    $jar->scan(sub {
+        my ($version, $key, $val, $path, $domain, $port, $path_spec, $secure, $expires, $discard, $hash) = @_;
+        if ($domain =~ /youtube\.com|google\.com/ && $key =~ /^(SID|SAPISID|HSID|SSID|__Secure-3PSID|__Secure-3PAPISID|__Secure-1PSID)$/) {
+            $has_auth = 1;
+        }
+    });
+
+    if ($has_auth) {
+        $self->{profile_loaded} = 1;
+        if ($self->get_debug) {
+            say STDERR ":: Profile verified: auth cookies present";
+        }
+    }
+    else {
+        $self->{profile_loaded} = 0;
+        warn ":: Warning: cookies loaded but no auth cookies found. Profile may not be authenticated.\n";
+    }
+}
+
+sub get_profile_loaded {
+    my ($self) = @_;
+    return $self->{profile_loaded} // 0;
+}
+
+sub get_profile_username {
+    my ($self) = @_;
+    return $self->{profile_username} // undef;
+}
+
+sub reload_cookies_from_browser {
+    my ($self, $browser) = @_;
+
+    require File::Spec;
+    my $cache_dir   = $self->get_cache_dir // File::Spec->tmpdir;
+    my $cookie_file = File::Spec->catfile($cache_dir, "cookies_from_${browser}.txt");
+
+    # Delete cached file to force re-extraction
+    unlink $cookie_file if -f $cookie_file;
+
+    $self->set_cookies_from_browser($browser);
+    my $result = $self->_extract_browser_cookies($browser);
+
+    if (defined($result) && -f $result) {
+        # Re-setup the LWP agent with new cookies
+        my $agent = $self->{lwp};
+        if ($agent) {
+            require HTTP::Cookies::Netscape;
+            my $cookies = HTTP::Cookies::Netscape->new(
+                hide_cookie2 => 1,
+                autosave     => 1,
+                file         => $result,
+            );
+            $cookies->load;
+            $agent->cookie_jar($cookies);
+            $self->_verify_profile($agent);
+        }
+    }
+
+    return $self->{profile_loaded} // 0;
 }
 
 sub _set_default_cookies {
