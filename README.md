@@ -31,6 +31,14 @@ Pipe-Viewer can be deployed on any GNU/Linux distribution using Guix.
 To install in the user's default profile, do `guix install pipe-viewer`.
 To test without installing, do `guix environment --pure --ad-hoc pipe-viewer mpv -- pipe-viewer`.
 
+#### Third-party / Community
+
+* Docker image (includes `pipe-viewer` + `gtk-pipe-viewer`, X11 support):  
+  [danrobi11/my-pipe-viewer-docker-image](https://github.com/danrobi11/my-pipe-viewer-docker-image)
+```  
+  podman pull ghcr.io/danrobi11/pipe-viewer:latest
+```
+
 ### REVIEWS
 
 * [EN] How-to install pipe-viewer in Debian
